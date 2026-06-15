@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import './DailySummary.css'
 
-export default function DailySummary({ tasks, team }) {
+export default function DailySummary({ tasks, teamMembers }) {
   const [draft, setDraft] = useState(null)
   const [copied, setCopied] = useState(false)
 
@@ -12,14 +12,14 @@ export default function DailySummary({ tasks, team }) {
     const inProgress = tasks.filter(t => t.status === 'in_progress')
     const todo = tasks.filter(t => t.status === 'todo')
 
-    const ownerSections = team.map(member => {
-      const memberDone = done.filter(t => t.owner === member)
-      const memberInProgress = inProgress.filter(t => t.owner === member)
-      const memberTodo = todo.filter(t => t.owner === member)
+    const ownerSections = teamMembers.map(member => {
+      const memberDone = done.filter(t => t.assignee_id === member.id)
+      const memberInProgress = inProgress.filter(t => t.assignee_id === member.id)
+      const memberTodo = todo.filter(t => t.assignee_id === member.id)
 
       if (!memberDone.length && !memberInProgress.length && !memberTodo.length) return null
 
-      let section = `### ${member}\n`
+      let section = `### ${member.display_name}\n`
 
       if (memberDone.length) {
         section += `\n**Completed**\n`

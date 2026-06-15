@@ -1,0 +1,302 @@
+import { useState, useEffect, useCallback } from 'react'
+import { supabase } from '../supabase'
+import { useAuth } from '../auth/AuthContext'
+import { useTeam } from '../context/TeamContext'
+import './TeamsPage.css'
+
+const PROJECT_STATUSES = ['active', 'on_hold', 'completed']
+const PROJECT_STATUS_LABELS = { active: 'Active', on_hold: 'On Hold', completed: 'Completed' }
+
+export default function TeamsPage() {
+  const { user } = useAuth()
+  const { teams, currentTeamId, setCurrentTeam, refreshTeams } = useTeam()
+
+  const [newTeamName, setNewTeamName] = useState('')
+  const [joinCode, setJoinCode] = useState('')
+  const [teamError, setTeamError] = useState('')
+
+  const [members, setMembers] = useState([])
+  const [inviteCode, setInviteCode] = useState('')
+  const [copied, setCopied] = useState(false)
+
+  const [projects, setProjects] = useState([])
+  const [showProjectForm, setShowProjectForm] = useState(false)
+  const [editingProjectId, setEditingProjectId] = useState(null)
+
+  const fetchMembers = useCallback(async () => {
+    if (!currentTeamId) { setMembers([]); return }
+    const { data } = await supabase
+      .from('team_members')
+      .select('user_id, role, profiles(display_name, email)')
+      .eq('team_id', currentTeamId)
+    setMembers((data || []).map(r => ({
+      id: r.user_id,
+      role: r.role,
+      display_name: r.profiles?.display_name || r.profiles?.email || 'Unknown',
+    })))
+  }, [currentTeamId])
+
+  const fetchProjects = useCallback(async () => {
+    if (!currentTeamId) { setProjects([]); return }
+    const { data } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('team_id', currentTeamId)
+      .order('created_at', { ascending: true })
+    setProjects(data || [])
+  }, [currentTeamId])
+
+  useEffect(() => {
+    setInviteCode('')
+    fetchMembers()
+    fetchProjects()
+
+    if (!currentTeamId) return
+    const channel = supabase
+      .channel(`team-detail-${currentTeamId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'team_members', filter: `team_id=eq.${currentTeamId}` }, fetchMembers)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects', filter: `team_id=eq.${currentTeamId}` }, fetchProjects)
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [currentTeamId, fetchMembers, fetchProjects])
+
+  async function handleCreateTeam(e) {
+    e.preventDefault()
+    if (!newTeamName.trim()) return
+    setTeamError('')
+    const { data, error } = await supabase.rpc('create_team', { _name: newTeamName.trim() })
+    if (error) { setTeamError(error.message); return }
+    setNewTeamName('')
+    await refreshTeams()
+    setCurrentTeam(data)
+  }
+
+  async function handleJoinTeam(e) {
+    e.preventDefault()
+    if (!joinCode.trim()) return
+    setTeamError('')
+    const { data, error } = await supabase.rpc('join_team_with_code', { _code: joinCode.trim() })
+    if (error) { setTeamError(error.message); return }
+    setJoinCode('')
+    await refreshTeams()
+    setCurrentTeam(data)
+  }
+
+  async function generateInvite() {
+    const { data, error } = await supabase
+      .from('team_invites')
+      .insert([{ team_id: currentTeamId, created_by: user.id }])
+      .select('code')
+      .single()
+    if (!error) setInviteCode(data.code)
+  }
+
+  function copyInvite() {
+    navigator.clipboard.writeText(inviteCode)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  async function addProject(project) {
+    await supabase.from('projects').insert([{ ...project, team_id: currentTeamId, created_by: user.id }])
+  }
+
+  async function updateProject(id, updates) {
+    await supabase.from('projects').update(updates).eq('id', id)
+  }
+
+  async function deleteProject(id) {
+    await supabase.from('projects').delete().eq('id', id)
+  }
+
+  const currentTeam = teams.find(t => t.id === currentTeamId)
+  const isOwner = members.find(m => m.id === user.id)?.role === 'owner'
+  const editingProject = projects.find(p => p.id === editingProjectId) || null
+
+  return (
+    <div className="teams-page">
+      <div className="teams-list-col">
+        <h2>Your Teams</h2>
+        {teams.length === 0 && <p className="empty-hint">You're not on any teams yet.</p>}
+        {teams.map(t => (
+          <button
+            key={t.id}
+            className={t.id === currentTeamId ? 'team-item active' : 'team-item'}
+            onClick={() => setCurrentTeam(t.id)}
+          >
+            <span>{t.name}</span>
+            <span className="role-tag">{t.role}</span>
+          </button>
+        ))}
+
+        <div className="team-actions">
+          <form onSubmit={handleCreateTeam}>
+            <input
+              value={newTeamName}
+              onChange={e => setNewTeamName(e.target.value)}
+              placeholder="New team name"
+            />
+            <button type="submit" className="btn-primary">Create</button>
+          </form>
+          <form onSubmit={handleJoinTeam}>
+            <input
+              value={joinCode}
+              onChange={e => setJoinCode(e.target.value)}
+              placeholder="Invite code"
+            />
+            <button type="submit" className="btn-ghost">Join</button>
+          </form>
+          {teamError && <p className="auth-error">{teamError}</p>}
+        </div>
+      </div>
+
+      <div className="team-detail-col">
+        {!currentTeam ? (
+          <p className="empty-hint">Create a team or select one from the list to see its members and projects.</p>
+        ) : (
+          <>
+            <h2>{currentTeam.name}</h2>
+
+            <section className="members-section">
+              <h3>Members</h3>
+              <div className="member-list">
+                {members.map(m => (
+                  <div key={m.id} className="member-row">
+                    <span>{m.display_name}{m.id === user.id ? ' (you)' : ''}</span>
+                    {m.role === 'owner' && <span className="role-tag">owner</span>}
+                  </div>
+                ))}
+              </div>
+              {isOwner && (
+                <button className="btn-ghost" onClick={generateInvite}>Generate Invite Code</button>
+              )}
+              {inviteCode && (
+                <div className="invite-code">
+                  <span>{inviteCode}</span>
+                  <button className="btn-copy" onClick={copyInvite}>{copied ? '✓ Copied' : 'Copy'}</button>
+                </div>
+              )}
+            </section>
+
+            <section className="projects-section">
+              <div className="section-header">
+                <h3>Projects</h3>
+                <button className="btn-primary" onClick={() => { setEditingProjectId(null); setShowProjectForm(true) }}>
+                  + New Project
+                </button>
+              </div>
+
+              {projects.length === 0 && <p className="empty-hint">No projects yet.</p>}
+
+              <div className="project-list">
+                {projects.map(p => (
+                  <ProjectCard
+                    key={p.id}
+                    project={p}
+                    onEdit={() => { setEditingProjectId(p.id); setShowProjectForm(true) }}
+                    onDelete={() => deleteProject(p.id)}
+                  />
+                ))}
+              </div>
+            </section>
+
+            {showProjectForm && (
+              <ProjectModal
+                project={editingProject}
+                onCancel={() => { setShowProjectForm(false); setEditingProjectId(null) }}
+                onSave={async (form) => {
+                  if (editingProjectId) await updateProject(editingProjectId, form)
+                  else await addProject(form)
+                  setShowProjectForm(false)
+                  setEditingProjectId(null)
+                }}
+              />
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ProjectCard({ project, onEdit, onDelete }) {
+  return (
+    <div className="project-card">
+      <div className="project-card-top">
+        <span className="project-name">{project.name}</span>
+        <span className={`project-status ${project.status}`}>{PROJECT_STATUS_LABELS[project.status]}</span>
+      </div>
+      {project.description && <p className="project-desc">{project.description}</p>}
+      {(project.start_date || project.target_date) && (
+        <p className="project-dates">
+          {project.start_date || '—'} → {project.target_date || '—'}
+        </p>
+      )}
+      <div className="project-actions">
+        <button onClick={onEdit}>Edit</button>
+        <button className="danger" onClick={onDelete}>Delete</button>
+      </div>
+    </div>
+  )
+}
+
+function ProjectModal({ project, onCancel, onSave }) {
+  const [form, setForm] = useState({
+    name: project?.name || '',
+    description: project?.description || '',
+    status: project?.status || 'active',
+    start_date: project?.start_date || '',
+    target_date: project?.target_date || '',
+  })
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (!form.name.trim()) return
+    onSave({
+      ...form,
+      start_date: form.start_date || null,
+      target_date: form.target_date || null,
+    })
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <form className="task-form" onSubmit={handleSubmit} onClick={e => e.stopPropagation()}>
+        <h2>{project ? 'Edit Project' : 'New Project'}</h2>
+        <label>Name
+          <input
+            autoFocus
+            value={form.name}
+            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+            placeholder="Project name"
+          />
+        </label>
+        <label>Description
+          <textarea
+            rows={3}
+            value={form.description}
+            onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+            placeholder="What is this project about?"
+          />
+        </label>
+        <div className="form-row">
+          <label>Status
+            <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+              {PROJECT_STATUSES.map(s => <option key={s} value={s}>{PROJECT_STATUS_LABELS[s]}</option>)}
+            </select>
+          </label>
+          <label>Start Date
+            <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
+          </label>
+          <label>Target Date
+            <input type="date" value={form.target_date} onChange={e => setForm(f => ({ ...f, target_date: e.target.value }))} />
+          </label>
+        </div>
+        <div className="form-actions">
+          <button type="button" className="btn-ghost" onClick={onCancel}>Cancel</button>
+          <button type="submit" className="btn-primary">{project ? 'Save' : 'Create Project'}</button>
+        </div>
+      </form>
+    </div>
+  )
+}

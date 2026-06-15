@@ -5,30 +5,64 @@ const STATUSES = ['todo', 'in_progress', 'done']
 const STATUS_LABELS = { todo: 'To Do', in_progress: 'In Progress', done: 'Done' }
 const PRIORITIES = ['low', 'medium', 'high']
 
-export default function TaskBoard({ tasks, team, onAdd, onUpdate, onDelete }) {
+function todayStr() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00')
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function dueClass(dateStr) {
+  if (!dateStr) return ''
+  const today = todayStr()
+  if (dateStr < today) return 'overdue'
+  if (dateStr === today) return 'today'
+  return ''
+}
+
+export default function TaskBoard({ tasks, teamMembers, projects, currentUserId, currentTeamId, onAdd, onUpdate, onDelete }) {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(defaultForm())
 
   function defaultForm() {
-    return { title: '', notes: '', owner: team[0], status: 'todo', priority: 'medium' }
+    return {
+      title: '',
+      notes: '',
+      status: 'todo',
+      priority: 'medium',
+      due_date: '',
+      assignee_id: currentTeamId ? (teamMembers[0]?.id ?? null) : currentUserId,
+      project_id: null,
+    }
   }
 
   function handleSubmit(e) {
     e.preventDefault()
     if (!form.title.trim()) return
+    const payload = { ...form, due_date: form.due_date || null, project_id: form.project_id || null }
     if (editingId) {
-      onUpdate(editingId, form)
+      onUpdate(editingId, payload)
       setEditingId(null)
     } else {
-      onAdd({ ...form, created_at: new Date().toISOString() })
+      onAdd(payload)
     }
     setForm(defaultForm())
     setShowForm(false)
   }
 
   function startEdit(task) {
-    setForm({ title: task.title, notes: task.notes || '', owner: task.owner, status: task.status, priority: task.priority })
+    setForm({
+      title: task.title,
+      notes: task.notes || '',
+      status: task.status,
+      priority: task.priority,
+      due_date: task.due_date || '',
+      assignee_id: task.assignee_id,
+      project_id: task.project_id,
+    })
     setEditingId(task.id)
     setShowForm(true)
   }
@@ -40,6 +74,8 @@ export default function TaskBoard({ tasks, team, onAdd, onUpdate, onDelete }) {
   }
 
   const byStatus = (status) => tasks.filter(t => t.status === status)
+  const memberName = (id) => teamMembers.find(m => m.id === id)?.display_name
+  const projectName = (id) => projects.find(p => p.id === id)?.name
 
   return (
     <div className="board">
@@ -70,10 +106,12 @@ export default function TaskBoard({ tasks, team, onAdd, onUpdate, onDelete }) {
               />
             </label>
             <div className="form-row">
-              <label>Owner
-                <select value={form.owner} onChange={e => setForm(f => ({ ...f, owner: e.target.value }))}>
-                  {team.map(m => <option key={m}>{m}</option>)}
-                </select>
+              <label>Due Date
+                <input
+                  type="date"
+                  value={form.due_date}
+                  onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))}
+                />
               </label>
               <label>Status
                 <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
@@ -86,6 +124,28 @@ export default function TaskBoard({ tasks, team, onAdd, onUpdate, onDelete }) {
                 </select>
               </label>
             </div>
+            {currentTeamId && (
+              <div className="form-row-2">
+                <label>Assignee
+                  <select
+                    value={form.assignee_id || ''}
+                    onChange={e => setForm(f => ({ ...f, assignee_id: e.target.value || null }))}
+                  >
+                    <option value="">Unassigned</option>
+                    {teamMembers.map(m => <option key={m.id} value={m.id}>{m.display_name}</option>)}
+                  </select>
+                </label>
+                <label>Project
+                  <select
+                    value={form.project_id || ''}
+                    onChange={e => setForm(f => ({ ...f, project_id: e.target.value || null }))}
+                  >
+                    <option value="">No project</option>
+                    {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </label>
+              </div>
+            )}
             <div className="form-actions">
               <button type="button" className="btn-ghost" onClick={cancelForm}>Cancel</button>
               <button type="submit" className="btn-primary">{editingId ? 'Save' : 'Add Task'}</button>
@@ -107,6 +167,8 @@ export default function TaskBoard({ tasks, team, onAdd, onUpdate, onDelete }) {
                 <TaskCard
                   key={task.id}
                   task={task}
+                  assigneeName={memberName(task.assignee_id)}
+                  projectName={projectName(task.project_id)}
                   onEdit={() => startEdit(task)}
                   onDelete={() => onDelete(task.id)}
                   onStatusChange={(s) => onUpdate(task.id, { status: s })}
@@ -125,7 +187,7 @@ export default function TaskBoard({ tasks, team, onAdd, onUpdate, onDelete }) {
   )
 }
 
-function TaskCard({ task, onEdit, onDelete, onStatusChange, statuses, statusLabels }) {
+function TaskCard({ task, assigneeName, projectName, onEdit, onDelete, onStatusChange, statuses, statusLabels }) {
   const [showMenu, setShowMenu] = useState(false)
 
   return (
@@ -150,7 +212,13 @@ function TaskCard({ task, onEdit, onDelete, onStatusChange, statuses, statusLabe
       <p className="task-title">{task.title}</p>
       {task.notes && <p className="task-notes">{task.notes}</p>}
       <div className="task-card-footer">
-        <span className="owner-tag">{task.owner}</span>
+        {task.due_date && (
+          <span className={`due-badge ${dueClass(task.due_date)}`}>
+            {dueClass(task.due_date) === 'overdue' ? 'Overdue · ' : ''}{formatDate(task.due_date)}
+          </span>
+        )}
+        {assigneeName && <span className="owner-tag">{assigneeName}</span>}
+        {projectName && <span className="project-tag">{projectName}</span>}
       </div>
     </div>
   )
