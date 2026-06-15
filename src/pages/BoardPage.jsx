@@ -10,7 +10,18 @@ export default function BoardPage() {
   const [tasks, setTasks] = useState([])
   const [teamMembers, setTeamMembers] = useState([])
   const [projects, setProjects] = useState([])
+  const [taskUpdates, setTaskUpdates] = useState([])
   const [loading, setLoading] = useState(true)
+
+  const fetchTaskUpdates = useCallback(async (taskIds) => {
+    if (!taskIds.length) { setTaskUpdates([]); return }
+    const { data } = await supabase
+      .from('task_updates')
+      .select('id, task_id, body, created_at, profiles(display_name)')
+      .in('task_id', taskIds)
+      .order('created_at', { ascending: false })
+    setTaskUpdates(data || [])
+  }, [])
 
   const fetchTasks = useCallback(async () => {
     let query = supabase.from('tasks').select('*').order('created_at', { ascending: true })
@@ -19,7 +30,8 @@ export default function BoardPage() {
       : query.is('team_id', null).eq('user_id', user.id)
     const { data } = await query
     setTasks(data || [])
-  }, [currentTeamId, user])
+    await fetchTaskUpdates((data || []).map(t => t.id))
+  }, [currentTeamId, user, fetchTaskUpdates])
 
   const fetchTeamMembers = useCallback(async () => {
     if (!currentTeamId) {
@@ -51,6 +63,7 @@ export default function BoardPage() {
       .channel(`board-${currentTeamId ?? 'personal'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchTasks)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'projects', filter: currentTeamId ? `team_id=eq.${currentTeamId}` : undefined }, fetchProjects)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'task_updates' }, fetchTasks)
       .subscribe()
 
     return () => supabase.removeChannel(channel)
@@ -68,6 +81,10 @@ export default function BoardPage() {
     await supabase.from('tasks').delete().eq('id', id)
   }
 
+  async function addUpdate(taskId, body) {
+    await supabase.from('task_updates').insert([{ task_id: taskId, user_id: user.id, body }])
+  }
+
   if (loading) return <div className="loading">Loading tasks…</div>
 
   return (
@@ -75,11 +92,13 @@ export default function BoardPage() {
       tasks={tasks}
       teamMembers={teamMembers}
       projects={projects}
+      taskUpdates={taskUpdates}
       currentUserId={user.id}
       currentTeamId={currentTeamId}
       onAdd={addTask}
       onUpdate={updateTask}
       onDelete={deleteTask}
+      onAddUpdate={addUpdate}
     />
   )
 }

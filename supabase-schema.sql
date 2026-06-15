@@ -8,6 +8,7 @@
 -- ============================================================
 
 drop trigger if exists on_auth_user_created on auth.users;
+drop table if exists task_updates cascade;
 drop table if exists tasks cascade;
 drop table if exists projects cascade;
 drop table if exists team_invites cascade;
@@ -76,6 +77,14 @@ create table tasks (
   created_at timestamptz not null default now()
 );
 
+create table task_updates (
+  id uuid primary key default gen_random_uuid(),
+  task_id uuid not null references tasks(id) on delete cascade,
+  user_id uuid not null references profiles(id) on delete cascade,
+  body text not null,
+  created_at timestamptz not null default now()
+);
+
 -- ============================================================
 -- Auto-create a profile row when a new auth user signs up
 -- ============================================================
@@ -114,6 +123,19 @@ returns boolean language sql security definer stable as $$
   select exists (
     select 1 from team_members
     where team_id = _team_id and user_id = _user_id and role = 'owner'
+  );
+$$;
+
+create or replace function can_access_task(_task_id uuid, _user_id uuid)
+returns boolean language sql security definer stable as $$
+  select exists (
+    select 1 from tasks
+    where id = _task_id
+      and (
+        user_id = _user_id
+        or assignee_id = _user_id
+        or (team_id is not null and is_team_member(team_id, _user_id))
+      )
   );
 $$;
 
@@ -163,6 +185,7 @@ alter table team_members enable row level security;
 alter table team_invites enable row level security;
 alter table projects enable row level security;
 alter table tasks enable row level security;
+alter table task_updates enable row level security;
 
 -- profiles: any signed-in user can read profiles (needed to show teammate
 -- names), but can only edit their own row.
@@ -250,6 +273,18 @@ create policy "tasks_delete" on tasks
     or (team_id is not null and is_team_member(team_id, auth.uid()))
   );
 
+-- task_updates: visible/writable by anyone who can access the parent task.
+-- Each update is a short note logging progress for a given day; only the
+-- author can delete their own update.
+create policy "task_updates_select" on task_updates
+  for select using (can_access_task(task_id, auth.uid()));
+
+create policy "task_updates_insert" on task_updates
+  for insert with check (can_access_task(task_id, auth.uid()) and user_id = auth.uid());
+
+create policy "task_updates_delete" on task_updates
+  for delete using (user_id = auth.uid());
+
 -- ============================================================
 -- Realtime
 -- ============================================================
@@ -257,3 +292,4 @@ create policy "tasks_delete" on tasks
 alter publication supabase_realtime add table tasks;
 alter publication supabase_realtime add table projects;
 alter publication supabase_realtime add table team_members;
+alter publication supabase_realtime add table task_updates;

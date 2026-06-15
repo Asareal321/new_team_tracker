@@ -22,10 +22,11 @@ function dueClass(dateStr) {
   return ''
 }
 
-export default function TaskBoard({ tasks, teamMembers, projects, currentUserId, currentTeamId, onAdd, onUpdate, onDelete }) {
+export default function TaskBoard({ tasks, teamMembers, projects, taskUpdates, currentUserId, currentTeamId, onAdd, onUpdate, onDelete, onAddUpdate }) {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(defaultForm())
+  const [activeTab, setActiveTab] = useState('todo')
 
   function defaultForm() {
     return {
@@ -76,6 +77,10 @@ export default function TaskBoard({ tasks, teamMembers, projects, currentUserId,
   const byStatus = (status) => tasks.filter(t => t.status === status)
   const memberName = (id) => teamMembers.find(m => m.id === id)?.display_name
   const projectName = (id) => projects.find(p => p.id === id)?.name
+  const todaysUpdate = (taskId) => {
+    const today = todayStr()
+    return taskUpdates.find(u => u.task_id === taskId && u.created_at.slice(0, 10) === today)
+  }
 
   return (
     <div className="board">
@@ -154,46 +159,75 @@ export default function TaskBoard({ tasks, teamMembers, projects, currentUserId,
         </div>
       )}
 
-      <div className="columns">
+      <div className="tabs">
         {STATUSES.map(status => (
-          <div key={status} className="column">
-            <div className="column-header">
-              <span className={`status-dot ${status}`} />
-              <span className="column-title">{STATUS_LABELS[status]}</span>
-              <span className="column-count">{byStatus(status).length}</span>
-            </div>
-            <div className="column-tasks">
-              {byStatus(status).map(task => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  assigneeName={memberName(task.assignee_id)}
-                  projectName={projectName(task.project_id)}
-                  onEdit={() => startEdit(task)}
-                  onDelete={() => onDelete(task.id)}
-                  onStatusChange={(s) => onUpdate(task.id, { status: s })}
-                  statuses={STATUSES}
-                  statusLabels={STATUS_LABELS}
-                />
-              ))}
-              {byStatus(status).length === 0 && (
-                <div className="empty-col">No tasks</div>
-              )}
-            </div>
-          </div>
+          <button
+            key={status}
+            className={`tab ${activeTab === status ? 'active' : ''}`}
+            onClick={() => setActiveTab(status)}
+          >
+            <span className={`status-dot ${status}`} />
+            {STATUS_LABELS[status]}
+            <span className="tab-count">{byStatus(status).length}</span>
+          </button>
         ))}
+      </div>
+
+      <div className="task-list">
+        {byStatus(activeTab).map(task => (
+          <TaskRow
+            key={task.id}
+            task={task}
+            assigneeName={memberName(task.assignee_id)}
+            projectName={projectName(task.project_id)}
+            todaysUpdate={todaysUpdate(task.id)}
+            onEdit={() => startEdit(task)}
+            onDelete={() => onDelete(task.id)}
+            onStatusChange={(s) => onUpdate(task.id, { status: s })}
+            onAddUpdate={(body) => onAddUpdate(task.id, body)}
+            statuses={STATUSES}
+            statusLabels={STATUS_LABELS}
+          />
+        ))}
+        {byStatus(activeTab).length === 0 && (
+          <div className="empty-col">No tasks</div>
+        )}
       </div>
     </div>
   )
 }
 
-function TaskCard({ task, assigneeName, projectName, onEdit, onDelete, onStatusChange, statuses, statusLabels }) {
+function TaskRow({ task, assigneeName, projectName, todaysUpdate, onEdit, onDelete, onStatusChange, onAddUpdate, statuses, statusLabels }) {
   const [showMenu, setShowMenu] = useState(false)
+  const [updateText, setUpdateText] = useState('')
+
+  function submitUpdate(e) {
+    e.preventDefault()
+    const text = updateText.trim()
+    if (!text) return
+    onAddUpdate(text)
+    setUpdateText('')
+  }
 
   return (
-    <div className={`task-card priority-${task.priority}`}>
-      <div className="task-card-top">
-        <span className={`priority-badge ${task.priority}`}>{task.priority}</span>
+    <div className={`task-row priority-${task.priority}`}>
+      <div className="task-row-main">
+        <div className="task-row-info">
+          <div className="task-row-top">
+            <span className={`priority-badge ${task.priority}`}>{task.priority}</span>
+            <p className="task-title">{task.title}</p>
+          </div>
+          {task.notes && <p className="task-notes">{task.notes}</p>}
+        </div>
+        <div className="task-row-tags">
+          {task.due_date && (
+            <span className={`due-badge ${dueClass(task.due_date)}`}>
+              {dueClass(task.due_date) === 'overdue' ? 'Overdue · ' : ''}{formatDate(task.due_date)}
+            </span>
+          )}
+          {assigneeName && <span className="owner-tag">{assigneeName}</span>}
+          {projectName && <span className="project-tag">{projectName}</span>}
+        </div>
         <div className="task-menu-wrap">
           <button className="menu-btn" onClick={() => setShowMenu(m => !m)}>•••</button>
           {showMenu && (
@@ -209,16 +243,26 @@ function TaskCard({ task, assigneeName, projectName, onEdit, onDelete, onStatusC
           )}
         </div>
       </div>
-      <p className="task-title">{task.title}</p>
-      {task.notes && <p className="task-notes">{task.notes}</p>}
-      <div className="task-card-footer">
-        {task.due_date && (
-          <span className={`due-badge ${dueClass(task.due_date)}`}>
-            {dueClass(task.due_date) === 'overdue' ? 'Overdue · ' : ''}{formatDate(task.due_date)}
-          </span>
+      <div className="task-row-update">
+        {todaysUpdate ? (
+          <div className="update-today">
+            <span className="update-today-label">Today</span>
+            <span className="update-body">{todaysUpdate.body}</span>
+            {todaysUpdate.profiles?.display_name && (
+              <span className="update-author">— {todaysUpdate.profiles.display_name}</span>
+            )}
+          </div>
+        ) : (
+          <span className="update-today-label muted">No update yet today</span>
         )}
-        {assigneeName && <span className="owner-tag">{assigneeName}</span>}
-        {projectName && <span className="project-tag">{projectName}</span>}
+        <form className="update-form" onSubmit={submitUpdate}>
+          <input
+            value={updateText}
+            onChange={e => setUpdateText(e.target.value)}
+            placeholder="Add today's update…"
+          />
+          <button type="submit" className="btn-ghost btn-sm">Post</button>
+        </form>
       </div>
     </div>
   )
