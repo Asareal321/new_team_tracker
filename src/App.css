@@ -5,8 +5,8 @@
 }
 
 .app-header {
-  background: #ffffff;
-  border-bottom: 2px solid #d1fae5;
+  background: #071013;
+  border-bottom: 1px solid rgba(195,247,58,0.2);
   padding: 0 1.25rem;
   height: 52px;
   display: flex;
@@ -23,9 +23,9 @@
   gap: 0.5rem;
 }
 
-.logo { font-size: 1.4rem; color: #059669; }
+.logo { font-size: 1.4rem; color: #C3F73A; }
 
-h1 { font-size: 1rem; font-weight: 600; color: #1c1917; }
+h1 { font-size: 1rem; font-weight: 600; color: #C3F73A; }
 
 .header-nav { display: flex; gap: 0.25rem; }
 
@@ -35,12 +35,12 @@ h1 { font-size: 1rem; font-weight: 600; color: #1c1917; }
   border: none;
   background: transparent;
   font-size: 0.875rem;
-  color: #78716c;
+  color: #68B684;
   font-weight: 500;
   transition: background 0.15s, color 0.15s;
 }
-.nav-btn:hover { background: #f0fdf4; color: #065f46; }
-.nav-btn.active { background: #d1fae5; color: #065f46; font-weight: 600; }
+.nav-btn:hover { background: rgba(195,247,58,0.1); color: #C3F73A; }
+.nav-btn.active { background: rgba(195,247,58,0.15); color: #C3F73A; font-weight: 600; }
 
 .header-right {
   display: flex;
@@ -49,29 +49,29 @@ h1 { font-size: 1rem; font-weight: 600; color: #1c1917; }
 }
 
 .team-switcher {
-  border: 1px solid #d1fae5;
+  border: 1px solid rgba(195,247,58,0.25);
   border-radius: 6px;
   padding: 0.3rem 0.55rem;
   font-size: 0.825rem;
-  color: #1c1917;
-  background: #f0fdf4;
+  color: #C3F73A;
+  background: rgba(255,255,255,0.06);
   font-weight: 500;
   max-width: 160px;
 }
-.team-switcher:focus { outline: 2px solid #059669; outline-offset: -1px; }
+.team-switcher:focus { outline: 2px solid #C3F73A; outline-offset: -1px; }
 
 .theme-toggle {
-  background: #f0fdf4;
-  border: 1px solid #d1fae5;
+  background: rgba(195,247,58,0.1);
+  border: 1px solid rgba(195,247,58,0.25);
   border-radius: 6px;
   padding: 0.3rem 0.55rem;
   font-size: 0.85rem;
-  color: #059669;
+  color: #C3F73A;
   line-height: 1;
   display: flex;
   align-items: center;
 }
-.theme-toggle:hover { background: #d1fae5; color: #065f46; }
+.theme-toggle:hover { background: rgba(195,247,58,0.2); color: #C3F73A; }
 
 .setup-banner {
   background: var(--yellow-bg);
