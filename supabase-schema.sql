@@ -67,7 +67,7 @@ create table tasks (
   id uuid primary key default gen_random_uuid(),
   title text not null,
   notes text,
-  status text not null default 'todo' check (status in ('todo', 'in_progress', 'done')),
+  status text not null default 'todo' check (status in ('todo', 'in_progress', 'done', 'archived')),
   priority text not null default 'medium' check (priority in ('low', 'medium', 'high')),
   due_date date,
   user_id uuid not null references profiles(id) on delete cascade,
