@@ -97,12 +97,12 @@
   margin-top: 0.15rem;
 }
 
-/* Tabs */
+/* Tabs — sit on green page bg, use on-page text vars */
 .tabs {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--on-page-border);
 }
 
 .tab {
@@ -115,46 +115,46 @@
   padding: 0.55rem 0.25rem;
   font-size: 0.85rem;
   font-weight: 500;
-  color: var(--text-3);
+  color: var(--on-page-3);
   margin-bottom: -1px;
 }
-.tab:hover { color: var(--text-2); }
-.tab.active { color: var(--text-1); border-bottom-color: var(--accent); }
+.tab:hover { color: var(--on-page-2); }
+.tab.active { color: var(--on-page-1); border-bottom-color: #34d399; }
 
 .status-dot {
   width: 7px; height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
 }
-.status-dot.todo       { background: var(--text-4); }
-.status-dot.in_progress{ background: var(--yellow-text); }
-.status-dot.done       { background: var(--green-text); }
-.status-dot.archived   { background: var(--border); }
+.status-dot.todo       { background: var(--on-page-3); }
+.status-dot.in_progress{ background: #fbbf24; }
+.status-dot.done       { background: #34d399; }
+.status-dot.archived   { background: var(--on-page-border); }
 
 .tab-count {
   font-size: 0.72rem;
-  color: var(--text-3);
-  background: var(--bg-muted);
+  color: var(--on-page-3);
+  background: rgba(255,255,255,0.1);
   padding: 0.05rem 0.35rem;
   border-radius: 10px;
 }
-.tab.active .tab-count { background: var(--accent-bg); color: var(--accent); }
+.tab.active .tab-count { background: rgba(52,211,153,0.2); color: #34d399; }
 
 .tab-divider {
   width: 1px;
-  background: var(--border);
+  background: var(--on-page-border);
   align-self: stretch;
   margin: 0.35rem 0.15rem;
   flex-shrink: 0;
 }
-.tab-archived { color: var(--text-4); }
-.tab-archived:hover { color: var(--text-3); }
-.tab-archived.active { color: var(--text-3); border-bottom-color: var(--text-4); }
+.tab-archived { color: rgba(255,255,255,0.3); }
+.tab-archived:hover { color: var(--on-page-3); }
+.tab-archived.active { color: var(--on-page-2); border-bottom-color: var(--on-page-3); }
 
 /* Task list */
 .task-list { display: flex; flex-direction: column; gap: 0.35rem; }
 
-.empty-col { font-size: 0.8rem; color: var(--text-4); padding: 1.25rem; text-align: center; }
+.empty-col { font-size: 0.8rem; color: var(--on-page-2); padding: 1.25rem; text-align: center; }
 
 /* Task rows */
 .task-row {

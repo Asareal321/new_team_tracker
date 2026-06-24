@@ -13,6 +13,7 @@
 }
 
 .teams-list-col h2, .team-detail-col h2 { font-size: 1rem; font-weight: 600; margin-bottom: 0.65rem; color: var(--text-1); }
+.teams-page > h2 { color: var(--on-page-1); }
 .team-detail-col h3 { font-size: 0.875rem; font-weight: 600; margin-bottom: 0.45rem; color: var(--text-1); }
 
 .team-item {

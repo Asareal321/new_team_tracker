@@ -7,8 +7,8 @@
   gap: 1rem;
 }
 
-.summary-header h2 { font-size: 1.05rem; font-weight: 600; color: var(--text-1); }
-.summary-date { font-size: 0.82rem; color: var(--text-3); margin-top: 0.15rem; }
+.summary-header h2 { font-size: 1.05rem; font-weight: 600; color: var(--on-page-1); }
+.summary-date { font-size: 0.82rem; color: var(--on-page-3); margin-top: 0.15rem; }
 
 .btn-primary {
   background: var(--accent);

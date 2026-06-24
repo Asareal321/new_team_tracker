@@ -1,17 +1,23 @@
 :root {
-  --bg-page:    #f5f5f4;
+  --bg-page:    #065f46;
   --bg-surface: #ffffff;
-  --bg-subtle:  #fafaf9;
-  --bg-muted:   #f5f5f4;
-  --bg-accent:  #d1fae5;
+  --bg-subtle:  #f0fdf4;
+  --bg-muted:   #d1fae5;
+  --bg-accent:  #a7f3d0;
 
-  --border:        #e7e5e4;
-  --border-subtle: #f0eeec;
+  --border:        #d1fae5;
+  --border-subtle: #e8faf2;
 
   --text-1: #1c1917;
   --text-2: #44403c;
   --text-3: #78716c;
   --text-4: #a8a29e;
+
+  /* text for elements sitting directly on the dark green page bg */
+  --on-page-1:      #ecfdf5;
+  --on-page-2:      #a7f3d0;
+  --on-page-3:      #6ee7b7;
+  --on-page-border: rgba(255,255,255,0.15);
 
   --accent:      #059669;
   --accent-hover:#047857;
@@ -30,7 +36,7 @@
 }
 
 html[data-theme="dark"] {
-  --bg-page:    #0a1f17;
+  --bg-page:    #022c22;
   --bg-surface: #0f2a1e;
   --bg-subtle:  #163424;
   --bg-muted:   #1c3d2a;
@@ -43,6 +49,11 @@ html[data-theme="dark"] {
   --text-2: #a7f3d0;
   --text-3: #6ee7b7;
   --text-4: #3d7a5a;
+
+  --on-page-1:      #ecfdf5;
+  --on-page-2:      #a7f3d0;
+  --on-page-3:      #6ee7b7;
+  --on-page-border: rgba(255,255,255,0.12);
 
   --accent:      #34d399;
   --accent-hover:#10b981;
