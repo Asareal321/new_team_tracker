@@ -40,7 +40,7 @@ h1 { font-size: 1rem; font-weight: 600; color: #071013; }
   transition: background 0.15s, color 0.15s;
 }
 .nav-btn:hover { background: #f0f0f0; color: #071013; }
-.nav-btn.active { background: #071013; color: #C3F73A; font-weight: 600; }
+.nav-btn.active { background: transparent; color: #071013; font-weight: 700; }
 
 .header-right {
   display: flex;
