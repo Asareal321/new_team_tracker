@@ -1,5 +1,5 @@
 :root {
-  --bg-page:    #065f46;
+  --bg-page:    #6ee7b7;
   --bg-surface: #ffffff;
   --bg-subtle:  #f0fdf4;
   --bg-muted:   #f5f5f4;
@@ -13,11 +13,11 @@
   --text-3: #78716c;
   --text-4: #a8a29e;
 
-  /* text for elements sitting directly on the dark green page bg */
-  --on-page-1:      #ecfdf5;
-  --on-page-2:      #a7f3d0;
-  --on-page-3:      #6ee7b7;
-  --on-page-border: rgba(255,255,255,0.15);
+  /* text for elements sitting directly on the light green page bg */
+  --on-page-1:      #064e3b;
+  --on-page-2:      #065f46;
+  --on-page-3:      #047857;
+  --on-page-border: rgba(0,0,0,0.12);
 
   --accent:      #059669;
   --accent-hover:#047857;
