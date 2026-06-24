@@ -78,10 +78,8 @@ export default function TaskBoard({ tasks, teamMembers, projects, taskUpdates, c
   const byStatus = (status) => tasks.filter(t => t.status === status)
   const memberName = (id) => teamMembers.find(m => m.id === id)?.display_name
   const projectName = (id) => projects.find(p => p.id === id)?.name
-  const todaysUpdate = (taskId) => {
-    const today = todayStr()
-    return taskUpdates.find(u => u.task_id === taskId && u.created_at.slice(0, 10) === today)
-  }
+  const updatesForTask = (taskId) =>
+    taskUpdates.filter(u => u.task_id === taskId).slice().reverse()
 
   return (
     <div className="board">
@@ -190,7 +188,7 @@ export default function TaskBoard({ tasks, teamMembers, projects, taskUpdates, c
             task={task}
             assigneeName={memberName(task.assignee_id)}
             projectName={projectName(task.project_id)}
-            todaysUpdate={todaysUpdate(task.id)}
+            updates={updatesForTask(task.id)}
             onEdit={() => startEdit(task)}
             onDelete={() => onDelete(task.id)}
             onStatusChange={(s) => onUpdate(task.id, { status: s })}
@@ -207,10 +205,32 @@ export default function TaskBoard({ tasks, teamMembers, projects, taskUpdates, c
   )
 }
 
-function TaskRow({ task, assigneeName, projectName, todaysUpdate, onEdit, onDelete, onStatusChange, onAddUpdate, statuses, statusLabels }) {
+function formatTime(isoStr) {
+  return new Date(isoStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+}
+
+function formatHistoryDate(dateStr) {
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+function TaskRow({ task, assigneeName, projectName, updates, onEdit, onDelete, onStatusChange, onAddUpdate, statuses, statusLabels }) {
   const [showMenu, setShowMenu] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
   const [updateText, setUpdateText] = useState('')
   const isArchived = task.status === 'archived'
+
+  const today = todayStr()
+  const todaysUpdates = updates.filter(u => u.created_at.slice(0, 10) === today)
+  const historyUpdates = updates.filter(u => u.created_at.slice(0, 10) !== today)
+
+  // Group history by date, most recent date first
+  const historyByDate = historyUpdates.reduce((acc, u) => {
+    const d = u.created_at.slice(0, 10)
+    if (!acc[d]) acc[d] = []
+    acc[d].push(u)
+    return acc
+  }, {})
+  const historyDates = Object.keys(historyByDate).sort((a, b) => b.localeCompare(a))
 
   function submitUpdate(e) {
     e.preventDefault()
@@ -266,19 +286,56 @@ function TaskRow({ task, assigneeName, projectName, todaysUpdate, onEdit, onDele
           )}
         </div>
       </div>
+
       {!isArchived && (
         <div className="task-row-update">
-          {todaysUpdate ? (
-            <div className="update-today">
-              <span className="update-today-label">Today</span>
-              <span className="update-body">{todaysUpdate.body}</span>
-              {todaysUpdate.profiles?.display_name && (
-                <span className="update-author">— {todaysUpdate.profiles.display_name}</span>
-              )}
-            </div>
-          ) : (
-            <span className="update-today-label muted">No update yet today</span>
-          )}
+          <div className="updates-section">
+            {todaysUpdates.length > 0 ? (
+              <div className="updates-today">
+                <span className="update-today-label">Today</span>
+                <div className="update-items">
+                  {todaysUpdates.map(u => (
+                    <div key={u.id} className="update-item">
+                      <span className="update-body">{u.body}</span>
+                      <span className="update-meta">
+                        {u.profiles?.display_name && <>{u.profiles.display_name} · </>}
+                        {formatTime(u.created_at)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <span className="update-today-label muted">No update yet today</span>
+            )}
+
+            {historyDates.length > 0 && (
+              <button className="history-toggle" onClick={() => setShowHistory(h => !h)}>
+                {showHistory ? '▲' : '▼'} {historyUpdates.length} past update{historyUpdates.length !== 1 ? 's' : ''}
+              </button>
+            )}
+
+            {showHistory && (
+              <div className="updates-history">
+                {historyDates.map(date => (
+                  <div key={date} className="history-day">
+                    <span className="history-date-label">{formatHistoryDate(date)}</span>
+                    <div className="update-items">
+                      {historyByDate[date].map(u => (
+                        <div key={u.id} className="update-item">
+                          <span className="update-body">{u.body}</span>
+                          {u.profiles?.display_name && (
+                            <span className="update-meta">{u.profiles.display_name}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <form className="update-form" onSubmit={submitUpdate}>
             <input
               value={updateText}

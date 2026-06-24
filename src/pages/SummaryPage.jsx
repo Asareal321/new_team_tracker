@@ -77,8 +77,9 @@ export default function SummaryPage() {
   const memberName = (id) => teamMembers.find(m => m.id === id)?.display_name
   const todaysUpdate = (taskId) => {
     const today = todayStr()
-    const update = taskUpdates.find(u => u.task_id === taskId && u.created_at.slice(0, 10) === today)
-    return update ? update.body : null
+    const updates = taskUpdates.filter(u => u.task_id === taskId && u.created_at.slice(0, 10) === today)
+    if (!updates.length) return null
+    return updates.map(u => u.body).join(' | ')
   }
 
   function buildSections() {
