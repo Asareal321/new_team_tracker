@@ -1,11 +1,24 @@
+import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
 import '../App.css'
 
 const navClass = ({ isActive }) => (isActive ? 'nav-btn active' : 'nav-btn')
 
+function getInitialTheme() {
+  return localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'
+}
+
 export default function Layout() {
   const { teams, currentTeamId, setCurrentTeam } = useTeam()
+  const [theme, setTheme] = useState(getInitialTheme)
+
+  function toggleTheme() {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    localStorage.setItem('theme', next)
+    document.documentElement.setAttribute('data-theme', next === 'dark' ? 'dark' : '')
+  }
 
   return (
     <div className="app">
@@ -29,6 +42,9 @@ export default function Layout() {
             <option value="">Personal</option>
             {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
+          <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}>
+            {theme === 'dark' ? '☀' : '☾'}
+          </button>
           <NavLink to="/account" className={navClass}>Account</NavLink>
         </div>
       </header>
