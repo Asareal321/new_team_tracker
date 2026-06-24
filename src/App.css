@@ -5,8 +5,8 @@
 }
 
 .app-header {
-  background: #071013;
-  border-bottom: 1px solid rgba(195,247,58,0.2);
+  background: #ffffff;
+  border-bottom: 2px solid #C3F73A;
   padding: 0 1.25rem;
   height: 52px;
   display: flex;
@@ -23,9 +23,9 @@
   gap: 0.5rem;
 }
 
-.logo { font-size: 1.4rem; color: #C3F73A; }
+.logo { font-size: 1.4rem; color: #071013; }
 
-h1 { font-size: 1rem; font-weight: 600; color: #C3F73A; }
+h1 { font-size: 1rem; font-weight: 600; color: #071013; }
 
 .header-nav { display: flex; gap: 0.25rem; }
 
@@ -35,12 +35,12 @@ h1 { font-size: 1rem; font-weight: 600; color: #C3F73A; }
   border: none;
   background: transparent;
   font-size: 0.875rem;
-  color: #68B684;
+  color: #4a6b56;
   font-weight: 500;
   transition: background 0.15s, color 0.15s;
 }
-.nav-btn:hover { background: rgba(195,247,58,0.1); color: #C3F73A; }
-.nav-btn.active { background: rgba(195,247,58,0.15); color: #C3F73A; font-weight: 600; }
+.nav-btn:hover { background: #f0f0f0; color: #071013; }
+.nav-btn.active { background: #071013; color: #C3F73A; font-weight: 600; }
 
 .header-right {
   display: flex;
@@ -49,29 +49,41 @@ h1 { font-size: 1rem; font-weight: 600; color: #C3F73A; }
 }
 
 .team-switcher {
-  border: 1px solid rgba(195,247,58,0.25);
+  border: 1px solid #e7e5e4;
   border-radius: 6px;
   padding: 0.3rem 0.55rem;
   font-size: 0.825rem;
-  color: #C3F73A;
-  background: rgba(255,255,255,0.06);
+  color: #071013;
+  background: #f5f5f4;
   font-weight: 500;
   max-width: 160px;
 }
-.team-switcher:focus { outline: 2px solid #C3F73A; outline-offset: -1px; }
+.team-switcher:focus { outline: 2px solid #071013; outline-offset: -1px; }
 
 .theme-toggle {
-  background: rgba(195,247,58,0.1);
-  border: 1px solid rgba(195,247,58,0.25);
+  background: #f5f5f4;
+  border: 1px solid #e7e5e4;
   border-radius: 6px;
   padding: 0.3rem 0.55rem;
   font-size: 0.85rem;
-  color: #C3F73A;
+  color: #071013;
   line-height: 1;
   display: flex;
   align-items: center;
 }
-.theme-toggle:hover { background: rgba(195,247,58,0.2); color: #C3F73A; }
+.theme-toggle:hover { background: #e7e5e4; }
+
+html[data-theme="dark"] .app-header {
+  background: #071013;
+  border-bottom: 1px solid rgba(195,247,58,0.2);
+}
+html[data-theme="dark"] .logo { color: #C3F73A; }
+html[data-theme="dark"] h1 { color: #C3F73A; }
+html[data-theme="dark"] .nav-btn { color: #68B684; }
+html[data-theme="dark"] .nav-btn:hover { background: rgba(195,247,58,0.1); color: #C3F73A; }
+html[data-theme="dark"] .nav-btn.active { background: rgba(195,247,58,0.15); color: #C3F73A; }
+html[data-theme="dark"] .team-switcher { border-color: rgba(195,247,58,0.25); color: #C3F73A; background: rgba(255,255,255,0.06); }
+html[data-theme="dark"] .theme-toggle { background: rgba(195,247,58,0.1); border-color: rgba(195,247,58,0.25); color: #C3F73A; }
 
 .setup-banner {
   background: var(--yellow-bg);
