@@ -1,5 +1,11 @@
 .timeline-page { display: flex; flex-direction: column; gap: 0.85rem; }
 
+.timeline-toolbar-panel {
+  background: var(--bg-surface);
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
+}
+
 .timeline-toolbar {
   display: flex;
   justify-content: space-between;
@@ -11,12 +17,23 @@
 .toggle-group {
   display: flex;
   gap: 0.2rem;
-  background: rgba(255,255,255,0.1);
-  border: 1px solid var(--on-page-border);
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.18rem;
 }
-.toggle-group .nav-btn { padding: 0.25rem 0.65rem; }
+.toggle-group .nav-btn {
+  padding: 0.25rem 0.65rem;
+  color: var(--text-3);
+}
+.toggle-group .nav-btn:hover {
+  background: rgba(7,16,19,0.06);
+  color: var(--text-1);
+}
+.toggle-group .nav-btn.active {
+  background: #071013;
+  color: #C3F73A;
+}
 
 .overdue-banner {
   background: var(--red-bg);

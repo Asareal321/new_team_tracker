@@ -110,6 +110,7 @@ export default function TimelinePage() {
 
   return (
     <div className="timeline-page">
+      <div className="timeline-toolbar-panel">
       <div className="timeline-toolbar">
         <div className="toggle-group">
           {Object.entries(RANGES).map(([key, r]) => (
@@ -124,6 +125,7 @@ export default function TimelinePage() {
             <button className={groupBy === 'project' ? 'nav-btn active' : 'nav-btn'} onClick={() => setGroupBy('project')}>By Project</button>
           </div>
         )}
+      </div>
       </div>
 
       {overdue.length > 0 && (
