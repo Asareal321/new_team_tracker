@@ -83,12 +83,6 @@ export default function TaskBoard({ tasks, teamMembers, projects, taskUpdates, c
 
   return (
     <div className="board">
-      <div className="board-toolbar">
-        <button className="btn-primary" onClick={() => { setShowForm(true); setEditingId(null); setForm(defaultForm()) }}>
-          + Add Task
-        </button>
-      </div>
-
       {showForm && (
         <div className="modal-overlay" onClick={cancelForm}>
           <form className="task-form" onSubmit={handleSubmit} onClick={e => e.stopPropagation()}>
@@ -158,48 +152,55 @@ export default function TaskBoard({ tasks, teamMembers, projects, taskUpdates, c
         </div>
       )}
 
-      <div className="tabs">
-        {FORM_STATUSES.map(status => (
-          <button
-            key={status}
-            className={`tab ${activeTab === status ? 'active' : ''}`}
-            onClick={() => setActiveTab(status)}
-          >
-            <span className={`status-dot ${status}`} />
-            {STATUS_LABELS[status]}
-            <span className="tab-count">{byStatus(status).length}</span>
+      <div className="board-panel">
+        <div className="tabs">
+          <div className="tabs-left">
+            {FORM_STATUSES.map(status => (
+              <button
+                key={status}
+                className={`tab ${activeTab === status ? 'active' : ''}`}
+                onClick={() => setActiveTab(status)}
+              >
+                <span className={`status-dot ${status}`} />
+                {STATUS_LABELS[status]}
+                <span className="tab-count">{byStatus(status).length}</span>
+              </button>
+            ))}
+            <div className="tab-divider" />
+            <button
+              className={`tab tab-archived ${activeTab === 'archived' ? 'active' : ''}`}
+              onClick={() => setActiveTab('archived')}
+            >
+              <span className="status-dot archived" />
+              Archived
+              <span className="tab-count">{byStatus('archived').length}</span>
+            </button>
+          </div>
+          <button className="btn-primary btn-sm" onClick={() => { setShowForm(true); setEditingId(null); setForm(defaultForm()) }}>
+            + Add Task
           </button>
-        ))}
-        <div className="tab-divider" />
-        <button
-          className={`tab tab-archived ${activeTab === 'archived' ? 'active' : ''}`}
-          onClick={() => setActiveTab('archived')}
-        >
-          <span className="status-dot archived" />
-          Archived
-          <span className="tab-count">{byStatus('archived').length}</span>
-        </button>
-      </div>
+        </div>
 
-      <div className="task-list">
-        {byStatus(activeTab).map(task => (
-          <TaskRow
-            key={task.id}
-            task={task}
-            assigneeName={memberName(task.assignee_id)}
-            projectName={projectName(task.project_id)}
-            updates={updatesForTask(task.id)}
-            onEdit={() => startEdit(task)}
-            onDelete={() => onDelete(task.id)}
-            onStatusChange={(s) => onUpdate(task.id, { status: s })}
-            onAddUpdate={(body) => onAddUpdate(task.id, body)}
-            statuses={FORM_STATUSES}
-            statusLabels={STATUS_LABELS}
-          />
-        ))}
-        {byStatus(activeTab).length === 0 && (
-          <div className="empty-col">{activeTab === 'archived' ? 'No archived tasks' : 'No tasks'}</div>
-        )}
+        <div className="task-list">
+          {byStatus(activeTab).map(task => (
+            <TaskRow
+              key={task.id}
+              task={task}
+              assigneeName={memberName(task.assignee_id)}
+              projectName={projectName(task.project_id)}
+              updates={updatesForTask(task.id)}
+              onEdit={() => startEdit(task)}
+              onDelete={() => onDelete(task.id)}
+              onStatusChange={(s) => onUpdate(task.id, { status: s })}
+              onAddUpdate={(body) => onAddUpdate(task.id, body)}
+              statuses={FORM_STATUSES}
+              statusLabels={STATUS_LABELS}
+            />
+          ))}
+          {byStatus(activeTab).length === 0 && (
+            <div className="empty-col">{activeTab === 'archived' ? 'No archived tasks' : 'No tasks'}</div>
+          )}
+        </div>
       </div>
     </div>
   )
