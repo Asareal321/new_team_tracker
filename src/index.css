@@ -3,7 +3,7 @@
   --bg-surface: #ffffff;
   --bg-subtle:  #fafaf9;
   --bg-muted:   #f5f5f4;
-  --bg-accent:  #f5f3ff;
+  --bg-accent:  #d1fae5;
 
   --border:        #e7e5e4;
   --border-subtle: #f0eeec;
@@ -13,51 +13,51 @@
   --text-3: #78716c;
   --text-4: #a8a29e;
 
-  --accent:      #7c3aed;
-  --accent-hover:#6d28d9;
-  --accent-dim:  #c4b5fd;
-  --accent-bg:   #f5f3ff;
-  --accent-text: #6d28d9;
+  --accent:      #059669;
+  --accent-hover:#047857;
+  --accent-dim:  #6ee7b7;
+  --accent-bg:   #d1fae5;
+  --accent-text: #065f46;
 
   --red-bg:     #fee2e2;
   --red-text:   #b91c1c;
   --red-border: #fecaca;
   --yellow-bg:  #fef3c7;
   --yellow-text:#92400e;
-  --green-bg:   #dcfce7;
-  --green-text: #15803d;
-  --today-bg:   #faf5ff;
+  --green-bg:   #d1fae5;
+  --green-text: #065f46;
+  --today-bg:   #ecfdf5;
 }
 
 html[data-theme="dark"] {
-  --bg-page:    #111111;
-  --bg-surface: #1c1c1c;
-  --bg-subtle:  #242424;
-  --bg-muted:   #2a2a2a;
-  --bg-accent:  #1e1530;
+  --bg-page:    #0a1f17;
+  --bg-surface: #0f2a1e;
+  --bg-subtle:  #163424;
+  --bg-muted:   #1c3d2a;
+  --bg-accent:  #064e3b;
 
-  --border:        #333333;
-  --border-subtle: #262626;
+  --border:        #1f4d36;
+  --border-subtle: #163424;
 
-  --text-1: #f5f5f4;
-  --text-2: #d6d3d1;
-  --text-3: #a8a29e;
-  --text-4: #6b6b6b;
+  --text-1: #ecfdf5;
+  --text-2: #a7f3d0;
+  --text-3: #6ee7b7;
+  --text-4: #3d7a5a;
 
-  --accent:      #8b5cf6;
-  --accent-hover:#7c3aed;
-  --accent-dim:  #4c1d95;
-  --accent-bg:   #1e1530;
-  --accent-text: #a78bfa;
+  --accent:      #34d399;
+  --accent-hover:#10b981;
+  --accent-dim:  #064e3b;
+  --accent-bg:   #064e3b;
+  --accent-text: #6ee7b7;
 
   --red-bg:     #3b0a0a;
   --red-text:   #fca5a5;
   --red-border: #7f1d1d;
   --yellow-bg:  #3b1a00;
   --yellow-text:#fcd34d;
-  --green-bg:   #052e16;
-  --green-text: #86efac;
-  --today-bg:   #1a1030;
+  --green-bg:   #064e3b;
+  --green-text: #6ee7b7;
+  --today-bg:   #063d2e;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
