@@ -205,6 +205,11 @@ function PriorityBoard({
   onUpdate, onDelete, onAddUpdate, onStartEdit, onOpenForm,
 }) {
   const [activeId, setActiveId] = useState(null)
+  const [draftUpdates, setDraftUpdates] = useState({})
+
+  function setDraft(taskId, text) {
+    setDraftUpdates(d => ({ ...d, [taskId]: text }))
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -299,6 +304,8 @@ function PriorityBoard({
                 onAddUpdate={body => onAddUpdate(task.id, body)}
                 statuses={FORM_STATUSES} statusLabels={STATUS_LABELS}
                 showPriorityBadge
+                draftText={draftUpdates[task.id] || ''}
+                onDraftChange={text => setDraft(task.id, text)}
               />
             ))}
             {byStatus('archived').length === 0 && <div className="empty-col">No archived tasks</div>}
@@ -315,6 +322,8 @@ function PriorityBoard({
                 onDelete={onDelete}
                 onUpdate={onUpdate}
                 onAddUpdate={onAddUpdate}
+                draftUpdates={draftUpdates}
+                setDraft={setDraft}
               />
             ))}
           </div>
@@ -340,7 +349,7 @@ function PriorityBoard({
 
 // ─── Priority zone ───────────────────────────────────────────────────────────
 
-function PriorityZone({ priority, tasks, resolveAssignees, projectName, updatesForTask, onEdit, onDelete, onUpdate, onAddUpdate }) {
+function PriorityZone({ priority, tasks, resolveAssignees, projectName, updatesForTask, onEdit, onDelete, onUpdate, onAddUpdate, draftUpdates, setDraft }) {
   const { setNodeRef, isOver } = useDroppable({ id: `zone-${priority}` })
   const items = tasks.map(t => t.id)
 
@@ -362,6 +371,8 @@ function PriorityZone({ priority, tasks, resolveAssignees, projectName, updatesF
               onStatusChange={s => onUpdate(task.id, { status: s })}
               onAddUpdate={body => onAddUpdate(task.id, body)}
               statuses={FORM_STATUSES} statusLabels={STATUS_LABELS}
+              draftText={draftUpdates[task.id] || ''}
+              onDraftChange={text => setDraft(task.id, text)}
             />
           ))}
           {tasks.length === 0 && (
@@ -394,9 +405,9 @@ function TaskRow({
   onEdit, onDelete, onStatusChange, onAddUpdate,
   statuses, statusLabels, showPriorityBadge,
   dragListeners, dragAttributes,
+  draftText = '', onDraftChange,
 }) {
   const [showHistory, setShowHistory] = useState(false)
-  const [updateText, setUpdateText]   = useState('')
   const isArchived = task.status === 'archived'
 
   const today = todayStr()
@@ -412,10 +423,10 @@ function TaskRow({
 
   function submitUpdate(e) {
     e.preventDefault()
-    const text = updateText.trim()
+    const text = draftText.trim()
     if (!text) return
     onAddUpdate(text)
-    setUpdateText('')
+    onDraftChange?.('')
   }
 
   const primaryNext  = PRIMARY_NEXT[task.status]
@@ -556,7 +567,7 @@ function TaskRow({
             )}
           </div>
           <form className="update-form" onSubmit={submitUpdate}>
-            <input value={updateText} onChange={e => setUpdateText(e.target.value)}
+            <input value={draftText} onChange={e => onDraftChange?.(e.target.value)}
               placeholder="Add today's update…" />
             <button type="submit" className="btn-ghost btn-sm">Post</button>
           </form>
