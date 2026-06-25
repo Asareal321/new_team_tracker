@@ -106,6 +106,10 @@ export default function BoardPage() {
     }
   }
 
+  async function deleteUpdate(updateId) {
+    await supabase.from('task_updates').delete().eq('id', updateId)
+  }
+
   async function updateAssignees(taskId, assigneeIds) {
     await supabase.from('task_assignees').delete().eq('task_id', taskId)
     if (assigneeIds.length) {
@@ -129,6 +133,7 @@ export default function BoardPage() {
       onUpdate={updateTask}
       onDelete={deleteTask}
       onAddUpdate={addUpdate}
+      onDeleteUpdate={deleteUpdate}
       onUpdateAssignees={updateAssignees}
     />
   )

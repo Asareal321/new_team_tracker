@@ -49,7 +49,7 @@ function dueClass(dateStr) {
 export default function TaskBoard({
   tasks, teamMembers, projects, taskUpdates,
   currentUserId, currentTeamId,
-  onAdd, onUpdate, onDelete, onAddUpdate, onUpdateAssignees,
+  onAdd, onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees,
 }) {
   const [showForm, setShowForm]   = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -190,6 +190,7 @@ export default function TaskBoard({
         onUpdate={onUpdate}
         onDelete={onDelete}
         onAddUpdate={onAddUpdate}
+        onDeleteUpdate={onDeleteUpdate}
         onStartEdit={startEdit}
         onOpenForm={() => { setShowForm(true); setEditingId(null); setForm(defaultForm()) }}
       />
@@ -202,7 +203,7 @@ export default function TaskBoard({
 function PriorityBoard({
   tasks, activeTab, setActiveTab, byStatus,
   projectName, updatesForTask, resolveAssignees,
-  onUpdate, onDelete, onAddUpdate, onStartEdit, onOpenForm,
+  onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onStartEdit, onOpenForm,
 }) {
   const [activeId, setActiveId] = useState(null)
   const [draftUpdates, setDraftUpdates] = useState(() => {
@@ -308,6 +309,7 @@ function PriorityBoard({
                 onDelete={() => onDelete(task.id)}
                 onStatusChange={s => onUpdate(task.id, { status: s })}
                 onAddUpdate={body => onAddUpdate(task.id, body)}
+                onDeleteUpdate={onDeleteUpdate}
                 statuses={FORM_STATUSES} statusLabels={STATUS_LABELS}
                 showPriorityBadge
                 draftText={draftUpdates[task.id] || ''}
@@ -328,6 +330,7 @@ function PriorityBoard({
                 onDelete={onDelete}
                 onUpdate={onUpdate}
                 onAddUpdate={onAddUpdate}
+                onDeleteUpdate={onDeleteUpdate}
                 draftUpdates={draftUpdates}
                 setDraft={setDraft}
               />
@@ -355,7 +358,7 @@ function PriorityBoard({
 
 // ─── Priority zone ───────────────────────────────────────────────────────────
 
-function PriorityZone({ priority, tasks, resolveAssignees, projectName, updatesForTask, onEdit, onDelete, onUpdate, onAddUpdate, draftUpdates, setDraft }) {
+function PriorityZone({ priority, tasks, resolveAssignees, projectName, updatesForTask, onEdit, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, draftUpdates, setDraft }) {
   const { setNodeRef, isOver } = useDroppable({ id: `zone-${priority}` })
   const items = tasks.map(t => t.id)
 
@@ -376,6 +379,7 @@ function PriorityZone({ priority, tasks, resolveAssignees, projectName, updatesF
               onDelete={() => onDelete(task.id)}
               onStatusChange={s => onUpdate(task.id, { status: s })}
               onAddUpdate={body => onAddUpdate(task.id, body)}
+              onDeleteUpdate={onDeleteUpdate}
               statuses={FORM_STATUSES} statusLabels={STATUS_LABELS}
               draftText={draftUpdates[task.id] || ''}
               onDraftChange={text => setDraft(task.id, text)}
@@ -408,12 +412,13 @@ const PRIMARY_NEXT = { todo: 'in_progress', in_progress: 'done' }
 
 function TaskRow({
   task, assignees, projectName, updates,
-  onEdit, onDelete, onStatusChange, onAddUpdate,
+  onEdit, onDelete, onStatusChange, onAddUpdate, onDeleteUpdate,
   statuses, statusLabels, showPriorityBadge,
   dragListeners, dragAttributes,
   draftText = '', onDraftChange,
 }) {
   const [showHistory, setShowHistory] = useState(false)
+  const [expanded, setExpanded] = useState(() => draftText.length > 0)
   const isArchived = task.status === 'archived'
 
   const today = todayStr()
@@ -433,6 +438,12 @@ function TaskRow({
     if (!text) return
     onAddUpdate(text)
     onDraftChange?.('')
+    setExpanded(false)
+  }
+
+  function cancelUpdate() {
+    onDraftChange?.('')
+    setExpanded(false)
   }
 
   const primaryNext  = PRIMARY_NEXT[task.status]
@@ -540,6 +551,8 @@ function TaskRow({
                         {u.profiles?.display_name && <>{u.profiles.display_name} · </>}
                         {formatTime(u.created_at)}
                       </span>
+                      <button className="update-delete-btn" title="Delete update"
+                        onClick={() => onDeleteUpdate?.(u.id)}>×</button>
                     </div>
                   ))}
                 </div>
@@ -564,6 +577,8 @@ function TaskRow({
                           {u.profiles?.display_name && (
                             <span className="update-meta">{u.profiles.display_name}</span>
                           )}
+                          <button className="update-delete-btn" title="Delete update"
+                            onClick={() => onDeleteUpdate?.(u.id)}>×</button>
                         </div>
                       ))}
                     </div>
@@ -572,11 +587,29 @@ function TaskRow({
               </div>
             )}
           </div>
-          <form className="update-form" onSubmit={submitUpdate}>
-            <input value={draftText} onChange={e => onDraftChange?.(e.target.value)}
-              placeholder="Add today's update…" />
-            <button type="submit" className="btn-ghost btn-sm">Post</button>
-          </form>
+
+          {expanded ? (
+            <div className="update-expanded-area">
+              <textarea
+                autoFocus
+                rows={3}
+                value={draftText}
+                onChange={e => onDraftChange?.(e.target.value)}
+                placeholder="What happened today? What's the current status?"
+              />
+              <div className="update-expanded-actions">
+                <button type="button" className="btn-ghost btn-sm" onClick={cancelUpdate}>Cancel</button>
+                <button type="button" className="btn-primary btn-sm" onClick={submitUpdate}>Post</button>
+              </div>
+            </div>
+          ) : (
+            <div
+              className={`update-input-collapsed${draftText ? ' has-draft' : ''}`}
+              onClick={() => setExpanded(true)}
+            >
+              {draftText || 'Add today\'s update…'}
+            </div>
+          )}
         </div>
       )}
     </div>
