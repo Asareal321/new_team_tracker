@@ -461,7 +461,8 @@ function TaskRow({
   const secondaryNext = statuses.filter(s => s !== task.status && s !== primaryNext)
 
   return (
-    <div className={`task-row priority-${task.priority}${isArchived ? ' archived' : ''}`}>
+    <div className={`task-row priority-${task.priority}${isArchived ? ' archived' : ''}`}
+      onMouseLeave={() => setShowActions(false)}>
       <div className="task-row-main">
         {dragListeners && (
           <button className="drag-handle" type="button"
@@ -490,6 +491,7 @@ function TaskRow({
         </div>
         <button
           className={`menu-btn${showActions ? ' active' : ''}`}
+          onMouseEnter={() => setShowActions(true)}
           onClick={() => setShowActions(s => !s)}
           aria-label="Actions"
         >•••</button>
