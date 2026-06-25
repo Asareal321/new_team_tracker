@@ -534,19 +534,33 @@
   font-weight: 500;
 }
 
-/* Inline action bar — hidden until row is hovered or keyboard-focused */
+/* ••• button */
+.menu-btn {
+  background: none;
+  border: none;
+  color: var(--text-4);
+  font-size: 0.75rem;
+  padding: 0.15rem 0.35rem;
+  border-radius: 5px;
+  line-height: 1;
+  flex-shrink: 0;
+  letter-spacing: 0.05em;
+}
+.menu-btn:hover { background: var(--bg-muted); color: var(--text-2); }
+.menu-btn.active { background: #071013; color: #C3F73A; }
+
+/* Inline action bar — shown when .open */
 .task-action-bar {
   display: none;
   align-items: center;
   gap: 0.3rem;
   flex-wrap: wrap;
-  padding-top: 0.35rem;
+  padding: 0.4rem 0.6rem;
+  background: var(--bg-subtle);
   border-top: 1px solid var(--border-subtle);
+  border-radius: 0 0 6px 6px;
 }
-.task-row:hover .task-action-bar,
-.task-row:focus-within .task-action-bar {
-  display: flex;
-}
+.task-action-bar.open { display: flex; }
 
 .action-btn {
   font-size: 0.75rem;

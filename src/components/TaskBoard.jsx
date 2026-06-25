@@ -417,6 +417,7 @@ function TaskRow({
   dragListeners, dragAttributes,
   draftText = '', onDraftChange,
 }) {
+  const [showActions, setShowActions] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [expanded, setExpanded] = useState(() => draftText.length > 0)
   const isArchived = task.status === 'archived'
@@ -477,31 +478,36 @@ function TaskRow({
           {assignees.length > 0 && <AvatarStack assignees={assignees} />}
           {projectName && <span className="project-tag">{projectName}</span>}
         </div>
+        <button
+          className={`menu-btn${showActions ? ' active' : ''}`}
+          onClick={() => setShowActions(s => !s)}
+          aria-label="Actions"
+        >•••</button>
       </div>
 
-      <div className="task-action-bar">
+      <div className={`task-action-bar${showActions ? ' open' : ''}`}>
         {isArchived ? (
           <>
-            <button className="action-btn action-primary" onClick={() => onStatusChange('done')}>Unarchive</button>
-            <button className="action-btn action-danger" onClick={onDelete}>Delete</button>
+            <button className="action-btn action-primary" onClick={() => { onStatusChange('done'); setShowActions(false) }}>Unarchive</button>
+            <button className="action-btn action-danger" onClick={() => { onDelete(); setShowActions(false) }}>Delete</button>
           </>
         ) : (
           <>
             {primaryNext && (
-              <button className="action-btn action-primary" onClick={() => onStatusChange(primaryNext)}>
+              <button className="action-btn action-primary" onClick={() => { onStatusChange(primaryNext); setShowActions(false) }}>
                 → {statusLabels[primaryNext]}
               </button>
             )}
             {secondaryNext.map(s => (
-              <button key={s} className="action-btn" onClick={() => onStatusChange(s)}>
+              <button key={s} className="action-btn" onClick={() => { onStatusChange(s); setShowActions(false) }}>
                 → {statusLabels[s]}
               </button>
             ))}
             {task.status === 'done' && (
-              <button className="action-btn" onClick={() => onStatusChange('archived')}>Archive</button>
+              <button className="action-btn" onClick={() => { onStatusChange('archived'); setShowActions(false) }}>Archive</button>
             )}
-            <button className="action-btn" onClick={onEdit}>Edit</button>
-            <button className="action-btn action-danger" onClick={onDelete}>Delete</button>
+            <button className="action-btn" onClick={() => { onEdit(); setShowActions(false) }}>Edit</button>
+            <button className="action-btn action-danger" onClick={() => { onDelete(); setShowActions(false) }}>Delete</button>
           </>
         )}
       </div>
