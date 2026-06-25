@@ -6,7 +6,7 @@ import TaskBoard from '../components/TaskBoard'
 
 export default function BoardPage() {
   const { user } = useAuth()
-  const { currentTeamId } = useTeam()
+  const { currentTeamId, teams } = useTeam()
   const [tasks, setTasks] = useState([])
   const [teamMembers, setTeamMembers] = useState([])
   const [projects, setProjects] = useState([])
@@ -121,7 +121,13 @@ export default function BoardPage() {
 
   if (loading) return <div className="loading">Loading tasks…</div>
 
+  const teamName = currentTeamId ? (teams.find(t => t.id === currentTeamId)?.name || 'Team') : 'Personal'
+
   return (
+    <div>
+      <div className="board-hero">
+        <h1 className="board-hero-title">{teamName} Taskboard</h1>
+      </div>
     <TaskBoard
       tasks={tasks}
       teamMembers={teamMembers}
@@ -136,5 +142,6 @@ export default function BoardPage() {
       onDeleteUpdate={deleteUpdate}
       onUpdateAssignees={updateAssignees}
     />
+    </div>
   )
 }
