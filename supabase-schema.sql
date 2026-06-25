@@ -74,7 +74,14 @@ create table tasks (
   team_id uuid references teams(id) on delete cascade,
   project_id uuid references projects(id) on delete set null,
   assignee_id uuid references profiles(id) on delete set null,
+  position float8,
   created_at timestamptz not null default now()
+);
+
+create table task_assignees (
+  task_id uuid not null references tasks(id) on delete cascade,
+  user_id uuid not null references profiles(id) on delete cascade,
+  primary key (task_id, user_id)
 );
 
 create table task_updates (
@@ -185,6 +192,7 @@ alter table team_members enable row level security;
 alter table team_invites enable row level security;
 alter table projects enable row level security;
 alter table tasks enable row level security;
+alter table task_assignees enable row level security;
 alter table task_updates enable row level security;
 
 -- profiles: any signed-in user can read profiles (needed to show teammate
@@ -273,6 +281,16 @@ create policy "tasks_delete" on tasks
     or (team_id is not null and is_team_member(team_id, auth.uid()))
   );
 
+-- task_assignees: readable/writable by anyone who can access the parent task.
+create policy "task_assignees_select" on task_assignees
+  for select using (can_access_task(task_id, auth.uid()));
+
+create policy "task_assignees_insert" on task_assignees
+  for insert with check (can_access_task(task_id, auth.uid()));
+
+create policy "task_assignees_delete" on task_assignees
+  for delete using (can_access_task(task_id, auth.uid()));
+
 -- task_updates: visible/writable by anyone who can access the parent task.
 -- Each update is a short note logging progress for a given day; only the
 -- author can delete their own update.
@@ -290,6 +308,7 @@ create policy "task_updates_delete" on task_updates
 -- ============================================================
 
 alter publication supabase_realtime add table tasks;
+alter publication supabase_realtime add table task_assignees;
 alter publication supabase_realtime add table projects;
 alter publication supabase_realtime add table team_members;
 alter publication supabase_realtime add table task_updates;

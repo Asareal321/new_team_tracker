@@ -24,7 +24,11 @@ export default function BoardPage() {
   }, [])
 
   const fetchTasks = useCallback(async () => {
-    let query = supabase.from('tasks').select('*').order('created_at', { ascending: true })
+    let query = supabase
+      .from('tasks')
+      .select('*, task_assignees(user_id)')
+      .order('position', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: true })
     query = currentTeamId
       ? query.eq('team_id', currentTeamId)
       : query.is('team_id', null).eq('user_id', user.id)
@@ -62,6 +66,7 @@ export default function BoardPage() {
     const channel = supabase
       .channel(`board-${currentTeamId ?? 'personal'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchTasks)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'task_assignees' }, fetchTasks)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'projects', filter: currentTeamId ? `team_id=eq.${currentTeamId}` : undefined }, fetchProjects)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'task_updates' }, fetchTasks)
       .subscribe()
@@ -69,8 +74,20 @@ export default function BoardPage() {
     return () => supabase.removeChannel(channel)
   }, [fetchTasks, fetchTeamMembers, fetchProjects, currentTeamId])
 
-  async function addTask(task) {
-    await supabase.from('tasks').insert([{ ...task, user_id: user.id, team_id: currentTeamId }])
+  async function addTask({ assigneeIds = [], ...task }) {
+    const samePriority = tasks.filter(t => t.priority === task.priority && t.status === task.status)
+    const maxPos = samePriority.reduce((m, t) => Math.max(m, t.position ?? 0), 0)
+    const { data } = await supabase
+      .from('tasks')
+      .insert([{ ...task, user_id: user.id, team_id: currentTeamId, position: maxPos + 1000 }])
+      .select('id')
+      .single()
+    if (data?.id && assigneeIds.length) {
+      await supabase.from('task_assignees').insert(
+        assigneeIds.map(uid => ({ task_id: data.id, user_id: uid }))
+      )
+    }
+    return data?.id
   }
 
   async function updateTask(id, updates) {
@@ -83,6 +100,15 @@ export default function BoardPage() {
 
   async function addUpdate(taskId, body) {
     await supabase.from('task_updates').insert([{ task_id: taskId, user_id: user.id, body }])
+  }
+
+  async function updateAssignees(taskId, assigneeIds) {
+    await supabase.from('task_assignees').delete().eq('task_id', taskId)
+    if (assigneeIds.length) {
+      await supabase.from('task_assignees').insert(
+        assigneeIds.map(uid => ({ task_id: taskId, user_id: uid }))
+      )
+    }
   }
 
   if (loading) return <div className="loading">Loading tasks…</div>
@@ -99,6 +125,7 @@ export default function BoardPage() {
       onUpdate={updateTask}
       onDelete={deleteTask}
       onAddUpdate={addUpdate}
+      onUpdateAssignees={updateAssignees}
     />
   )
 }
