@@ -28,7 +28,7 @@ export default function Layout() {
           <h1>trakkit</h1>
         </div>
         <nav className="header-nav">
-          <NavLink to="/" className={navClass} end>Board</NavLink>
+          <NavLink to="/" className={navClass} end>Taskboard</NavLink>
           <NavLink to="/timeline" className={navClass}>Timeline</NavLink>
           <NavLink to="/teams" className={navClass}>Teams</NavLink>
           <NavLink to="/summary" className={navClass}>Daily Summary</NavLink>
