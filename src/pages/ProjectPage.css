@@ -101,15 +101,18 @@
 .task-total { font-size: 0.8rem; color: var(--text-3); }
 
 /* ── Priority view ── */
-.project-priority-view { display: flex; flex-direction: column; gap: 0.5rem; }
+.project-priority-view { display: flex; flex-direction: column; gap: 0.6rem; }
 
 .pp-zone {
+  background: var(--bg-surface);
   border-radius: 8px;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
+  border-left-width: 5px;
+  overflow: hidden;
 }
-.zone-high   { background: rgba(239,68,68,0.06); }
-.zone-medium { background: rgba(245,158,11,0.06); }
-.zone-low    { background: rgba(100,116,139,0.07); }
+.zone-high   { border-left-color: #ef4444; }
+.zone-medium { border-left-color: #f59e0b; }
+.zone-low    { border-left-color: #94a3b8; }
 
 .pp-zone-header {
   display: flex;
