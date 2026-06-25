@@ -117,7 +117,7 @@ html[data-theme="dark"] .theme-toggle { background: rgba(195,247,58,0.1); border
 
 .loading { color: var(--on-page-2); font-size: 0.9rem; padding: 2rem 0; }
 
-.board-hero { padding: 0 0 0.85rem; }
+.board-hero { padding: 0 0 0.85rem; text-align: center; }
 .board-hero-title {
   font-size: 1.5rem;
   font-weight: 700;
