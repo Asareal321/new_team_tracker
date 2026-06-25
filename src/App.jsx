@@ -9,6 +9,7 @@ import TimelinePage from './pages/TimelinePage'
 import TeamsPage from './pages/TeamsPage'
 import SummaryPage from './pages/SummaryPage'
 import AccountPage from './pages/AccountPage'
+import ProjectPage from './pages/ProjectPage'
 import './App.css'
 
 export default function App() {
@@ -41,6 +42,7 @@ export default function App() {
               <Route path="teams" element={<TeamsPage />} />
               <Route path="summary" element={<SummaryPage />} />
               <Route path="account" element={<AccountPage />} />
+              <Route path="projects/:projectId" element={<ProjectPage />} />
             </Route>
           </Routes>
         </TeamProvider>

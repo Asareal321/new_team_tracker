@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { useAuth } from '../auth/AuthContext'
 import { useTeam } from '../context/TeamContext'
@@ -20,8 +21,11 @@ export default function TeamsPage() {
   const [copied, setCopied] = useState(false)
 
   const [projects, setProjects] = useState([])
+  const [taskStats, setTaskStats] = useState({})
+  const [sortOrder, setSortOrder] = useState('high')
   const [showProjectForm, setShowProjectForm] = useState(false)
   const [editingProjectId, setEditingProjectId] = useState(null)
+  const navigate = useNavigate()
 
   const fetchMembers = useCallback(async () => {
     if (!currentTeamId) { setMembers([]); return }
@@ -37,13 +41,28 @@ export default function TeamsPage() {
   }, [currentTeamId])
 
   const fetchProjects = useCallback(async () => {
-    if (!currentTeamId) { setProjects([]); return }
-    const { data } = await supabase
+    if (!currentTeamId) { setProjects([]); setTaskStats({}); return }
+    const { data: pData } = await supabase
       .from('projects')
       .select('*')
       .eq('team_id', currentTeamId)
       .order('created_at', { ascending: true })
-    setProjects(data || [])
+    setProjects(pData || [])
+
+    const { data: tData } = await supabase
+      .from('tasks')
+      .select('project_id, priority, status')
+      .eq('team_id', currentTeamId)
+      .not('project_id', 'is', null)
+    const stats = {}
+    ;(tData || []).forEach(t => {
+      if (!stats[t.project_id]) stats[t.project_id] = { high: 0, outstanding: 0, done: 0, total: 0 }
+      stats[t.project_id].total++
+      if (t.status === 'done')                                           stats[t.project_id].done++
+      if (t.status !== 'done' && t.status !== 'archived')               stats[t.project_id].outstanding++
+      if (t.priority === 'high' && t.status !== 'done' && t.status !== 'archived') stats[t.project_id].high++
+    })
+    setTaskStats(stats)
   }, [currentTeamId])
 
   useEffect(() => {
@@ -181,22 +200,43 @@ export default function TeamsPage() {
             <section className="projects-section">
               <div className="section-header">
                 <h3>Projects</h3>
-                <button className="btn-primary" onClick={() => { setEditingProjectId(null); setShowProjectForm(true) }}>
-                  + New Project
-                </button>
+                <div className="project-controls">
+                  <div className="sort-toggle">
+                    <button className={`sort-btn${sortOrder === 'high' ? ' active' : ''}`} onClick={() => setSortOrder('high')}>
+                      High priority ↓
+                    </button>
+                    <button className={`sort-btn${sortOrder === 'outstanding' ? ' active' : ''}`} onClick={() => setSortOrder('outstanding')}>
+                      Outstanding ↓
+                    </button>
+                  </div>
+                  <button className="btn-primary" onClick={() => { setEditingProjectId(null); setShowProjectForm(true) }}>
+                    + New Project
+                  </button>
+                </div>
               </div>
 
               {projects.length === 0 && <p className="empty-hint">No projects yet.</p>}
 
-              <div className="project-list">
-                {projects.map(p => (
-                  <ProjectCard
-                    key={p.id}
-                    project={p}
-                    onEdit={() => { setEditingProjectId(p.id); setShowProjectForm(true) }}
-                    onDelete={() => deleteProject(p.id)}
-                  />
-                ))}
+              <div className="project-grid">
+                {[...projects]
+                  .sort((a, b) => {
+                    const sa = taskStats[a.id] || {}
+                    const sb = taskStats[b.id] || {}
+                    return sortOrder === 'high'
+                      ? (sb.high ?? 0) - (sa.high ?? 0)
+                      : (sb.outstanding ?? 0) - (sa.outstanding ?? 0)
+                  })
+                  .map(p => (
+                    <ProjectTile
+                      key={p.id}
+                      project={p}
+                      stats={taskStats[p.id] || {}}
+                      onClick={() => navigate(`/projects/${p.id}`)}
+                      onEdit={e => { e.stopPropagation(); setEditingProjectId(p.id); setShowProjectForm(true) }}
+                      onDelete={e => { e.stopPropagation(); deleteProject(p.id) }}
+                    />
+                  ))
+                }
               </div>
             </section>
 
@@ -215,6 +255,44 @@ export default function TeamsPage() {
           </>
         )}
       </div>
+    </div>
+  )
+}
+
+function ProjectTile({ project, stats, onClick, onEdit, onDelete }) {
+  const completion = stats.total ? Math.round((stats.done / stats.total) * 100) : 0
+  return (
+    <div className="project-tile" onClick={onClick} role="button" tabIndex={0}
+      onKeyDown={e => e.key === 'Enter' && onClick()}>
+      <div className="tile-top">
+        <span className={`project-status ${project.status}`}>{PROJECT_STATUS_LABELS[project.status]}</span>
+        <div className="tile-actions">
+          <button className="tile-action-btn" onClick={onEdit} title="Edit">✎</button>
+          <button className="tile-action-btn danger" onClick={onDelete} title="Delete">✕</button>
+        </div>
+      </div>
+      <p className="tile-name">{project.name}</p>
+      {project.description && <p className="tile-desc">{project.description}</p>}
+      <div className="tile-stats">
+        <div className="tile-stat">
+          <span className="tile-stat-num high">{stats.high ?? 0}</span>
+          <span className="tile-stat-label">High priority</span>
+        </div>
+        <div className="tile-stat">
+          <span className="tile-stat-num">{stats.outstanding ?? 0}</span>
+          <span className="tile-stat-label">Outstanding</span>
+        </div>
+        <div className="tile-stat">
+          <span className="tile-stat-num">{completion}%</span>
+          <span className="tile-stat-label">Complete</span>
+        </div>
+      </div>
+      <div className="tile-progress">
+        <div className="tile-progress-fill" style={{ width: `${completion}%` }} />
+      </div>
+      {project.target_date && (
+        <p className="tile-date">Due {new Date(project.target_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+      )}
     </div>
   )
 }
