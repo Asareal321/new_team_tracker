@@ -387,13 +387,14 @@ function SortableTaskRow({ task, ...props }) {
 
 // ─── Task row ────────────────────────────────────────────────────────────────
 
+const PRIMARY_NEXT = { todo: 'in_progress', in_progress: 'done' }
+
 function TaskRow({
   task, assignees, projectName, updates,
   onEdit, onDelete, onStatusChange, onAddUpdate,
   statuses, statusLabels, showPriorityBadge,
   dragListeners, dragAttributes,
 }) {
-  const [showMenu, setShowMenu]       = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [updateText, setUpdateText]   = useState('')
   const isArchived = task.status === 'archived'
@@ -416,6 +417,9 @@ function TaskRow({
     onAddUpdate(text)
     setUpdateText('')
   }
+
+  const primaryNext  = PRIMARY_NEXT[task.status]
+  const secondaryNext = statuses.filter(s => s !== task.status && s !== primaryNext)
 
   return (
     <div className={`task-row priority-${task.priority}${isArchived ? ' archived' : ''}`}>
@@ -445,33 +449,33 @@ function TaskRow({
           {assignees.length > 0 && <AvatarStack assignees={assignees} />}
           {projectName && <span className="project-tag">{projectName}</span>}
         </div>
+      </div>
 
-        <div className="task-menu-wrap">
-          <button className="menu-btn" onClick={() => setShowMenu(m => !m)}>•••</button>
-          {showMenu && (
-            <div className="task-menu" onMouseLeave={() => setShowMenu(false)}>
-              {isArchived ? (
-                <>
-                  <button onClick={() => { onStatusChange('done'); setShowMenu(false) }}>Unarchive</button>
-                  <button className="danger" onClick={() => { onDelete(); setShowMenu(false) }}>Delete</button>
-                </>
-              ) : (
-                <>
-                  <button onClick={() => { onEdit(); setShowMenu(false) }}>Edit</button>
-                  {statuses.filter(s => s !== task.status).map(s => (
-                    <button key={s} onClick={() => { onStatusChange(s); setShowMenu(false) }}>
-                      → {statusLabels[s]}
-                    </button>
-                  ))}
-                  {task.status === 'done' && (
-                    <button onClick={() => { onStatusChange('archived'); setShowMenu(false) }}>Archive</button>
-                  )}
-                  <button className="danger" onClick={() => { onDelete(); setShowMenu(false) }}>Delete</button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
+      <div className="task-action-bar">
+        {isArchived ? (
+          <>
+            <button className="action-btn action-primary" onClick={() => onStatusChange('done')}>Unarchive</button>
+            <button className="action-btn action-danger" onClick={onDelete}>Delete</button>
+          </>
+        ) : (
+          <>
+            {primaryNext && (
+              <button className="action-btn action-primary" onClick={() => onStatusChange(primaryNext)}>
+                → {statusLabels[primaryNext]}
+              </button>
+            )}
+            {secondaryNext.map(s => (
+              <button key={s} className="action-btn" onClick={() => onStatusChange(s)}>
+                → {statusLabels[s]}
+              </button>
+            ))}
+            {task.status === 'done' && (
+              <button className="action-btn" onClick={() => onStatusChange('archived')}>Archive</button>
+            )}
+            <button className="action-btn" onClick={onEdit}>Edit</button>
+            <button className="action-btn action-danger" onClick={onDelete}>Delete</button>
+          </>
+        )}
       </div>
 
       {!isArchived && (
