@@ -266,21 +266,26 @@ export default function ProjectPage() {
             )}
             <button className="back-btn" onClick={() => navigate('/teams')}>← {project.teams?.name || 'Teams'}</button>
           </div>
-          <div className="project-hero-stats">
-            <div className="hero-stat">
-              <span className="hero-stat-num">{outstanding.length}</span>
-              <span className="hero-stat-label">Outstanding</span>
+          <div className="project-hero-right">
+            <div className="hero-stat-row">
+              <div className="hero-stat">
+                <span className="hero-stat-num">{outstanding.length}</span>
+                <span className="hero-stat-label">Outstanding</span>
+              </div>
+              <div className="hero-stat">
+                <span className="hero-stat-num">{activeTasks.filter(t => t.priority === 'high' && t.status !== 'done').length}</span>
+                <span className="hero-stat-label">High priority</span>
+              </div>
+              <div className="hero-stat">
+                <span className="hero-stat-num">{completion}%</span>
+                <span className="hero-stat-label">Complete</span>
+              </div>
             </div>
-            <div className="hero-stat">
-              <span className="hero-stat-num">{activeTasks.filter(t => t.priority === 'high' && t.status !== 'done').length}</span>
-              <span className="hero-stat-label">High priority</span>
-            </div>
-            <div className="hero-stat">
-              <span className="hero-stat-num">{completion}%</span>
-              <span className="hero-stat-label">Complete</span>
-            </div>
-            <div className="project-progress-bar">
-              <div className="progress-fill" style={{ width: `${completion}%` }} />
+            <div className="progress-group">
+              <span className="progress-title">Progress</span>
+              <div className="project-progress-bar">
+                <div className="progress-fill" style={{ width: `${completion}%` }} />
+              </div>
             </div>
           </div>
         </div>
