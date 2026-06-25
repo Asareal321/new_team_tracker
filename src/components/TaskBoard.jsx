@@ -478,6 +478,37 @@ function TaskRow({
         )}
       </div>
 
+      {/* Show update history for archived tasks; full update UI for active tasks */}
+      {isArchived && updates.length > 0 && (
+        <div className="task-row-update">
+          <div className="updates-section">
+            {updates.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+              .reduce((acc, u) => {
+                const d = u.created_at.slice(0, 10)
+                if (!acc.find(g => g.date === d)) acc.push({ date: d, items: [] })
+                acc.find(g => g.date === d).items.push(u)
+                return acc
+              }, [])
+              .map(({ date, items }) => (
+                <div key={date} className="history-day">
+                  <span className="history-date-label">
+                    {date === todayStr() ? 'Today' : formatHistoryDate(date)}
+                  </span>
+                  <div className="update-items">
+                    {items.map(u => (
+                      <div key={u.id} className="update-item">
+                        <span className="update-body">{u.body}</span>
+                        <span className="update-meta">{u.profiles?.display_name && <>{u.profiles.display_name} · </>}{formatTime(u.created_at)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+      )}
+
       {!isArchived && (
         <div className="task-row-update">
           <div className="updates-section">

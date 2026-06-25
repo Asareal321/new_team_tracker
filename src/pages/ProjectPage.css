@@ -272,3 +272,127 @@
 .pp-action-btn:hover { background: var(--border); }
 .pp-action-btn.primary { background: #071013; color: #C3F73A; border-color: #071013; }
 .pp-action-btn.primary:hover { background: #1a3d2a; }
+
+/* Updates on project task rows */
+.pp-updates {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.78rem;
+}
+
+.pp-today-updates { display: flex; align-items: flex-start; gap: 0.45rem; }
+
+.pp-update-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  background: var(--accent-bg);
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+.pp-update-label.muted { color: var(--text-4); background: var(--bg-muted); }
+
+.pp-update-items { display: flex; flex-direction: column; gap: 0.15rem; }
+.pp-update-item  { display: flex; align-items: baseline; gap: 0.4rem; flex-wrap: wrap; }
+.pp-update-body  { color: var(--text-2); }
+.pp-update-meta  { color: var(--text-4); font-size: 0.7rem; }
+
+.pp-history-toggle {
+  background: none; border: none;
+  font-size: 0.7rem; color: var(--text-4);
+  padding: 0; cursor: pointer; align-self: flex-start;
+}
+.pp-history-toggle:hover { color: var(--text-3); }
+
+.pp-history { display: flex; flex-direction: column; gap: 0.4rem; }
+
+.pp-hist-day   { display: flex; align-items: flex-start; gap: 0.45rem; }
+.pp-hist-label {
+  font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--text-4); background: var(--bg-muted);
+  padding: 0.1rem 0.3rem; border-radius: 4px; flex-shrink: 0; margin-top: 0.1rem;
+}
+.pp-hist-items { display: flex; flex-direction: column; gap: 0.15rem; }
+.pp-hist-item  { display: flex; align-items: baseline; gap: 0.4rem; flex-wrap: wrap; }
+.pp-hist-body  { color: var(--text-2); font-size: 0.78rem; }
+.pp-hist-meta  { color: var(--text-4); font-size: 0.7rem; }
+
+.pp-update-form {
+  display: flex; gap: 0.35rem;
+}
+.pp-update-form input {
+  flex: 1;
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 0.25rem 0.55rem; font-size: 0.78rem;
+  color: var(--text-1); background: var(--bg-subtle);
+}
+.pp-update-form input:focus { outline: 2px solid var(--accent); outline-offset: -1px; background: var(--bg-surface); }
+
+/* Archived section */
+.pp-archived-section { margin-top: 0.25rem; }
+.pp-archived-toggle {
+  background: none; border: none;
+  font-size: 0.75rem; font-weight: 500; color: var(--text-4);
+  cursor: pointer; padding: 0.4rem 0;
+}
+.pp-archived-toggle:hover { color: var(--text-3); }
+.pp-archived-list { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem; }
+
+.pp-task-archived { opacity: 0.6; }
+.pp-task-archived .pp-task-title { text-decoration: line-through; color: var(--text-4); }
+.pp-update-history-inline { display: flex; flex-direction: column; gap: 0.35rem; }
+
+/* Form reuse from TaskBoard */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; padding: 1rem;
+}
+.task-form {
+  background: var(--bg-surface); border-radius: 12px; padding: 1.5rem;
+  width: 100%; max-width: 480px; display: flex; flex-direction: column;
+  gap: 0.9rem; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+.task-form h2 { font-size: 1rem; font-weight: 600; color: var(--text-1); }
+.task-form label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.8rem; font-weight: 500; color: var(--text-3); }
+.task-form input, .task-form textarea, .task-form select {
+  border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.6rem;
+  font-size: 0.875rem; color: var(--text-1); background: var(--bg-subtle); resize: vertical;
+}
+.task-form input:focus, .task-form textarea:focus, .task-form select:focus {
+  outline: 2px solid var(--accent); outline-offset: -1px; background: var(--bg-surface);
+}
+.form-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.65rem; }
+.form-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.15rem; }
+.btn-primary {
+  background: var(--accent); color: var(--accent-on); border: none;
+  padding: 0.45rem 0.9rem; border-radius: 7px; font-size: 0.875rem; font-weight: 500;
+}
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-ghost {
+  background: transparent; color: var(--text-3); border: 1px solid var(--border);
+  padding: 0.45rem 0.9rem; border-radius: 7px; font-size: 0.875rem; font-weight: 500;
+}
+.btn-ghost:hover { background: var(--bg-muted); }
+.btn-sm { padding: 0.25rem 0.6rem; font-size: 0.78rem; }
+.assignee-field { display: flex; flex-direction: column; gap: 0.3rem; }
+.assignee-field-label { font-size: 0.8rem; font-weight: 500; color: var(--text-3); }
+.assignee-picker { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.assignee-chip {
+  display: flex; align-items: center; gap: 0.35rem; padding: 0.28rem 0.6rem;
+  border-radius: 20px; border: 1.5px solid var(--border); background: var(--bg-muted);
+  font-size: 0.78rem; font-weight: 500; color: var(--text-2); cursor: pointer;
+}
+.assignee-chip.selected { background: #071013; border-color: #071013; color: #C3F73A; }
+.assignee-chip.selected .chip-avatar { background: #C3F73A; color: #071013; }
+.chip-avatar {
+  width: 20px; height: 20px; border-radius: 50%; background: var(--border); color: var(--text-2);
+  display: flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: 700; flex-shrink: 0;
+}
