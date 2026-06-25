@@ -205,10 +205,16 @@ function PriorityBoard({
   onUpdate, onDelete, onAddUpdate, onStartEdit, onOpenForm,
 }) {
   const [activeId, setActiveId] = useState(null)
-  const [draftUpdates, setDraftUpdates] = useState({})
+  const [draftUpdates, setDraftUpdates] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('trakkit-drafts') || '{}') } catch { return {} }
+  })
 
   function setDraft(taskId, text) {
-    setDraftUpdates(d => ({ ...d, [taskId]: text }))
+    setDraftUpdates(d => {
+      const next = text ? { ...d, [taskId]: text } : (({ [taskId]: _, ...rest }) => rest)(d)
+      localStorage.setItem('trakkit-drafts', JSON.stringify(next))
+      return next
+    })
   }
 
   const sensors = useSensors(
