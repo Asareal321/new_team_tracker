@@ -8,7 +8,7 @@
 }
 
 .summary-header h2 { font-size: 1.05rem; font-weight: 600; color: var(--on-page-1); }
-.summary-date { font-size: 0.82rem; color: var(--on-page-3); margin-top: 0.15rem; }
+.summary-date { font-size: 1rem; color: var(--on-page-3); margin-top: 0.15rem; }
 
 .btn-primary {
   background: var(--accent);
@@ -16,7 +16,7 @@
   border: none;
   padding: 0.45rem 0.9rem;
   border-radius: 7px;
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 500;
   white-space: nowrap;
   flex-shrink: 0;
@@ -38,7 +38,7 @@
 }
 
 .stat-num { font-size: 1.4rem; font-weight: 700; color: var(--accent); line-height: 1; }
-.stat-label { font-size: 0.75rem; color: var(--text-3); }
+.stat-label { font-size: 0.875rem; color: var(--text-3); }
 
 .summary-error {
   background: var(--red-bg);
@@ -46,7 +46,7 @@
   color: var(--red-text);
   border-radius: 10px;
   padding: 0.65rem 1rem;
-  font-size: 0.85rem;
+  font-size: 1rem;
 }
 
 /* Today's updates feed */
@@ -67,7 +67,7 @@
 }
 
 .updates-feed-title {
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: var(--text-2);
   text-transform: uppercase;
@@ -75,7 +75,7 @@
 }
 
 .updates-feed-count {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 600;
   background: var(--accent-bg);
   color: var(--accent-text);
@@ -84,7 +84,7 @@
 }
 
 .updates-feed-empty {
-  font-size: 0.82rem;
+  font-size: 1rem;
   color: var(--text-4);
   padding: 1rem;
   text-align: center;
@@ -96,7 +96,7 @@
 .updates-feed-group:last-child { border-bottom: none; }
 
 .updates-feed-group-label {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -112,7 +112,7 @@
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  font-size: 0.85rem;
+  font-size: 1rem;
   font-weight: 500;
   color: var(--text-1);
   margin-bottom: 0.3rem;
@@ -133,12 +133,12 @@
   align-items: baseline;
   gap: 0.5rem;
   padding: 0.18rem 0 0.18rem 1.15rem;
-  font-size: 0.8rem;
+  font-size: 1rem;
   flex-wrap: wrap;
 }
 
 .updates-feed-body  { color: var(--text-2); }
-.updates-feed-meta  { color: var(--text-4); font-size: 0.72rem; white-space: nowrap; }
+.updates-feed-meta  { color: var(--text-4); font-size: 0.875rem; white-space: nowrap; }
 
 .summary-placeholder {
   background: var(--bg-surface);
@@ -147,7 +147,7 @@
   padding: 1.5rem;
   text-align: center;
   color: var(--text-3);
-  font-size: 0.875rem;
+  font-size: 1rem;
   line-height: 1.6;
   display: flex;
   flex-direction: column;
@@ -162,7 +162,7 @@
   justify-content: space-between;
 }
 
-.draft-label { font-size: 0.78rem; font-weight: 500; color: var(--text-3); }
+.draft-label { font-size: 1rem; font-weight: 500; color: var(--text-3); }
 
 .btn-copy {
   background: var(--bg-muted);
@@ -170,7 +170,7 @@
   color: var(--text-2);
   padding: 0.3rem 0.75rem;
   border-radius: 6px;
-  font-size: 0.78rem;
+  font-size: 0.875rem;
   font-weight: 500;
 }
 .btn-copy:hover { background: var(--border); }
@@ -181,7 +181,7 @@
   border-radius: 10px;
   padding: 1rem 1.1rem;
   font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-  font-size: 0.82rem;
+  font-size: 1rem;
   line-height: 1.6;
   color: var(--text-1);
   background: var(--bg-surface);

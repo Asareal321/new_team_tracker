@@ -7,7 +7,7 @@
   border: none;
   border-radius: 7px;
   padding: 0.35rem 0.85rem;
-  font-size: 0.82rem;
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   align-self: flex-start;
@@ -39,7 +39,7 @@
 .project-hero-name { font-size: 1.25rem; font-weight: 700; color: var(--text-1); }
 
 .project-status-badge {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -50,8 +50,8 @@
 .project-status-badge.on_hold   { background: var(--yellow-bg); color: var(--yellow-text); }
 .project-status-badge.completed { background: var(--bg-muted);  color: var(--text-3); }
 
-.project-hero-desc  { font-size: 0.875rem; color: var(--text-3); line-height: 1.5; }
-.project-hero-dates { font-size: 0.8rem;   color: var(--text-4); }
+.project-hero-desc  { font-size: 1rem; color: var(--text-3); line-height: 1.5; }
+.project-hero-dates { font-size: 1rem; color: var(--text-4); }
 
 /* Back button pushed to bottom of left column */
 .back-btn { margin-top: auto; }
@@ -74,7 +74,7 @@
 
 .hero-stat { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; min-width: 56px; }
 .hero-stat-num   { font-size: 1.6rem; font-weight: 700; color: var(--accent); line-height: 1; }
-.hero-stat-label { font-size: 0.7rem;  color: var(--text-3); white-space: nowrap; }
+.hero-stat-label { font-size: 0.875rem; color: var(--text-3); white-space: nowrap; }
 
 .progress-group {
   display: flex;
@@ -83,7 +83,7 @@
 }
 
 .progress-title {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -117,7 +117,7 @@
 }
 
 .view-btn {
-  font-size: 0.82rem;
+  font-size: 1rem;
   font-weight: 500;
   padding: 0.28rem 0.75rem;
   border-radius: 5px;
@@ -129,7 +129,7 @@
 .view-btn:hover { color: var(--text-1); }
 .view-btn.active { background: #071013; color: #C3F73A; }
 
-.task-total { font-size: 0.8rem; color: var(--text-3); }
+.task-total { font-size: 1rem; color: var(--text-3); }
 
 /* ── Priority view ── */
 .project-priority-view { display: flex; flex-direction: column; gap: 0.6rem; }
@@ -152,7 +152,7 @@
   padding: 0.5rem 0.85rem 0.35rem;
 }
 .pp-zone-label {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -162,13 +162,13 @@
 .zone-low    .pp-zone-label { color: var(--text-3); }
 
 .pp-zone-count {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   color: var(--text-4);
   background: rgba(0,0,0,0.06);
   padding: 0.05rem 0.35rem;
   border-radius: 8px;
 }
-.pp-zone-done { font-size: 0.72rem; color: var(--text-4); margin-left: auto; }
+.pp-zone-done { font-size: 0.875rem; color: var(--text-4); margin-left: auto; }
 
 .pp-zone-body { padding: 0 0.6rem 0.6rem; display: flex; flex-direction: column; gap: 0.3rem; }
 
@@ -191,7 +191,7 @@
   border: none;
   border-bottom: 2px solid transparent;
   padding: 0.65rem 0.25rem;
-  font-size: 0.85rem;
+  font-size: 1rem;
   font-weight: 500;
   color: var(--text-3);
   cursor: pointer;
@@ -201,7 +201,7 @@
 .pp-status-tab.active { color: var(--text-1); border-bottom-color: #C3F73A; }
 
 .pp-tab-count {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   background: var(--bg-muted);
   color: var(--text-4);
   padding: 0.05rem 0.35rem;
@@ -221,7 +221,7 @@
 }
 
 /* ── Task rows ── */
-.pp-empty { font-size: 0.8rem; color: var(--text-4); padding: 0.75rem; text-align: center; }
+.pp-empty { font-size: 1rem; color: var(--text-4); padding: 0.75rem; text-align: center; }
 
 .pp-task {
   background: var(--bg-surface);
@@ -250,8 +250,8 @@
 .dot-low    { background: var(--text-4); }
 
 .pp-task-info { flex: 1; min-width: 0; }
-.pp-task-title { font-size: 0.875rem; font-weight: 500; color: var(--text-1); }
-.pp-task-notes { font-size: 0.78rem; color: var(--text-3); margin-top: 0.1rem; }
+.pp-task-title { font-size: 1rem; font-weight: 500; color: var(--text-1); }
+.pp-task-notes { font-size: 1rem; color: var(--text-3); margin-top: 0.1rem; }
 
 .pp-task-meta {
   display: flex;
@@ -261,7 +261,7 @@
 }
 
 .pp-due {
-  font-size: 0.72rem;
+  font-size: 0.875rem;
   font-weight: 500;
   padding: 0.12rem 0.45rem;
   border-radius: 10px;
@@ -293,7 +293,7 @@
   flex-shrink: 0;
 }
 .pp-action-btn {
-  font-size: 0.72rem;
+  font-size: 0.875rem;
   font-weight: 500;
   padding: 0.2rem 0.55rem;
   border-radius: 5px;
@@ -314,13 +314,13 @@
   gap: 0.3rem;
   padding-top: 0.4rem;
   border-top: 1px solid var(--border-subtle);
-  font-size: 0.78rem;
+  font-size: 1rem;
 }
 
 .pp-today-updates { display: flex; align-items: flex-start; gap: 0.45rem; }
 
 .pp-update-label {
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -336,11 +336,11 @@
 .pp-update-items { display: flex; flex-direction: column; gap: 0.15rem; }
 .pp-update-item  { display: flex; align-items: baseline; gap: 0.4rem; flex-wrap: wrap; }
 .pp-update-body  { color: var(--text-2); }
-.pp-update-meta  { color: var(--text-4); font-size: 0.7rem; }
+.pp-update-meta  { color: var(--text-4); font-size: 0.875rem; }
 
 .pp-history-toggle {
   background: none; border: none;
-  font-size: 0.7rem; color: var(--text-4);
+  font-size: 0.875rem; color: var(--text-4);
   padding: 0; cursor: pointer; align-self: flex-start;
 }
 .pp-history-toggle:hover { color: var(--text-3); }
@@ -349,14 +349,14 @@
 
 .pp-hist-day   { display: flex; align-items: flex-start; gap: 0.45rem; }
 .pp-hist-label {
-  font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+  font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.04em; color: var(--text-4); background: var(--bg-muted);
   padding: 0.1rem 0.3rem; border-radius: 4px; flex-shrink: 0; margin-top: 0.1rem;
 }
 .pp-hist-items { display: flex; flex-direction: column; gap: 0.15rem; }
 .pp-hist-item  { display: flex; align-items: baseline; gap: 0.4rem; flex-wrap: wrap; }
-.pp-hist-body  { color: var(--text-2); font-size: 0.78rem; }
-.pp-hist-meta  { color: var(--text-4); font-size: 0.7rem; }
+.pp-hist-body  { color: var(--text-2); font-size: 1rem; }
+.pp-hist-meta  { color: var(--text-4); font-size: 0.875rem; }
 
 .pp-update-form {
   display: flex; gap: 0.35rem;
@@ -364,7 +364,7 @@
 .pp-update-form input {
   flex: 1;
   border: 1px solid var(--border); border-radius: 6px;
-  padding: 0.25rem 0.55rem; font-size: 0.78rem;
+  padding: 0.25rem 0.55rem; font-size: 1rem;
   color: var(--text-1); background: var(--bg-subtle);
 }
 .pp-update-form input:focus { outline: 2px solid var(--accent); outline-offset: -1px; background: var(--bg-surface); }
@@ -373,7 +373,7 @@
 .pp-archived-section { margin-top: 0.25rem; }
 .pp-archived-toggle {
   background: none; border: none;
-  font-size: 0.75rem; font-weight: 500; color: var(--text-4);
+  font-size: 0.875rem; font-weight: 500; color: var(--text-4);
   cursor: pointer; padding: 0.4rem 0;
 }
 .pp-archived-toggle:hover { color: var(--text-3); }
@@ -394,11 +394,11 @@
   width: 100%; max-width: 480px; display: flex; flex-direction: column;
   gap: 0.9rem; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
 }
-.task-form h2 { font-size: 1rem; font-weight: 600; color: var(--text-1); }
-.task-form label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.8rem; font-weight: 500; color: var(--text-3); }
+.task-form h2 { font-size: 1.05rem; font-weight: 600; color: var(--text-1); }
+.task-form label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 1rem; font-weight: 500; color: var(--text-3); }
 .task-form input, .task-form textarea, .task-form select {
   border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.6rem;
-  font-size: 0.875rem; color: var(--text-1); background: var(--bg-subtle); resize: vertical;
+  font-size: 1rem; color: var(--text-1); background: var(--bg-subtle); resize: vertical;
 }
 .task-form input:focus, .task-form textarea:focus, .task-form select:focus {
   outline: 2px solid var(--accent); outline-offset: -1px; background: var(--bg-surface);
@@ -407,22 +407,22 @@
 .form-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.15rem; }
 .btn-primary {
   background: var(--accent); color: var(--accent-on); border: none;
-  padding: 0.45rem 0.9rem; border-radius: 7px; font-size: 0.875rem; font-weight: 500;
+  padding: 0.45rem 0.9rem; border-radius: 7px; font-size: 1rem; font-weight: 500;
 }
 .btn-primary:hover { background: var(--accent-hover); }
 .btn-ghost {
   background: transparent; color: var(--text-3); border: 1px solid var(--border);
-  padding: 0.45rem 0.9rem; border-radius: 7px; font-size: 0.875rem; font-weight: 500;
+  padding: 0.45rem 0.9rem; border-radius: 7px; font-size: 1rem; font-weight: 500;
 }
 .btn-ghost:hover { background: var(--bg-muted); }
-.btn-sm { padding: 0.25rem 0.6rem; font-size: 0.78rem; }
+.btn-sm { padding: 0.25rem 0.6rem; font-size: 0.875rem; }
 .assignee-field { display: flex; flex-direction: column; gap: 0.3rem; }
-.assignee-field-label { font-size: 0.8rem; font-weight: 500; color: var(--text-3); }
+.assignee-field-label { font-size: 1rem; font-weight: 500; color: var(--text-3); }
 .assignee-picker { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .assignee-chip {
   display: flex; align-items: center; gap: 0.35rem; padding: 0.28rem 0.6rem;
   border-radius: 20px; border: 1.5px solid var(--border); background: var(--bg-muted);
-  font-size: 0.78rem; font-weight: 500; color: var(--text-2); cursor: pointer;
+  font-size: 1rem; font-weight: 500; color: var(--text-2); cursor: pointer;
 }
 .assignee-chip.selected { background: #071013; border-color: #071013; color: #C3F73A; }
 .assignee-chip.selected .chip-avatar { background: #C3F73A; color: #071013; }
