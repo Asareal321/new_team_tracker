@@ -119,10 +119,17 @@ html[data-theme="dark"] .theme-toggle { background: rgba(195,247,58,0.1); border
 
 .board-hero { padding: 0 0 0.85rem; text-align: center; }
 .board-hero-title {
-  font-size: 1.5rem;
+  display: inline-block;
+  font-size: 1.1rem;
   font-weight: 700;
-  color: var(--on-page-1);
-  line-height: 1.2;
+  color: #071013;
+  background: rgba(255,255,255,0.45);
+  border: 1px solid rgba(255,255,255,0.7);
+  border-radius: 50px;
+  padding: 0.5rem 1.5rem;
+  backdrop-filter: blur(4px);
+  letter-spacing: 0.01em;
+  line-height: 1.3;
 }
 
 .error-screen {
