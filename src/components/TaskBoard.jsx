@@ -186,11 +186,13 @@ export default function TaskBoard({
         projectName={projectName}
         updatesForTask={updatesForTask}
         resolveAssignees={resolveAssignees}
+        teamMembers={teamMembers}
         onAdd={onAdd}
         onUpdate={onUpdate}
         onDelete={onDelete}
         onAddUpdate={onAddUpdate}
         onDeleteUpdate={onDeleteUpdate}
+        onUpdateAssignees={onUpdateAssignees}
         onStartEdit={startEdit}
         onOpenForm={() => { setShowForm(true); setEditingId(null); setForm(defaultForm()) }}
       />
@@ -202,8 +204,8 @@ export default function TaskBoard({
 
 function PriorityBoard({
   tasks, activeTab, setActiveTab, byStatus,
-  projectName, updatesForTask, resolveAssignees,
-  onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onStartEdit, onOpenForm,
+  projectName, updatesForTask, resolveAssignees, teamMembers,
+  onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onStartEdit, onOpenForm,
 }) {
   const [activeId, setActiveId] = useState(null)
   const [draftUpdates, setDraftUpdates] = useState(() => {
@@ -305,11 +307,13 @@ function PriorityBoard({
                 assignees={resolveAssignees(task)}
                 projectName={projectName(task.project_id)}
                 updates={updatesForTask(task.id)}
+                teamMembers={teamMembers}
                 onEdit={() => onStartEdit(task)}
                 onDelete={() => onDelete(task.id)}
                 onStatusChange={s => onUpdate(task.id, { status: s })}
                 onAddUpdate={body => onAddUpdate(task.id, body)}
                 onDeleteUpdate={onDeleteUpdate}
+                onUpdateAssignees={ids => onUpdateAssignees(task.id, ids)}
                 statuses={FORM_STATUSES} statusLabels={STATUS_LABELS}
                 showPriorityBadge
                 draftText={draftUpdates[task.id] || ''}
@@ -326,11 +330,13 @@ function PriorityBoard({
                 resolveAssignees={resolveAssignees}
                 projectName={projectName}
                 updatesForTask={updatesForTask}
+                teamMembers={teamMembers}
                 onEdit={onStartEdit}
                 onDelete={onDelete}
                 onUpdate={onUpdate}
                 onAddUpdate={onAddUpdate}
                 onDeleteUpdate={onDeleteUpdate}
+                onUpdateAssignees={onUpdateAssignees}
                 draftUpdates={draftUpdates}
                 setDraft={setDraft}
               />
@@ -358,7 +364,7 @@ function PriorityBoard({
 
 // ─── Priority zone ───────────────────────────────────────────────────────────
 
-function PriorityZone({ priority, tasks, resolveAssignees, projectName, updatesForTask, onEdit, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, draftUpdates, setDraft }) {
+function PriorityZone({ priority, tasks, resolveAssignees, projectName, updatesForTask, teamMembers, onEdit, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, onUpdateAssignees, draftUpdates, setDraft }) {
   const { setNodeRef, isOver } = useDroppable({ id: `zone-${priority}` })
   const items = tasks.map(t => t.id)
 
@@ -375,11 +381,13 @@ function PriorityZone({ priority, tasks, resolveAssignees, projectName, updatesF
               assignees={resolveAssignees(task)}
               projectName={projectName(task.project_id)}
               updates={updatesForTask(task.id)}
+              teamMembers={teamMembers}
               onEdit={() => onEdit(task)}
               onDelete={() => onDelete(task.id)}
               onStatusChange={s => onUpdate(task.id, { status: s })}
               onAddUpdate={body => onAddUpdate(task.id, body)}
               onDeleteUpdate={onDeleteUpdate}
+              onUpdateAssignees={ids => onUpdateAssignees(task.id, ids)}
               statuses={FORM_STATUSES} statusLabels={STATUS_LABELS}
               draftText={draftUpdates[task.id] || ''}
               onDraftChange={text => setDraft(task.id, text)}
@@ -412,11 +420,13 @@ const PRIMARY_NEXT = { todo: 'in_progress', in_progress: 'done' }
 
 function TaskRow({
   task, assignees, projectName, updates,
+  teamMembers = [], onUpdateAssignees,
   onEdit, onDelete, onStatusChange, onAddUpdate, onDeleteUpdate,
   statuses, statusLabels, showPriorityBadge,
   dragListeners, dragAttributes,
   draftText = '', onDraftChange,
 }) {
+  const assigneeIds = (task.task_assignees || []).map(a => a.user_id)
   const [showActions, setShowActions] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [expanded, setExpanded] = useState(() => draftText.length > 0)
@@ -505,6 +515,26 @@ function TaskRow({
             ))}
             {task.status === 'done' && (
               <button className="action-btn" onClick={() => { onStatusChange('archived'); setShowActions(false) }}>Archive</button>
+            )}
+            {teamMembers.length > 0 && (
+              <div className="action-assign">
+                {teamMembers.map(m => {
+                  const assigned = assigneeIds.includes(m.id)
+                  const toggle = () => {
+                    const next = assigned
+                      ? assigneeIds.filter(id => id !== m.id)
+                      : [...assigneeIds, m.id]
+                    onUpdateAssignees?.(next)
+                  }
+                  return (
+                    <button key={m.id} type="button" title={m.display_name}
+                      className={`action-assign-chip${assigned ? ' assigned' : ''}`}
+                      onClick={toggle}>
+                      {initials(m.display_name)}
+                    </button>
+                  )
+                })}
+              </div>
             )}
             <button className="action-btn" onClick={() => { onEdit(); setShowActions(false) }}>Edit</button>
             <button className="action-btn action-danger" onClick={() => { onDelete(); setShowActions(false) }}>Delete</button>

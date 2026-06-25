@@ -589,3 +589,30 @@
   margin-left: auto;
 }
 .action-btn.action-danger:hover { background: var(--red-bg); border-color: var(--red-border); }
+
+/* Assignee chips in action strip */
+.action-assign {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding-right: 0.35rem;
+  border-right: 1px solid var(--border);
+  margin-right: 0.1rem;
+}
+.action-assign-chip {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: var(--bg-muted);
+  color: var(--text-3);
+  font-size: 0.6rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s;
+}
+.action-assign-chip:hover { border-color: var(--accent); color: var(--accent); }
+.action-assign-chip.assigned { background: #071013; border-color: #071013; color: #C3F73A; }
