@@ -25,7 +25,7 @@ export default function Layout() {
       <header className="app-header">
         <div className="header-left">
           <span className="logo">⬡</span>
-          <h1>Trakkit</h1>
+          <h1>trakkit</h1>
         </div>
         <nav className="header-nav">
           <NavLink to="/" className={navClass} end>Board</NavLink>

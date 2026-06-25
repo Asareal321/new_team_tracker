@@ -44,7 +44,7 @@ export default function AuthForm() {
   return (
     <div className="auth-screen">
       <form className="auth-card" onSubmit={handleSubmit}>
-        <div className="auth-logo">⬡ Trakkit</div>
+        <div className="auth-logo">⬡ trakkit</div>
         <h2>{mode === 'signin' ? 'Sign in' : 'Create an account'}</h2>
 
         {mode === 'signup' && (
