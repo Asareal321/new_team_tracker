@@ -1,7 +1,13 @@
 import { useState } from 'react'
 import './DailySummary.css'
 
-export default function DailySummary({ tasks, teamMembers, onGenerate }) {
+function todayStr() { return new Date().toISOString().slice(0, 10) }
+
+function formatTime(iso) {
+  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+}
+
+export default function DailySummary({ tasks, teamMembers, projects = [], taskUpdates = [], onGenerate }) {
   const [draft, setDraft] = useState(null)
   const [copied, setCopied] = useState(false)
   const [generating, setGenerating] = useState(false)
@@ -28,8 +34,41 @@ export default function DailySummary({ tasks, teamMembers, onGenerate }) {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const done = tasks.filter(t => t.status === 'done')
+  const done       = tasks.filter(t => t.status === 'done')
   const inProgress = tasks.filter(t => t.status === 'in_progress')
+
+  // Build today's update groups, sorted by project
+  function buildTodaysGroups() {
+    const todayUpdates = taskUpdates.filter(u => u.created_at.slice(0, 10) === todayStr())
+    if (!todayUpdates.length) return []
+
+    // Collect unique task IDs that have updates today
+    const taskIdsWithUpdates = [...new Set(todayUpdates.map(u => u.task_id))]
+
+    // For each task, gather its updates and find its project
+    const byProject = {}
+    taskIdsWithUpdates.forEach(taskId => {
+      const task = tasks.find(t => t.id === taskId)
+      if (!task) return
+      const projectKey = task.project_id || '__general__'
+      if (!byProject[projectKey]) byProject[projectKey] = { project: projects.find(p => p.id === task.project_id) || null, items: [] }
+      byProject[projectKey].items.push({
+        task,
+        updates: todayUpdates.filter(u => u.task_id === taskId).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
+      })
+    })
+
+    // Sort: named projects first (by name), then general
+    return Object.values(byProject).sort((a, b) => {
+      if (!a.project && b.project) return 1
+      if (a.project && !b.project) return -1
+      if (a.project && b.project) return a.project.name.localeCompare(b.project.name)
+      return 0
+    })
+  }
+
+  const todaysGroups = buildTodaysGroups()
+  const totalUpdates = todaysGroups.reduce((n, g) => n + g.items.reduce((m, i) => m + i.updates.length, 0), 0)
 
   return (
     <div className="summary">
@@ -59,6 +98,43 @@ export default function DailySummary({ tasks, teamMembers, onGenerate }) {
       </div>
 
       {error && <div className="summary-error">{error}</div>}
+
+      {/* Today's updates feed */}
+      <div className="updates-feed">
+        <div className="updates-feed-header">
+          <span className="updates-feed-title">Today's updates</span>
+          {totalUpdates > 0 && <span className="updates-feed-count">{totalUpdates}</span>}
+        </div>
+
+        {todaysGroups.length === 0 ? (
+          <p className="updates-feed-empty">No updates posted today yet.</p>
+        ) : (
+          todaysGroups.map((group, gi) => (
+            <div key={gi} className="updates-feed-group">
+              <div className="updates-feed-group-label">
+                {group.project ? group.project.name : 'General Tasks'}
+              </div>
+              {group.items.map(({ task, updates }) => (
+                <div key={task.id} className="updates-feed-task">
+                  <div className="updates-feed-task-name">
+                    <span className={`updates-feed-priority dot-${task.priority}`} />
+                    {task.title}
+                  </div>
+                  {updates.map(u => (
+                    <div key={u.id} className="updates-feed-update">
+                      <span className="updates-feed-body">{u.body}</span>
+                      <span className="updates-feed-meta">
+                        {u.profiles?.display_name && <>{u.profiles.display_name} · </>}
+                        {formatTime(u.created_at)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          ))
+        )}
+      </div>
 
       {!draft && !generating && !error && (
         <div className="summary-placeholder">

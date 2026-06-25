@@ -132,5 +132,5 @@ export default function SummaryPage() {
     return data.summary
   }
 
-  return <DailySummary tasks={tasks} teamMembers={teamMembers} onGenerate={generateSummary} />
+  return <DailySummary tasks={tasks} teamMembers={teamMembers} projects={projects} taskUpdates={taskUpdates} onGenerate={generateSummary} />
 }

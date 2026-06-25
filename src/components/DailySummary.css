@@ -49,6 +49,97 @@
   font-size: 0.85rem;
 }
 
+/* Today's updates feed */
+.updates-feed {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.updates-feed-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
+}
+
+.updates-feed-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.updates-feed-count {
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--accent-bg);
+  color: var(--accent-text);
+  padding: 0.1rem 0.45rem;
+  border-radius: 10px;
+}
+
+.updates-feed-empty {
+  font-size: 0.82rem;
+  color: var(--text-4);
+  padding: 1rem;
+  text-align: center;
+}
+
+.updates-feed-group {
+  border-bottom: 1px solid var(--border-subtle);
+}
+.updates-feed-group:last-child { border-bottom: none; }
+
+.updates-feed-group-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-4);
+  padding: 0.55rem 1rem 0.3rem;
+}
+
+.updates-feed-task {
+  padding: 0.3rem 1rem 0.55rem;
+}
+
+.updates-feed-task-name {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-1);
+  margin-bottom: 0.3rem;
+}
+
+.updates-feed-priority {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-high   { background: #ef4444; }
+.dot-medium { background: #f59e0b; }
+.dot-low    { background: var(--text-4); }
+
+.updates-feed-update {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.18rem 0 0.18rem 1.15rem;
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.updates-feed-body  { color: var(--text-2); }
+.updates-feed-meta  { color: var(--text-4); font-size: 0.72rem; white-space: nowrap; }
+
 .summary-placeholder {
   background: var(--bg-surface);
   border: 1px dashed var(--border);
