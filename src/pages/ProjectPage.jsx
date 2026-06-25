@@ -48,7 +48,7 @@ export default function ProjectPage() {
   const [form, setForm]               = useState(defaultForm())
 
   const fetchProject = useCallback(async () => {
-    const { data } = await supabase.from('projects').select('*').eq('id', projectId).single()
+    const { data } = await supabase.from('projects').select('*, teams(name)').eq('id', projectId).single()
     setProject(data)
   }, [projectId])
 
@@ -252,7 +252,7 @@ export default function ProjectPage() {
       )}
 
       <div className="project-page-header">
-        <button className="back-btn" onClick={() => navigate('/teams')}>← Teams</button>
+        <button className="back-btn" onClick={() => navigate('/teams')}>← {project.teams?.name || 'Teams'}</button>
         <div className="project-hero">
           <div className="project-hero-left">
             <div className="project-hero-top">
