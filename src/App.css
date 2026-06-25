@@ -21,6 +21,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex: 1;
 }
 
 .logo { font-size: 1.4rem; color: #071013; }
@@ -47,6 +48,8 @@ h1 { font-size: 1.05rem; font-weight: 600; color: #071013; }
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex: 1;
+  justify-content: flex-end;
 }
 
 .team-switcher {
