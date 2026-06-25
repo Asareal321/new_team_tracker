@@ -37,18 +37,18 @@
 
 html[data-theme="dark"] {
   --bg-page:    #071013;
-  --bg-surface: #0f1e18;
-  --bg-subtle:  #152a1e;
-  --bg-muted:   #1c3428;
-  --bg-accent:  #2a3d10;
+  --bg-surface: #172820;
+  --bg-subtle:  #0f1c14;
+  --bg-muted:   #1e3520;
+  --bg-accent:  #1e3510;
 
-  --border:        #1f4030;
-  --border-subtle: #162b20;
+  --border:        #1e3520;
+  --border-subtle: #1a2e1c;
 
-  --text-1: #f0fdf4;
-  --text-2: #95E06C;
-  --text-3: #68B684;
-  --text-4: #3d6b50;
+  --text-1: #ffffff;
+  --text-2: #C3F73A;
+  --text-3: #95E06C;
+  --text-4: #4a7a5a;
 
   --on-page-1:      #C3F73A;
   --on-page-2:      #95E06C;
