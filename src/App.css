@@ -37,6 +37,7 @@ h1 { font-size: 1rem; font-weight: 600; color: #071013; }
   font-size: 0.875rem;
   color: #4a6b56;
   font-weight: 500;
+  text-decoration: none;
   transition: background 0.15s, color 0.15s;
 }
 .nav-btn:hover { background: #f0f0f0; color: #071013; }
