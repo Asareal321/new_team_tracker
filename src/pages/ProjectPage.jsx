@@ -252,7 +252,6 @@ export default function ProjectPage() {
       )}
 
       <div className="project-page-header">
-        <button className="back-btn" onClick={() => navigate('/teams')}>← {project.teams?.name || 'Teams'}</button>
         <div className="project-hero">
           <div className="project-hero-left">
             <div className="project-hero-top">
@@ -265,6 +264,7 @@ export default function ProjectPage() {
                 {formatDate(project.start_date) || 'No start'} → {formatDate(project.target_date) || 'No deadline'}
               </p>
             )}
+            <button className="back-btn" onClick={() => navigate('/teams')}>← {project.teams?.name || 'Teams'}</button>
           </div>
           <div className="project-hero-stats">
             <div className="hero-stat">
