@@ -100,6 +100,10 @@ export default function BoardPage() {
 
   async function addUpdate(taskId, body) {
     await supabase.from('task_updates').insert([{ task_id: taskId, user_id: user.id, body }])
+    const task = tasks.find(t => t.id === taskId)
+    if (task?.status === 'todo') {
+      await supabase.from('tasks').update({ status: 'in_progress' }).eq('id', taskId)
+    }
   }
 
   async function updateAssignees(taskId, assigneeIds) {
