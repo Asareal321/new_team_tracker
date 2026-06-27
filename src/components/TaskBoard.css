@@ -15,7 +15,7 @@
   border: none;
   padding: 0.45rem 0.9rem;
   border-radius: 7px;
-  font-size: 1rem;
+  font-size: 0.875rem;
   font-weight: 500;
   transition: background 0.15s;
 }
@@ -27,7 +27,7 @@
   border: 1px solid var(--border);
   padding: 0.45rem 0.9rem;
   border-radius: 7px;
-  font-size: 1rem;
+  font-size: 0.875rem;
   font-weight: 500;
 }
 .btn-ghost:hover { background: var(--bg-muted); }
@@ -56,13 +56,13 @@
   box-shadow: 0 20px 60px rgba(0,0,0,0.2);
 }
 
-.task-form h2 { font-size: 1.05rem; font-weight: 600; color: var(--text-1); }
+.task-form h2 { font-size: 1rem; font-weight: 600; color: var(--text-1); }
 
 .task-form label {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  font-size: 1rem;
+  font-size: 0.825rem;
   font-weight: 500;
   color: var(--text-3);
 }
@@ -73,7 +73,7 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.4rem 0.6rem;
-  font-size: 1rem;
+  font-size: 0.9rem;
   color: var(--text-1);
   background: var(--bg-subtle);
   resize: vertical;
@@ -126,7 +126,7 @@
   border: none;
   border-bottom: 2px solid transparent;
   padding: 0.55rem 0.25rem;
-  font-size: 1rem;
+  font-size: 0.875rem;
   font-weight: 500;
   color: var(--text-3);
   margin-bottom: -1px;
@@ -145,7 +145,7 @@
 .status-dot.archived   { background: var(--border); }
 
 .tab-count {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--text-4);
   background: var(--bg-muted);
   padding: 0.05rem 0.35rem;
@@ -187,7 +187,7 @@
   padding: 0.45rem 0.75rem 0.35rem;
 }
 .zone-label {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -197,7 +197,7 @@
 .zone-low    .zone-label { color: var(--text-3); }
 
 .zone-count {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   color: var(--text-4);
   background: rgba(0,0,0,0.06);
   padding: 0.05rem 0.35rem;
@@ -211,7 +211,7 @@
   min-height: 36px;
 }
 .zone-empty {
-  font-size: 1rem;
+  font-size: 0.75rem;
   color: var(--text-4);
   text-align: center;
   padding: 0.6rem;
@@ -266,7 +266,7 @@
 /* Assignee chip picker in form */
 .assignee-field { display: flex; flex-direction: column; gap: 0.3rem; }
 .assignee-field-label {
-  font-size: 1rem;
+  font-size: 0.8rem;
   font-weight: 500;
   color: var(--text-3);
 }
@@ -279,7 +279,7 @@
   border-radius: 20px;
   border: 1.5px solid var(--border);
   background: var(--bg-muted);
-  font-size: 1rem;
+  font-size: 0.78rem;
   font-weight: 500;
   color: var(--text-2);
   cursor: pointer;
@@ -306,7 +306,7 @@
   flex-shrink: 0;
 }
 
-.empty-col { font-size: 1rem; color: var(--text-4); padding: 1.25rem; text-align: center; }
+.empty-col { font-size: 0.8rem; color: var(--text-4); padding: 1.25rem; text-align: center; }
 
 /* Task rows */
 .task-row {
@@ -342,7 +342,7 @@
 .task-row-top { display: flex; align-items: center; gap: 0.5rem; }
 
 .priority-badge {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -354,8 +354,8 @@
 .priority-badge.medium { background: var(--yellow-bg); color: var(--yellow-text); }
 .priority-badge.low    { background: var(--bg-muted);  color: var(--text-3); }
 
-.task-title { font-size: 1rem; font-weight: 500; color: var(--text-1); line-height: 1.35; }
-.task-notes { font-size: 1rem; color: var(--text-3); line-height: 1.5; }
+.task-title { font-size: 0.925rem; font-weight: 500; color: var(--text-1); line-height: 1.35; }
+.task-notes { font-size: 0.82rem; color: var(--text-3); line-height: 1.5; }
 
 .task-row-tags {
   display: flex;
@@ -380,13 +380,13 @@
   gap: 0.3rem;
   flex: 1;
   min-width: 0;
-  font-size: 1rem;
+  font-size: 0.82rem;
 }
 
 .updates-today { display: flex; align-items: flex-start; gap: 0.45rem; }
 
 .update-today-label {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -407,14 +407,14 @@
 
 .update-meta {
   color: var(--text-4);
-  font-size: 0.875rem;
+  font-size: 0.7rem;
   white-space: nowrap;
 }
 
 .history-toggle {
   background: none;
   border: none;
-  font-size: 0.875rem;
+  font-size: 0.7rem;
   color: var(--text-4);
   padding: 0;
   cursor: pointer;
@@ -434,7 +434,7 @@
 .history-day { display: flex; align-items: flex-start; gap: 0.45rem; }
 
 .history-date-label {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -451,7 +451,7 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.3rem 0.65rem;
-  font-size: 1rem;
+  font-size: 0.82rem;
   color: var(--text-4);
   background: var(--bg-subtle);
   cursor: text;
@@ -470,7 +470,7 @@
   border: 2px solid var(--accent);
   border-radius: 6px;
   padding: 0.45rem 0.65rem;
-  font-size: 1rem;
+  font-size: 0.875rem;
   color: var(--text-1);
   background: var(--bg-surface);
   resize: vertical;
@@ -492,7 +492,7 @@
   border: none;
   color: var(--red-text);
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: 0.7rem;
   padding: 0.05rem 0.3rem;
   border-radius: 3px;
   flex-shrink: 0;
@@ -502,11 +502,11 @@
 .update-item:hover .update-delete-btn { opacity: 1; }
 .update-delete-btn:hover { background: var(--red-bg); }
 
-.btn-sm { padding: 0.25rem 0.6rem; font-size: 0.875rem; }
+.btn-sm { padding: 0.25rem 0.6rem; font-size: 0.78rem; }
 
 /* Tags */
 .owner-tag {
-  font-size: 0.875rem;
+  font-size: 0.72rem;
   color: var(--accent);
   background: var(--accent-bg);
   padding: 0.12rem 0.45rem;
@@ -515,7 +515,7 @@
 }
 
 .due-badge {
-  font-size: 0.875rem;
+  font-size: 0.72rem;
   font-weight: 500;
   padding: 0.12rem 0.45rem;
   border-radius: 10px;
@@ -526,7 +526,7 @@
 .due-badge.overdue { background: var(--red-bg);    color: var(--red-text); }
 
 .project-tag {
-  font-size: 0.875rem;
+  font-size: 0.72rem;
   color: var(--text-2);
   background: var(--bg-muted);
   padding: 0.12rem 0.45rem;
@@ -539,7 +539,7 @@
   background: none;
   border: none;
   color: var(--text-4);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   padding: 0.15rem 0.35rem;
   border-radius: 5px;
   line-height: 1;
@@ -563,7 +563,7 @@
 .task-action-bar.open { display: flex; }
 
 .action-btn {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 500;
   padding: 0.22rem 0.6rem;
   border-radius: 5px;
