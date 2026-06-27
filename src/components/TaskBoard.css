@@ -504,6 +504,21 @@
 
 .btn-sm { padding: 0.25rem 0.6rem; font-size: 0.78rem; }
 
+.status-submit-btn {
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.25rem 0.7rem;
+  border-radius: 5px;
+  border: 1.5px solid;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.1s;
+}
+.status-submit-btn:hover { opacity: 0.85; }
+.status-submit-btn.todo       { border-color: var(--border); background: var(--bg-muted); color: var(--text-2); }
+.status-submit-btn.inprogress { border-color: #f59e0b; background: var(--yellow-bg); color: var(--yellow-text); }
+.status-submit-btn.done       { border-color: #071013; background: #071013; color: #C3F73A; }
+
 /* Tags */
 .owner-tag {
   font-size: 0.72rem;

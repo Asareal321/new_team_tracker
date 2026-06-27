@@ -33,8 +33,19 @@ export default function BoardPage() {
       ? query.eq('team_id', currentTeamId)
       : query.is('team_id', null).eq('user_id', user.id)
     const { data } = await query
-    setTasks(data || [])
-    await fetchTaskUpdates((data || []).map(t => t.id))
+    let tasks = data || []
+
+    // Archive any done tasks that were last updated before today
+    const today = new Date().toISOString().slice(0, 10)
+    const toArchive = tasks.filter(t => t.status === 'done' && t.updated_at?.slice(0, 10) < today)
+    if (toArchive.length) {
+      await supabase.from('tasks').update({ status: 'archived' }).in('id', toArchive.map(t => t.id))
+      const archiveIds = new Set(toArchive.map(t => t.id))
+      tasks = tasks.map(t => archiveIds.has(t.id) ? { ...t, status: 'archived' } : t)
+    }
+
+    setTasks(tasks)
+    await fetchTaskUpdates(tasks.map(t => t.id))
   }, [currentTeamId, user, fetchTaskUpdates])
 
   const fetchTeamMembers = useCallback(async () => {
@@ -98,11 +109,10 @@ export default function BoardPage() {
     await supabase.from('tasks').delete().eq('id', id)
   }
 
-  async function addUpdate(taskId, body) {
+  async function addUpdate(taskId, body, newStatus) {
     await supabase.from('task_updates').insert([{ task_id: taskId, user_id: user.id, body }])
-    const task = tasks.find(t => t.id === taskId)
-    if (task?.status === 'todo') {
-      await supabase.from('tasks').update({ status: 'in_progress' }).eq('id', taskId)
+    if (newStatus) {
+      await supabase.from('tasks').update({ status: newStatus }).eq('id', taskId)
     }
   }
 

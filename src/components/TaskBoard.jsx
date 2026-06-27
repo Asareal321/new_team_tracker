@@ -311,7 +311,7 @@ function PriorityBoard({
                 onEdit={() => onStartEdit(task)}
                 onDelete={() => onDelete(task.id)}
                 onStatusChange={s => onUpdate(task.id, { status: s })}
-                onAddUpdate={body => onAddUpdate(task.id, body)}
+                onAddUpdate={(body, status) => onAddUpdate(task.id, body, status)}
                 onDeleteUpdate={onDeleteUpdate}
                 onUpdateAssignees={ids => onUpdateAssignees(task.id, ids)}
                 statuses={FORM_STATUSES} statusLabels={STATUS_LABELS}
@@ -385,7 +385,7 @@ function PriorityZone({ priority, tasks, resolveAssignees, projectName, updatesF
               onEdit={() => onEdit(task)}
               onDelete={() => onDelete(task.id)}
               onStatusChange={s => onUpdate(task.id, { status: s })}
-              onAddUpdate={body => onAddUpdate(task.id, body)}
+              onAddUpdate={(body, status) => onAddUpdate(task.id, body, status)}
               onDeleteUpdate={onDeleteUpdate}
               onUpdateAssignees={ids => onUpdateAssignees(task.id, ids)}
               statuses={FORM_STATUSES} statusLabels={STATUS_LABELS}
@@ -443,11 +443,10 @@ function TaskRow({
   }, {})
   const historyDates = Object.keys(historyByDate).sort((a, b) => b.localeCompare(a))
 
-  function submitUpdate(e) {
-    e.preventDefault()
+  function submitUpdate(newStatus) {
     const text = draftText.trim()
     if (!text) return
-    onAddUpdate(text)
+    onAddUpdate(text, newStatus)
     onDraftChange?.('')
     setExpanded(false)
   }
@@ -637,7 +636,9 @@ function TaskRow({
               />
               <div className="update-expanded-actions">
                 <button type="button" className="btn-ghost btn-sm" onClick={cancelUpdate}>Cancel</button>
-                <button type="button" className="btn-primary btn-sm" onClick={submitUpdate}>Post</button>
+                <button type="button" className="status-submit-btn todo" onClick={() => submitUpdate('todo')}>To-do</button>
+                <button type="button" className="status-submit-btn inprogress" onClick={() => submitUpdate('in_progress')}>In Progress</button>
+                <button type="button" className="status-submit-btn done" onClick={() => submitUpdate('done')}>Done</button>
               </div>
             </div>
           ) : (
