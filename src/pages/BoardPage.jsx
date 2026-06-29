@@ -104,13 +104,24 @@ export default function BoardPage() {
     const { data } = await query
     let tasks = data || []
 
-    // Archive any done tasks that were last updated before today
+    // At end of day, archive any task that was marked Done before today.
+    // archived_at is stamped with the completion date so it lands on the
+    // calendar under the day the task was actually finished.
     const today = new Date().toISOString().slice(0, 10)
-    const toArchive = tasks.filter(t => t.status === 'done' && t.updated_at?.slice(0, 10) < today)
+    const toArchive = tasks.filter(t => {
+      const doneDate = (t.updated_at || t.created_at)?.slice(0, 10)
+      return t.status === 'done' && doneDate && doneDate < today
+    })
     if (toArchive.length) {
-      await supabase.from('tasks').update({ status: 'archived' }).in('id', toArchive.map(t => t.id))
-      const archiveIds = new Set(toArchive.map(t => t.id))
-      tasks = tasks.map(t => archiveIds.has(t.id) ? { ...t, status: 'archived' } : t)
+      await Promise.all(toArchive.map(t =>
+        supabase.from('tasks')
+          .update({ status: 'archived', archived_at: t.updated_at || t.created_at })
+          .eq('id', t.id)
+      ))
+      const archiveMap = new Map(toArchive.map(t => [t.id, t.updated_at || t.created_at]))
+      tasks = tasks.map(t => archiveMap.has(t.id)
+        ? { ...t, status: 'archived', archived_at: archiveMap.get(t.id) }
+        : t)
     }
 
     setTasks(tasks)

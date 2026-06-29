@@ -75,8 +75,21 @@ create table tasks (
   project_id uuid references projects(id) on delete set null,
   assignee_id uuid references profiles(id) on delete set null,
   position float8,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  archived_at timestamptz
 );
+
+create or replace function set_task_updated_at() returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger tasks_set_updated_at
+  before update on tasks
+  for each row execute function set_task_updated_at();
 
 create table task_assignees (
   task_id uuid not null references tasks(id) on delete cascade,

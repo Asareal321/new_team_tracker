@@ -654,7 +654,7 @@ function ArchiveCalendar({ tasks, updatesForTask, projectName }) {
 
   const tasksByDate = {}
   tasks.forEach(t => {
-    const d = t.updated_at?.slice(0, 10)
+    const d = (t.archived_at || t.updated_at || t.created_at)?.slice(0, 10)
     if (d) {
       if (!tasksByDate[d]) tasksByDate[d] = []
       tasksByDate[d].push(t)
