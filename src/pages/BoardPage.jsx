@@ -4,6 +4,74 @@ import { useAuth } from '../auth/AuthContext'
 import { useTeam } from '../context/TeamContext'
 import TaskBoard from '../components/TaskBoard'
 
+function DoneTaskModal({ task, projects, onAdd, onUpdateProject, onDismiss }) {
+  const [nextTitle, setNextTitle] = useState('')
+  const [adding, setAdding] = useState(false)
+  const project = projects.find(p => p.id === task.project_id)
+
+  async function handleAddNext() {
+    const title = nextTitle.trim()
+    if (!title) return
+    setAdding(true)
+    await onAdd({
+      title,
+      status: 'todo',
+      priority: task.priority,
+      project_id: task.project_id,
+      notes: '',
+      due_date: null,
+      assigneeIds: [],
+    })
+    onDismiss()
+  }
+
+  async function handleCompleteProject() {
+    if (project) await onUpdateProject(project.id, { status: 'completed' })
+    onDismiss()
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onDismiss}>
+      <div className="done-modal" onClick={e => e.stopPropagation()}>
+        <div className="done-check">✓</div>
+        <h3 className="done-modal-heading">Task completed!</h3>
+        <p className="done-modal-task">"{task.title}"</p>
+        {project && <p className="done-modal-project">{project.name}</p>}
+
+        <div className="done-next-section">
+          <label className="done-next-label">Add a follow-up task</label>
+          <div className="done-next-row">
+            <input
+              autoFocus
+              className="done-next-input"
+              value={nextTitle}
+              onChange={e => setNextTitle(e.target.value)}
+              placeholder="What needs to happen next?"
+              onKeyDown={e => e.key === 'Enter' && handleAddNext()}
+            />
+            <button
+              className="btn-primary"
+              onClick={handleAddNext}
+              disabled={!nextTitle.trim() || adding}
+            >
+              Add
+            </button>
+          </div>
+        </div>
+
+        <div className="done-modal-footer">
+          {project && (
+            <button className="done-complete-project-btn" onClick={handleCompleteProject}>
+              Mark "{project.name}" as completed
+            </button>
+          )}
+          <button className="btn-ghost" onClick={onDismiss}>Skip</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function BoardPage() {
   const { user } = useAuth()
   const { currentTeamId, teams } = useTeam()
@@ -12,6 +80,7 @@ export default function BoardPage() {
   const [projects, setProjects] = useState([])
   const [taskUpdates, setTaskUpdates] = useState([])
   const [loading, setLoading] = useState(true)
+  const [doneTask, setDoneTask] = useState(null)
 
   const fetchTaskUpdates = useCallback(async (taskIds) => {
     if (!taskIds.length) { setTaskUpdates([]); return }
@@ -129,6 +198,10 @@ export default function BoardPage() {
     }
   }
 
+  async function updateProject(id, updates) {
+    await supabase.from('projects').update(updates).eq('id', id)
+  }
+
   if (loading) return <div className="loading">Loading tasks…</div>
 
   const teamName = currentTeamId ? (teams.find(t => t.id === currentTeamId)?.name || 'Team') : 'Personal'
@@ -138,20 +211,30 @@ export default function BoardPage() {
       <div className="board-hero">
         <h1 className="board-hero-title">{teamName} Taskboard</h1>
       </div>
-    <TaskBoard
-      tasks={tasks}
-      teamMembers={teamMembers}
-      projects={projects}
-      taskUpdates={taskUpdates}
-      currentUserId={user.id}
-      currentTeamId={currentTeamId}
-      onAdd={addTask}
-      onUpdate={updateTask}
-      onDelete={deleteTask}
-      onAddUpdate={addUpdate}
-      onDeleteUpdate={deleteUpdate}
-      onUpdateAssignees={updateAssignees}
-    />
+      <TaskBoard
+        tasks={tasks}
+        teamMembers={teamMembers}
+        projects={projects}
+        taskUpdates={taskUpdates}
+        currentUserId={user.id}
+        currentTeamId={currentTeamId}
+        onAdd={addTask}
+        onUpdate={updateTask}
+        onDelete={deleteTask}
+        onAddUpdate={addUpdate}
+        onDeleteUpdate={deleteUpdate}
+        onUpdateAssignees={updateAssignees}
+        onTaskDone={task => setDoneTask(task)}
+      />
+      {doneTask && (
+        <DoneTaskModal
+          task={doneTask}
+          projects={projects}
+          onAdd={addTask}
+          onUpdateProject={updateProject}
+          onDismiss={() => setDoneTask(null)}
+        />
+      )}
     </div>
   )
 }

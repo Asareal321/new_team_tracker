@@ -49,7 +49,7 @@ function dueClass(dateStr) {
 export default function TaskBoard({
   tasks, teamMembers, projects, taskUpdates,
   currentUserId, currentTeamId,
-  onAdd, onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees,
+  onAdd, onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onTaskDone,
 }) {
   const [showForm, setShowForm]   = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -194,6 +194,7 @@ export default function TaskBoard({
         onDeleteUpdate={onDeleteUpdate}
         onUpdateAssignees={onUpdateAssignees}
         onStartEdit={startEdit}
+        onTaskDone={onTaskDone}
         onOpenForm={() => { setShowForm(true); setEditingId(null); setForm(defaultForm()) }}
       />
     </div>
@@ -205,7 +206,7 @@ export default function TaskBoard({
 function PriorityBoard({
   tasks, activeTab, setActiveTab, byStatus,
   projectName, updatesForTask, resolveAssignees, teamMembers,
-  onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onStartEdit, onOpenForm,
+  onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onStartEdit, onOpenForm, onTaskDone,
 }) {
   const [activeId, setActiveId] = useState(null)
   const [draftUpdates, setDraftUpdates] = useState(() => {
@@ -301,27 +302,11 @@ function PriorityBoard({
         </div>
 
         {activeTab === 'archived' ? (
-          <div className="task-list">
-            {byStatus('archived').map(task => (
-              <TaskRow key={task.id} task={task}
-                assignees={resolveAssignees(task)}
-                projectName={projectName(task.project_id)}
-                updates={updatesForTask(task.id)}
-                teamMembers={teamMembers}
-                onEdit={() => onStartEdit(task)}
-                onDelete={() => onDelete(task.id)}
-                onStatusChange={s => onUpdate(task.id, { status: s })}
-                onAddUpdate={(body, status) => onAddUpdate(task.id, body, status)}
-                onDeleteUpdate={onDeleteUpdate}
-                onUpdateAssignees={ids => onUpdateAssignees(task.id, ids)}
-                statuses={FORM_STATUSES} statusLabels={STATUS_LABELS}
-                showPriorityBadge
-                draftText={draftUpdates[task.id] || ''}
-                onDraftChange={text => setDraft(task.id, text)}
-              />
-            ))}
-            {byStatus('archived').length === 0 && <div className="empty-col">No archived tasks</div>}
-          </div>
+          <ArchiveCalendar
+            tasks={byStatus('archived')}
+            updatesForTask={updatesForTask}
+            projectName={projectName}
+          />
         ) : (
           <div className="priority-zones">
             {PRIORITIES.map(priority => (
@@ -339,6 +324,7 @@ function PriorityBoard({
                 onUpdateAssignees={onUpdateAssignees}
                 draftUpdates={draftUpdates}
                 setDraft={setDraft}
+                onTaskDone={onTaskDone}
               />
             ))}
           </div>
@@ -364,7 +350,7 @@ function PriorityBoard({
 
 // ─── Priority zone ───────────────────────────────────────────────────────────
 
-function PriorityZone({ priority, tasks, resolveAssignees, projectName, updatesForTask, teamMembers, onEdit, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, onUpdateAssignees, draftUpdates, setDraft }) {
+function PriorityZone({ priority, tasks, resolveAssignees, projectName, updatesForTask, teamMembers, onEdit, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, onUpdateAssignees, draftUpdates, setDraft, onTaskDone }) {
   const { setNodeRef, isOver } = useDroppable({ id: `zone-${priority}` })
   const items = tasks.map(t => t.id)
 
@@ -391,6 +377,7 @@ function PriorityZone({ priority, tasks, resolveAssignees, projectName, updatesF
               statuses={FORM_STATUSES} statusLabels={STATUS_LABELS}
               draftText={draftUpdates[task.id] || ''}
               onDraftChange={text => setDraft(task.id, text)}
+              onTaskDone={onTaskDone}
             />
           ))}
           {tasks.length === 0 && (
@@ -424,7 +411,7 @@ function TaskRow({
   onEdit, onDelete, onStatusChange, onAddUpdate, onDeleteUpdate,
   statuses, statusLabels, showPriorityBadge,
   dragListeners, dragAttributes,
-  draftText = '', onDraftChange,
+  draftText = '', onDraftChange, onTaskDone,
 }) {
   const assigneeIds = (task.task_assignees || []).map(a => a.user_id)
   const [showActions, setShowActions] = useState(false)
@@ -449,6 +436,7 @@ function TaskRow({
     onAddUpdate(text, newStatus)
     onDraftChange?.('')
     setExpanded(false)
+    if (newStatus === 'done') onTaskDone?.(task)
   }
 
   function cancelUpdate() {
@@ -649,6 +637,108 @@ function TaskRow({
               {draftText || 'Add today\'s update…'}
             </div>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Archive calendar ────────────────────────────────────────────────────────
+
+function ArchiveCalendar({ tasks, updatesForTask, projectName }) {
+  const [viewDate, setViewDate] = useState(new Date())
+  const [selectedDay, setSelectedDay] = useState(null)
+
+  const year = viewDate.getFullYear()
+  const month = viewDate.getMonth()
+
+  const tasksByDate = {}
+  tasks.forEach(t => {
+    const d = t.updated_at?.slice(0, 10)
+    if (d) {
+      if (!tasksByDate[d]) tasksByDate[d] = []
+      tasksByDate[d].push(t)
+    }
+  })
+
+  const firstDay = new Date(year, month, 1).getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const cells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
+
+  const monthLabel = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  function dayStr(day) {
+    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  }
+
+  const selectedTasks = selectedDay ? (tasksByDate[selectedDay] || []) : []
+
+  if (tasks.length === 0) return <div className="empty-col">No archived tasks yet</div>
+
+  return (
+    <div className="archive-cal">
+      <div className="archive-cal-header">
+        <button className="cal-nav" onClick={() => { setViewDate(new Date(year, month - 1)); setSelectedDay(null) }}>‹</button>
+        <span className="cal-month-label">{monthLabel}</span>
+        <button className="cal-nav" onClick={() => { setViewDate(new Date(year, month + 1)); setSelectedDay(null) }}>›</button>
+      </div>
+      <div className="archive-cal-grid">
+        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+          <div key={d} className="cal-weekday">{d}</div>
+        ))}
+        {cells.map((day, i) => {
+          if (!day) return <div key={`e${i}`} className="cal-cell cal-empty" />
+          const ds = dayStr(day)
+          const count = (tasksByDate[ds] || []).length
+          const isSelected = selectedDay === ds
+          const isToday = ds === todayStr()
+          return (
+            <div key={ds}
+              className={`cal-cell${count ? ' has-tasks' : ''}${isSelected ? ' selected' : ''}${isToday ? ' is-today' : ''}`}
+              onClick={() => count && setSelectedDay(isSelected ? null : ds)}
+            >
+              <span className="cal-day-num">{day}</span>
+              {count > 0 && <span className="cal-day-count">{count}</span>}
+            </div>
+          )
+        })}
+      </div>
+      {selectedDay && (
+        <div className="archive-day-panel">
+          <div className="archive-day-header">
+            <span className="archive-day-date">
+              {new Date(selectedDay + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+            </span>
+            <span className="archive-day-count-badge">{selectedTasks.length} task{selectedTasks.length !== 1 ? 's' : ''}</span>
+          </div>
+          {selectedTasks.map(task => {
+            const taskUpdates = updatesForTask(task.id)
+            return (
+              <div key={task.id} className="archive-task-card">
+                <div className="archive-task-main">
+                  <span className={`status-dot ${task.priority}`} style={{ width: 8, height: 8 }} />
+                  <span className="archive-task-title">{task.title}</span>
+                  {projectName(task.project_id) && (
+                    <span className="project-tag">{projectName(task.project_id)}</span>
+                  )}
+                </div>
+                {task.notes && <p className="task-notes" style={{ paddingLeft: '1.1rem' }}>{task.notes}</p>}
+                {taskUpdates.length > 0 && (
+                  <div className="archive-task-updates">
+                    {taskUpdates.map(u => (
+                      <div key={u.id} className="update-item">
+                        <span className="update-body">{u.body}</span>
+                        <span className="update-meta">
+                          {u.profiles?.display_name && <>{u.profiles.display_name} · </>}
+                          {formatDate(u.created_at.slice(0, 10))}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
