@@ -28,13 +28,14 @@
 .stat {
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--r-lg);
   padding: 0.65rem 1rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.2rem;
   flex: 1;
+  box-shadow: var(--shadow-card);
 }
 
 .stat-num { font-size: 1.4rem; font-weight: 700; color: var(--accent); line-height: 1; }
@@ -53,8 +54,9 @@
 .updates-feed {
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--r-lg);
   overflow: hidden;
+  box-shadow: var(--shadow-card);
 }
 
 .updates-feed-header {
@@ -124,8 +126,8 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
-.dot-high   { background: #ef4444; }
-.dot-medium { background: #f59e0b; }
+.dot-high   { background: var(--prio-high); }
+.dot-medium { background: var(--prio-medium); }
 .dot-low    { background: var(--text-4); }
 
 .updates-feed-update {

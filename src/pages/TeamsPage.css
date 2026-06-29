@@ -8,8 +8,9 @@
 .teams-list-col, .team-detail-col {
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--r-lg);
   padding: 1.1rem;
+  box-shadow: var(--shadow-card);
 }
 
 .teams-list-col h2, .team-detail-col h2 { font-size: 1rem; font-weight: 600; margin-bottom: 0.65rem; color: var(--text-1); }
@@ -140,7 +141,7 @@
   white-space: nowrap;
 }
 .sort-btn:hover { color: var(--text-1); }
-.sort-btn.active { background: #071013; color: #C3F73A; }
+.sort-btn.active { background: var(--accent); color: var(--accent-on); }
 
 /* Project grid */
 .project-grid {
@@ -151,22 +152,24 @@
 }
 
 .project-tile {
-  background: var(--bg-subtle);
+  background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--r-lg);
   padding: 0.9rem;
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
   cursor: pointer;
-  transition: border-color 0.15s, transform 0.1s;
+  transition: border-color 0.15s, transform 0.1s, box-shadow 0.15s;
   position: relative;
+  box-shadow: var(--shadow-card);
 }
 .project-tile:hover {
-  border-color: #C3F73A;
+  border-color: var(--brand-lime);
   transform: translateY(-1px);
+  box-shadow: var(--shadow-pop);
 }
-.project-tile:focus-visible { outline: 2px solid #C3F73A; outline-offset: 2px; }
+.project-tile:focus-visible { outline: 2px solid var(--brand-lime); outline-offset: 2px; }
 
 .tile-top {
   display: flex;
@@ -219,7 +222,7 @@
   color: var(--text-1);
   line-height: 1;
 }
-.tile-stat-num.high { color: #ef4444; }
+.tile-stat-num.high { color: var(--prio-high); }
 .tile-stat-label { font-size: 0.65rem; color: var(--text-4); white-space: nowrap; }
 
 .tile-progress {
@@ -229,7 +232,7 @@
   overflow: hidden;
   margin-top: 0.1rem;
 }
-.tile-progress-fill { height: 100%; background: #C3F73A; border-radius: 3px; transition: width 0.4s; }
+.tile-progress-fill { height: 100%; background: var(--brand-lime); border-radius: 3px; transition: width 0.4s; }
 
 .tile-date { font-size: 0.72rem; color: var(--text-4); }
 
@@ -330,7 +333,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  box-shadow: var(--shadow-pop);
 }
 
 .task-form h2 { font-size: 1rem; font-weight: 600; color: var(--text-1); }

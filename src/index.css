@@ -3,7 +3,7 @@
   --bg-surface: #ffffff;
   --bg-subtle:  #f8fff8;
   --bg-muted:   #f5f5f4;
-  --bg-accent:  #F6D0B1;
+  --bg-accent:  #eef9dd;
 
   --border:        #e7e5e4;
   --border-subtle: #f0eeec;
@@ -21,9 +21,37 @@
   --accent:      #071013;
   --accent-hover:#1a3d2a;
   --accent-dim:  #3d6b50;
-  --accent-bg:   #F6D0B1;
-  --accent-text: #6b2d1a;
+  --accent-bg:   #eef9dd;
+  --accent-text: #3b6d11;
   --accent-on:   #C3F73A;
+
+  /* Fixed brand colors — identical in both themes */
+  --brand-ink:  #071013;
+  --brand-lime: #C3F73A;
+
+  /* Priority */
+  --prio-high:   #ef4444;
+  --prio-medium: #f59e0b;
+  --prio-low:    #94a3b8;
+
+  /* Type scale */
+  --fs-xs:      0.75rem;    /* 12px — labels, badges, meta */
+  --fs-sm:      0.8125rem;  /* 13px — secondary text */
+  --fs-md:      0.875rem;   /* 14px — body, controls */
+  --fs-lg:      0.9375rem;  /* 15px — card titles */
+  --fs-xl:      1.0625rem;  /* 17px — section headings */
+  --fs-2xl:     1.3125rem;  /* 21px — hero, project name */
+  --fs-display: 1.6rem;     /* big stat numerals */
+
+  /* Radii */
+  --r-sm:   6px;
+  --r-md:   8px;
+  --r-lg:   12px;
+  --r-pill: 999px;
+
+  /* Elevation */
+  --shadow-card: 0 1px 3px rgba(7,16,19,0.07);
+  --shadow-pop:  0 16px 48px rgba(7,16,19,0.18);
 
   --red-bg:     #fee2e2;
   --red-text:   #991b1b;
@@ -70,6 +98,9 @@ html[data-theme="dark"] {
   --green-bg:   #052e16;
   --green-text: #86efac;
   --today-bg:   #1c2f08;
+
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-pop:  0 16px 48px rgba(0,0,0,0.55);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
