@@ -220,6 +220,16 @@ export default function BoardPage() {
     await supabase.from('projects').update(updates).eq('id', id)
   }
 
+  async function archiveDoneTasks() {
+    const done = tasks.filter(t => t.status === 'done')
+    if (!done.length) return
+    await Promise.all(done.map(t =>
+      supabase.from('tasks')
+        .update({ status: 'archived', archived_at: t.updated_at || t.created_at })
+        .eq('id', t.id)
+    ))
+  }
+
   if (loading) return <div className="loading">Loading tasks…</div>
 
   const teamName = currentTeamId ? (teams.find(t => t.id === currentTeamId)?.name || 'Team') : 'Personal'
@@ -243,6 +253,7 @@ export default function BoardPage() {
         onDeleteUpdate={deleteUpdate}
         onUpdateAssignees={updateAssignees}
         onTaskDone={task => setDoneTask(task)}
+        onArchiveAll={archiveDoneTasks}
       />
       {doneTask && (
         <DoneTaskModal

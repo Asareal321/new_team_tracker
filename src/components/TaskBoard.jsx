@@ -57,7 +57,7 @@ function dueClass(dateStr) {
 export default function TaskBoard({
   tasks, teamMembers, projects, taskUpdates,
   currentUserId, currentTeamId,
-  onAdd, onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onTaskDone,
+  onAdd, onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onTaskDone, onArchiveAll,
 }) {
   const [showForm, setShowForm]   = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -203,6 +203,7 @@ export default function TaskBoard({
         onUpdateAssignees={onUpdateAssignees}
         onStartEdit={startEdit}
         onTaskDone={onTaskDone}
+        onArchiveAll={onArchiveAll}
         onOpenForm={() => { setShowForm(true); setEditingId(null); setForm(defaultForm()) }}
       />
     </div>
@@ -214,7 +215,7 @@ export default function TaskBoard({
 function PriorityBoard({
   tasks, activeTab, setActiveTab, byStatus,
   projectName, updatesForTask, resolveAssignees, teamMembers,
-  onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onStartEdit, onOpenForm, onTaskDone,
+  onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onStartEdit, onOpenForm, onTaskDone, onArchiveAll,
 }) {
   const [activeId, setActiveId] = useState(null)
   const [draftUpdates, setDraftUpdates] = useState(() => {
@@ -306,7 +307,16 @@ function PriorityBoard({
               <span className="tab-count">{byStatus('archived').length}</span>
             </button>
           </div>
-          <button className="btn-primary btn-sm" onClick={onOpenForm}>+ Add Task</button>
+          <div className="tabs-actions">
+            {activeTab === 'done' && byStatus('done').length > 0 && (
+              <button className="btn-ghost btn-sm" onClick={() => {
+                if (window.confirm(`Archive all ${byStatus('done').length} completed task(s)?`)) onArchiveAll()
+              }}>
+                Archive all ({byStatus('done').length})
+              </button>
+            )}
+            <button className="btn-primary btn-sm" onClick={onOpenForm}>+ Add Task</button>
+          </div>
         </div>
 
         {activeTab === 'archived' ? (
