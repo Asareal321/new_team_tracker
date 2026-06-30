@@ -104,13 +104,20 @@ export default function BoardPage() {
     const { data } = await query
     let tasks = data || []
 
-    // At end of day, archive any task that was marked Done before today.
-    // archived_at is stamped with the completion date so it lands on the
-    // calendar under the day the task was actually finished.
-    const today = new Date().toISOString().slice(0, 10)
+    // At end of day (in the user's LOCAL timezone), archive any task that
+    // was marked Done on a previous day. Until then a Done task stays in the
+    // Done tab. Comparing local dates — not UTC — prevents tasks from being
+    // archived the same evening they're completed. archived_at keeps the
+    // original done timestamp so the task lands on the calendar under the
+    // day it was actually finished.
+    const localDay = ts => {
+      const d = ts ? new Date(ts) : new Date()
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    }
+    const today = localDay()
     const toArchive = tasks.filter(t => {
-      const doneDate = (t.updated_at || t.created_at)?.slice(0, 10)
-      return t.status === 'done' && doneDate && doneDate < today
+      const ts = t.updated_at || t.created_at
+      return t.status === 'done' && ts && localDay(ts) < today
     })
     if (toArchive.length) {
       await Promise.all(toArchive.map(t =>

@@ -23,7 +23,24 @@ create trigger tasks_set_updated_at
   for each row execute function set_task_updated_at();
 
 -- 3. Backfill archived_at for tasks that are already archived so they
---    appear on the calendar (uses created_at as the best available date).
-update tasks
-  set archived_at = coalesce(archived_at, created_at)
-  where status = 'archived';
+--    appear on the calendar. Use the task's most recent update (≈ when it
+--    was marked Done) as the completion date, falling back to created_at
+--    only when the task has no updates at all.
+update tasks t
+  set archived_at = coalesce(
+    t.archived_at,
+    (select max(tu.created_at) from task_updates tu where tu.task_id = t.id),
+    t.created_at
+  )
+  where t.status = 'archived';
+
+-- 3b. OPTIONAL — only if you ran an earlier version of this migration that
+--     stamped archived_at with the creation date. This RE-derives the
+--     completion date from each archived task's last update. It overwrites
+--     archived_at for archived tasks, so run it once, then stop.
+-- update tasks t
+--   set archived_at = coalesce(
+--     (select max(tu.created_at) from task_updates tu where tu.task_id = t.id),
+--     t.created_at
+--   )
+--   where t.status = 'archived';

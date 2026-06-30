@@ -24,6 +24,14 @@ function initials(name) {
 
 function todayStr() { return new Date().toISOString().slice(0, 10) }
 
+// Local-timezone YYYY-MM-DD for a timestamp (or now). Used by the archive
+// calendar so tasks land on the day they were finished in the user's own
+// timezone, not the UTC day.
+function localDayStr(ts) {
+  const d = ts ? new Date(ts) : new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function formatDate(dateStr) {
   return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
@@ -654,8 +662,9 @@ function ArchiveCalendar({ tasks, updatesForTask, projectName }) {
 
   const tasksByDate = {}
   tasks.forEach(t => {
-    const d = (t.archived_at || t.updated_at || t.created_at)?.slice(0, 10)
-    if (d) {
+    const ts = t.archived_at || t.updated_at || t.created_at
+    if (ts) {
+      const d = localDayStr(ts)
       if (!tasksByDate[d]) tasksByDate[d] = []
       tasksByDate[d].push(t)
     }
@@ -691,7 +700,7 @@ function ArchiveCalendar({ tasks, updatesForTask, projectName }) {
           const ds = dayStr(day)
           const count = (tasksByDate[ds] || []).length
           const isSelected = selectedDay === ds
-          const isToday = ds === todayStr()
+          const isToday = ds === localDayStr()
           return (
             <div key={ds}
               className={`cal-cell${count ? ' has-tasks' : ''}${isSelected ? ' selected' : ''}${isToday ? ' is-today' : ''}`}
