@@ -22,18 +22,19 @@ export default function Layout() {
 
   return (
     <div className="app">
-      <header className="app-header">
-        <div className="header-left">
+      <aside className="app-sidebar">
+        <div className="sidebar-brand">
           <span className="logo">⬡</span>
-          <h1>trakkit</h1>
+          <span className="brand-name">trakkit</span>
         </div>
-        <nav className="header-nav">
+        <nav className="sidebar-nav">
           <NavLink to="/" className={navClass} end>Taskboard</NavLink>
           <NavLink to="/timeline" className={navClass}>Timeline</NavLink>
           <NavLink to="/teams" className={navClass}>Teams</NavLink>
           <NavLink to="/summary" className={navClass}>Daily Summary</NavLink>
+          <NavLink to="/account" className={navClass}>Account</NavLink>
         </nav>
-        <div className="header-right">
+        <div className="sidebar-foot">
           <select
             className="team-switcher"
             value={currentTeamId || ''}
@@ -43,11 +44,11 @@ export default function Layout() {
             {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
           <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}>
-            {theme === 'dark' ? '☀' : '☾'}
+            <span>{theme === 'dark' ? '☀' : '☾'}</span>
+            <span className="theme-toggle-label">{theme === 'dark' ? 'Light' : 'Dark'}</span>
           </button>
-          <NavLink to="/account" className={navClass}>Account</NavLink>
         </div>
-      </header>
+      </aside>
 
       <main className="app-main">
         <Outlet />
