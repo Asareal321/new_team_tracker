@@ -30,6 +30,7 @@ create table profiles (
 create table teams (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  invite_code text unique not null default substr(replace(gen_random_uuid()::text, '-', ''), 1, 8),
   created_by uuid references profiles(id) on delete set null,
   created_at timestamptz not null default now()
 );
@@ -167,9 +168,20 @@ create or replace function create_team(_name text)
 returns uuid language plpgsql security definer as $$
 declare
   _team_id uuid;
+  _code    text;
 begin
-  insert into teams (name, created_by) values (_name, auth.uid()) returning id into _team_id;
-  insert into team_members (team_id, user_id, role) values (_team_id, auth.uid(), 'owner');
+  loop
+    _code := substr(replace(gen_random_uuid()::text, '-', ''), 1, 8);
+    exit when not exists (select 1 from teams where invite_code = _code);
+  end loop;
+
+  insert into teams (name, created_by, invite_code)
+    values (_name, auth.uid(), _code)
+    returning id into _team_id;
+
+  insert into team_members (team_id, user_id, role)
+    values (_team_id, auth.uid(), 'owner');
+
   return _team_id;
 end;
 $$;
@@ -179,14 +191,14 @@ returns uuid language plpgsql security definer as $$
 declare
   _team_id uuid;
 begin
-  select team_id into _team_id from team_invites where code = _code;
+  select id into _team_id from teams where invite_code = _code;
   if _team_id is null then
     raise exception 'Invalid invite code';
   end if;
 
   insert into team_members (team_id, user_id, role)
-  values (_team_id, auth.uid(), 'member')
-  on conflict (team_id, user_id) do nothing;
+    values (_team_id, auth.uid(), 'member')
+    on conflict (team_id, user_id) do nothing;
 
   return _team_id;
 end;

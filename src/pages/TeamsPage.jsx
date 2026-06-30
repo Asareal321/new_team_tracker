@@ -17,7 +17,6 @@ export default function TeamsPage() {
   const [teamError, setTeamError] = useState('')
 
   const [members, setMembers] = useState([])
-  const [inviteCode, setInviteCode] = useState('')
   const [copied, setCopied] = useState(false)
 
   const [projects, setProjects] = useState([])
@@ -66,7 +65,6 @@ export default function TeamsPage() {
   }, [currentTeamId])
 
   useEffect(() => {
-    setInviteCode('')
     fetchMembers()
     fetchProjects()
 
@@ -101,17 +99,8 @@ export default function TeamsPage() {
     setCurrentTeam(data)
   }
 
-  async function generateInvite() {
-    const { data, error } = await supabase
-      .from('team_invites')
-      .insert([{ team_id: currentTeamId, created_by: user.id }])
-      .select('code')
-      .single()
-    if (!error) setInviteCode(data.code)
-  }
-
   function copyInvite() {
-    navigator.clipboard.writeText(inviteCode)
+    navigator.clipboard.writeText(currentTeam?.invite_code || '')
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
@@ -186,13 +175,14 @@ export default function TeamsPage() {
                   </div>
                 ))}
               </div>
-              {isOwner && (
-                <button className="btn-ghost" onClick={generateInvite}>Generate Invite Code</button>
-              )}
-              {inviteCode && (
-                <div className="invite-code">
-                  <span>{inviteCode}</span>
-                  <button className="btn-copy" onClick={copyInvite}>{copied ? '✓ Copied' : 'Copy'}</button>
+              {isOwner && currentTeam?.invite_code && (
+                <div className="invite-code-row">
+                  <span className="invite-code-label">Invite code</span>
+                  <div className="invite-code">
+                    <span className="invite-code-value">{currentTeam.invite_code}</span>
+                    <button className="btn-copy" onClick={copyInvite}>{copied ? '✓ Copied' : 'Copy'}</button>
+                  </div>
+                  <p className="invite-code-hint">Share this code with teammates — it never changes.</p>
                 </div>
               )}
             </section>

@@ -19,12 +19,12 @@ export function TeamProvider({ children }) {
     }
     const { data } = await supabase
       .from('team_members')
-      .select('role, teams(id, name)')
+      .select('role, teams(id, name, invite_code)')
       .eq('user_id', user.id)
 
     const list = (data || [])
       .filter(r => r.teams)
-      .map(r => ({ id: r.teams.id, name: r.teams.name, role: r.role }))
+      .map(r => ({ id: r.teams.id, name: r.teams.name, invite_code: r.teams.invite_code, role: r.role }))
     setTeams(list)
     setLoading(false)
 
