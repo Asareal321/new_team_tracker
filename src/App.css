@@ -22,11 +22,40 @@
 .sidebar-brand {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.55rem;
   padding: 0.25rem 0.6rem 0.85rem;
 }
-.logo { font-size: 1.5rem; color: var(--brand-lime); }
-.brand-name { font-size: 1.2rem; font-weight: 600; color: var(--brand-lime); letter-spacing: 0.01em; }
+.brand-icon { display: inline-flex; color: var(--brand-lime); flex-shrink: 0; }
+.brand-icon svg { width: 26px; height: 26px; display: block; }
+.brand-wordmark {
+  position: relative;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--brand-lime);
+  letter-spacing: -0.01em;
+  line-height: 1;
+  padding-bottom: 7px;
+}
+.brand-wordmark::after {
+  content: "";
+  position: absolute;
+  left: 1px;
+  right: 7px;
+  bottom: 2px;
+  height: 2px;
+  border-radius: var(--r-pill);
+  background: var(--brand-lime);
+}
+.brand-wordmark::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--brand-lime);
+}
 
 .sidebar-nav { display: flex; flex-direction: column; gap: 0.2rem; }
 

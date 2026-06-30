@@ -24,8 +24,13 @@ export default function Layout() {
     <div className="app">
       <aside className="app-sidebar">
         <div className="sidebar-brand">
-          <span className="logo">⬡</span>
-          <span className="brand-name">trakkit</span>
+          <span className="brand-icon" aria-hidden="true">
+            <svg viewBox="0 0 32 32">
+              <rect x="3" y="3" width="26" height="26" rx="7" fill="none" stroke="currentColor" strokeWidth="2.5" />
+              <path d="M10 16.5 L14 20.5 L22 11.5" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+          <span className="brand-wordmark">trakkit</span>
         </div>
         <nav className="sidebar-nav">
           <NavLink to="/" className={navClass} end>Taskboard</NavLink>
