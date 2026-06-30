@@ -20,7 +20,28 @@
   box-shadow: 0 20px 60px rgba(0,0,0,0.1);
 }
 
-.auth-logo { font-size: 1.05rem; font-weight: 600; color: var(--accent); text-align: center; }
+.auth-back {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--text-3);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: -0.25rem;
+}
+.auth-back:hover { color: var(--text-1); }
+
+.auth-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--accent);
+}
 
 .auth-card h2 { font-size: 1.1rem; font-weight: 600; text-align: center; color: var(--text-1); }
 

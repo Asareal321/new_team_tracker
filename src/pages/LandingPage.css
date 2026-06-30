@@ -1,0 +1,173 @@
+.landing {
+  min-height: 100vh;
+  background: #ffffff;
+  color: #071013;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.l-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.l-hero-wrap {
+  background: #f4f7ec;
+  border-bottom: 1px solid #e7eadf;
+}
+
+/* ── Nav ── */
+.l-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 0;
+}
+.l-brand { display: flex; align-items: center; gap: 0.55rem; }
+.l-wordmark {
+  position: relative;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  color: #071013;
+  padding-bottom: 7px;
+}
+.l-wordmark::after {
+  content: "";
+  position: absolute;
+  left: 1px; right: 7px; bottom: 2px;
+  height: 2px; border-radius: 999px;
+  background: #7fb519;
+}
+.l-wordmark::before {
+  content: "";
+  position: absolute;
+  right: 0; bottom: 0;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #7fb519;
+}
+.l-nav-actions { display: flex; align-items: center; gap: 1rem; }
+
+.l-link {
+  background: none;
+  border: none;
+  color: #5b6b5e;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.l-link:hover { color: #071013; }
+
+.l-btn {
+  cursor: pointer;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: filter 0.15s, background 0.15s;
+}
+.l-btn-dark {
+  background: #071013;
+  color: #c3f73a;
+  border: none;
+  font-size: 0.875rem;
+  padding: 0.5rem 1.05rem;
+  border-radius: 999px;
+}
+.l-btn-dark:hover { filter: brightness(1.25); }
+.l-btn-primary {
+  background: #c3f73a;
+  color: #071013;
+  border: none;
+  font-size: 0.95rem;
+  padding: 0.7rem 1.4rem;
+}
+.l-btn-primary:hover { filter: brightness(0.95); }
+.l-btn-ghost {
+  background: transparent;
+  color: #071013;
+  border: 1px solid #071013;
+  font-size: 0.95rem;
+  padding: 0.7rem 1.4rem;
+}
+.l-btn-ghost:hover { background: rgba(7,16,19,0.05); }
+
+/* ── Hero ── */
+.l-hero { padding: 2.5rem 0 0; max-width: 540px; }
+.l-headline {
+  font-size: 3rem;
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 1rem;
+}
+.l-underline { border-bottom: 4px solid #c3f73a; padding-bottom: 2px; }
+.l-sub {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #5b6b5e;
+  margin: 0 0 1.6rem;
+}
+.l-cta { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+/* ── Board preview ── */
+.l-board {
+  margin-top: 2.5rem;
+  background: #ffffff;
+  border: 1px solid #e7eadf;
+  border-radius: 14px;
+  padding: 1rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  box-shadow: 0 12px 40px rgba(7,16,19,0.06);
+  transform: translateY(1.5rem);
+}
+.l-col { background: #f6f8f1; border-radius: 10px; padding: 0.7rem; }
+.l-col-h { font-size: 0.8rem; font-weight: 600; color: #6b7a66; margin-bottom: 0.6rem; }
+.l-card {
+  background: #fff;
+  border: 1px solid #e6e6df;
+  border-radius: 8px;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.825rem;
+  color: #2c2c2a;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.l-card:last-child { margin-bottom: 0; }
+.l-card-done { background: #eef9dd; border-color: #d6ecb3; color: #3b6d11; font-weight: 500; }
+.l-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.l-dot-high { background: #ef4444; }
+.l-dot-med { background: #f59e0b; }
+.l-dot-low { background: #94a3b8; }
+
+/* ── Features ── */
+.l-features { padding: 4rem 0 3.5rem; }
+.l-feat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+.l-feat-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: #eef9dd;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 0.9rem;
+}
+.l-feat h3 { font-size: 1.05rem; font-weight: 600; margin: 0 0 0.4rem; color: #071013; }
+.l-feat p { font-size: 0.9rem; line-height: 1.55; color: #5b6b5e; margin: 0; }
+
+/* ── Footer ── */
+.l-foot { border-top: 1px solid #e7eadf; padding: 1.5rem 0; }
+.l-foot-inner { display: flex; align-items: center; justify-content: space-between; }
+.l-brand-sm .l-wordmark { font-size: 1.05rem; }
+.l-foot-note { font-size: 0.85rem; color: #8a978c; }
+
+@media (max-width: 640px) {
+  .l-headline { font-size: 2.25rem; }
+  .l-board { grid-template-columns: 1fr; }
+  .l-cta { flex-direction: column; align-items: stretch; }
+}
