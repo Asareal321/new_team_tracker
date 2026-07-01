@@ -206,6 +206,9 @@
 .project-tile.pc-3 { background: #FAEEDA; --text-1: #633806; --text-3: #854F0B; --text-4: #854F0B; }
 .project-tile.pc-4 { background: #EEEDFE; --text-1: #3C3489; --text-3: #534AB7; --text-4: #534AB7; }
 .project-tile.pc-5 { background: #FAECE7; --text-1: #712B13; --text-3: #993C1D; --text-4: #993C1D; }
+.project-tile.pc-6 { background: #EAF3DE; --text-1: #27500A; --text-3: #3B6D11; --text-4: #3B6D11; }
+.project-tile.pc-7 { background: #FCEBEB; --text-1: #791F1F; --text-3: #A32D2D; --text-4: #A32D2D; }
+.project-tile.pc-8 { background: #F1EFE8; --text-1: #2C2C2A; --text-3: #5F5E5A; --text-4: #5F5E5A; }
 
 html[data-theme="dark"] .project-tile[class*="pc-"] { border-color: rgba(255,255,255,0.08); }
 html[data-theme="dark"] .project-tile.pc-0 { background: #0E2E4E; --text-1: #B5D4F4; --text-3: #85B7EB; --text-4: #85B7EB; }
@@ -214,6 +217,9 @@ html[data-theme="dark"] .project-tile.pc-2 { background: #3E1526; --text-1: #F4C
 html[data-theme="dark"] .project-tile.pc-3 { background: #3A2408; --text-1: #FAC775; --text-3: #EF9F27; --text-4: #EF9F27; }
 html[data-theme="dark"] .project-tile.pc-4 { background: #201B4A; --text-1: #CECBF6; --text-3: #AFA9EC; --text-4: #AFA9EC; }
 html[data-theme="dark"] .project-tile.pc-5 { background: #3A1810; --text-1: #F5C4B3; --text-3: #F0997B; --text-4: #F0997B; }
+html[data-theme="dark"] .project-tile.pc-6 { background: #223A0A; --text-1: #C0DD97; --text-3: #97C459; --text-4: #97C459; }
+html[data-theme="dark"] .project-tile.pc-7 { background: #3A1414; --text-1: #F7C1C1; --text-3: #F09595; --text-4: #F09595; }
+html[data-theme="dark"] .project-tile.pc-8 { background: #2A2A28; --text-1: #D3D1C7; --text-3: #B4B2A9; --text-4: #B4B2A9; }
 
 /* Progress track: subtle wash so it reads on the tint in both modes */
 .project-tile[class*="pc-"] .tile-progress { background: rgba(7,16,19,0.08); }
