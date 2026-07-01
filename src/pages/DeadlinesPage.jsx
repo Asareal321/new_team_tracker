@@ -40,7 +40,7 @@ export default function DeadlinesPage() {
   const [loading, setLoading] = useState(true)
 
   const fetchTasks = useCallback(async () => {
-    let query = supabase.from('tasks').select('*')
+    let query = supabase.from('tasks').select('*, task_assignees(user_id)')
     query = currentTeamId
       ? query.eq('team_id', currentTeamId)
       : query.is('team_id', null).eq('user_id', user.id)
@@ -76,18 +76,57 @@ export default function DeadlinesPage() {
 
   if (loading) return <div className="loading">Loading deadlines…</div>
 
-  return <DeadlinesCalendar tasks={tasks} projects={projects} members={members} />
+  return (
+    <DeadlinesCalendar
+      tasks={tasks}
+      projects={projects}
+      members={members}
+      currentUserId={user.id}
+      showPeopleFilter={!!currentTeamId && members.length > 1}
+    />
+  )
 }
 
-export function DeadlinesCalendar({ tasks, projects, members }) {
+export function DeadlinesCalendar({ tasks, projects, members, currentUserId, showPeopleFilter }) {
   const [cursor, setCursor] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1) })
   const [overdueOpen, setOverdueOpen] = useState(false)
+  const [selectedDay, setSelectedDay] = useState(null)
+  const [everyone, setEveryone] = useState(false)
+  const [selectedMembers, setSelectedMembers] = useState(() => new Set(currentUserId ? [currentUserId] : []))
 
   const today = ymd(new Date())
+  const meMember = members.find(m => m.id === currentUserId)
+  const otherMembers = members.filter(m => m.id !== currentUserId)
   const memberName = (id) => members.find(m => m.id === id)?.display_name
 
-  // Outstanding task deadlines only (skip done/archived).
-  const dueTasks = tasks.filter(t => t.due_date && t.status !== 'done' && t.status !== 'archived')
+  function assigneeIdsOf(t) {
+    const ids = new Set((t.task_assignees || []).map(a => a.user_id))
+    if (t.assignee_id) ids.add(t.assignee_id)
+    return ids
+  }
+  function taskVisible(t) {
+    if (!showPeopleFilter || everyone) return true
+    if (selectedMembers.size === 0) return true
+    const ids = assigneeIdsOf(t)
+    for (const id of selectedMembers) if (ids.has(id)) return true
+    return false
+  }
+  function toggleMember(id) {
+    setEveryone(false)
+    setSelectedMembers(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      if (next.size === 0) return new Set(currentUserId ? [currentUserId] : [])
+      return next
+    })
+  }
+  function resolveAssignees(t) {
+    return [...assigneeIdsOf(t)].map(id => members.find(m => m.id === id)).filter(Boolean)
+  }
+
+  // Outstanding task deadlines (skip done/archived), filtered by people; project
+  // deadlines are team milestones shown regardless of the people filter.
+  const dueTasks = tasks.filter(t => t.due_date && t.status !== 'done' && t.status !== 'archived' && taskVisible(t))
   const dueProjects = projects.filter(p => p.target_date && p.status !== 'completed')
 
   const overdue = dueTasks
@@ -107,13 +146,52 @@ export function DeadlinesCalendar({ tasks, projects, members }) {
 
   function goToday() { const n = new Date(); setCursor(new Date(n.getFullYear(), n.getMonth(), 1)) }
 
+  // Upcoming = everything due today or later, merged and sorted by date.
+  const upcoming = [
+    ...dueProjects.filter(p => p.target_date >= today).map(p => ({ date: p.target_date, type: 'project', item: p })),
+    ...dueTasks.filter(t => t.due_date >= today).map(t => ({ date: t.due_date, type: 'task', item: t })),
+  ].sort((a, b) => a.date.localeCompare(b.date))
+  const upcomingByDate = upcoming.reduce((acc, e) => { (acc[e.date] ||= []).push(e); return acc }, {})
+  const upcomingDates = Object.keys(upcomingByDate).sort()
+
+  const selTasks = selectedDay ? tasksOn(selectedDay) : []
+  const selProjects = selectedDay ? projectsOn(selectedDay) : []
+
+  const chipMember = (id) => id === currentUserId ? 'My tasks' : (memberName(id)?.split(/\s+/)[0] || '')
+
   return (
     <div className="deadlines-page">
+      {showPeopleFilter && (
+        <div className="dlf-bar">
+          <span className="dlf-label">Viewing</span>
+          {meMember && (
+            <button type="button"
+              className={`dlf-chip${!everyone && selectedMembers.has(currentUserId) ? ' selected' : ''}`}
+              onClick={() => toggleMember(currentUserId)}>
+              <span className="dlf-ini">{initials(meMember.display_name)}</span>My tasks
+            </button>
+          )}
+          {otherMembers.length > 0 && <span className="dlf-vr" />}
+          {otherMembers.map(m => (
+            <button key={m.id} type="button"
+              className={`dlf-chip${!everyone && selectedMembers.has(m.id) ? ' selected' : ''}`}
+              title={m.display_name}
+              onClick={() => toggleMember(m.id)}>
+              <span className="dlf-ini">{initials(m.display_name)}</span>{chipMember(m.id)}
+            </button>
+          ))}
+          <span className="dlf-vr" />
+          <button type="button"
+            className={`dlf-chip dlf-everyone${everyone ? ' selected' : ''}`}
+            onClick={() => setEveryone(true)}>Everyone</button>
+        </div>
+      )}
+
       <div className="dl-toolbar">
         <div className="dl-monthnav">
-          <button className="dl-navbtn" aria-label="Previous month" onClick={() => setCursor(new Date(year, month - 1, 1))}>‹</button>
+          <button className="dl-navbtn" aria-label="Previous month" onClick={() => { setCursor(new Date(year, month - 1, 1)); setSelectedDay(null) }}>‹</button>
           <span className="dl-month">{MONTHS[month]} {year}</span>
-          <button className="dl-navbtn" aria-label="Next month" onClick={() => setCursor(new Date(year, month + 1, 1))}>›</button>
+          <button className="dl-navbtn" aria-label="Next month" onClick={() => { setCursor(new Date(year, month + 1, 1)); setSelectedDay(null) }}>›</button>
           <button className="dl-today-btn" onClick={goToday}>Today</button>
         </div>
         {overdue.length > 0 && (
@@ -132,7 +210,7 @@ export function DeadlinesCalendar({ tasks, projects, members }) {
               <span className="dl-od-dot" style={{ background: priorityColor(t.priority) }} />
               <span className="dl-od-title">{t.title}</span>
               <span className="dl-od-date">{formatDate(t.due_date)}</span>
-              {memberName(t.assignee_id) && <span className="dl-od-av">{initials(memberName(t.assignee_id))}</span>}
+              {resolveAssignees(t).slice(0, 1).map(m => <span key={m.id} className="dl-od-av">{initials(m.display_name)}</span>)}
             </div>
           ))}
         </div>
@@ -150,31 +228,61 @@ export function DeadlinesCalendar({ tasks, projects, members }) {
             const inMonth = d.getMonth() === month
             const isWknd = d.getDay() === 0 || d.getDay() === 6
             const isToday = dStr === today
-            const dayTasks = tasksOn(dStr)
-            const dayProjects = projectsOn(dStr)
+            const nTasks = tasksOn(dStr).length
+            const nProjects = projectsOn(dStr).length
+            const hasItems = nTasks > 0 || nProjects > 0
+            const isSelected = dStr === selectedDay
             return (
-              <div key={i} className={`dl-day${inMonth ? '' : ' out'}${isWknd ? ' wknd' : ''}${isToday ? ' today' : ''}`}>
+              <div
+                key={i}
+                className={`dl-day${inMonth ? '' : ' out'}${isWknd ? ' wknd' : ''}${isToday ? ' today' : ''}${hasItems ? ' clickable' : ''}${isSelected ? ' selected' : ''}`}
+                onClick={hasItems ? () => setSelectedDay(isSelected ? null : dStr) : undefined}
+                role={hasItems ? 'button' : undefined}
+                tabIndex={hasItems ? 0 : undefined}
+                onKeyDown={hasItems ? (e => e.key === 'Enter' && setSelectedDay(isSelected ? null : dStr)) : undefined}
+              >
                 <span className="dl-daynum">{d.getDate()}</span>
-                {dayProjects.map(p => (
-                  <span key={p.id} className="dl-milestone" style={{ borderLeftColor: projectDotColor(p.id) }} title={`Project deadline: ${p.name}`}>
-                    <span className="dl-flag" style={{ color: projectDotColor(p.id) }}>⚑</span>
-                    <span className="dl-ms-name">{p.name}</span>
-                  </span>
-                ))}
-                {dayTasks.slice(0, 3).map(t => {
-                  const tint = t.project_id ? projectTint(t.project_id) : { bg: 'var(--bg-muted)', text: 'var(--text-2)' }
-                  return (
-                    <span key={t.id} className="dl-chip" style={{ background: tint.bg, color: tint.text }} title={t.title}>
-                      <span className="dl-pdot" style={{ background: priorityColor(t.priority) }} />
-                      <span className="dl-chip-title">{t.title}</span>
-                    </span>
-                  )
-                })}
-                {dayTasks.length > 3 && <span className="dl-more">+{dayTasks.length - 3} more</span>}
+                {nProjects > 0 && (
+                  <span className="dl-count dl-count-proj"><span className="dl-flag">⚑</span>{nProjects} project{nProjects > 1 ? 's' : ''}</span>
+                )}
+                {nTasks > 0 && (
+                  <span className="dl-count dl-count-task">{nTasks} task{nTasks > 1 ? 's' : ''}</span>
+                )}
               </div>
             )
           })}
         </div>
+      </div>
+
+      {selectedDay && (selTasks.length > 0 || selProjects.length > 0) && (
+        <div className="dl-day-detail">
+          <div className="dl-detail-head">
+            <h4>{new Date(selectedDay + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</h4>
+            <button className="dl-detail-close" aria-label="Close" onClick={() => setSelectedDay(null)}>✕</button>
+          </div>
+          {selProjects.map(p => <ProjectRow key={p.id} project={p} />)}
+          {selTasks.map(t => <TaskRow key={t.id} task={t} assignees={resolveAssignees(t)} />)}
+        </div>
+      )}
+
+      <div className="dl-upcoming">
+        <h3>Upcoming deadlines</h3>
+        {upcomingDates.length === 0 ? (
+          <p className="empty-hint">Nothing due from today onward.</p>
+        ) : (
+          upcomingDates.map(date => (
+            <div key={date} className="dl-up-group">
+              <div className="dl-up-date">
+                {relativeDateLabel(date, today)}
+                <span className="dl-up-full">{new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+              </div>
+              {upcomingByDate[date].map(e => e.type === 'project'
+                ? <ProjectRow key={'p' + e.item.id} project={e.item} />
+                : <TaskRow key={'t' + e.item.id} task={e.item} assignees={resolveAssignees(e.item)} />
+              )}
+            </div>
+          ))
+        )}
       </div>
 
       <div className="dl-legend">
@@ -182,10 +290,43 @@ export function DeadlinesCalendar({ tasks, projects, members }) {
         <span><span className="dl-lg-dot" style={{ background: '#f59e0b' }} />Medium</span>
         <span><span className="dl-lg-dot" style={{ background: '#94a3b8' }} />Low</span>
         <span className="dl-lg-sep"><span className="dl-lg-flag">⚑</span> Project deadline</span>
-        <span className="dl-lg-note">Chip color = project</span>
       </div>
     </div>
   )
+}
+
+function TaskRow({ task, assignees }) {
+  const tint = task.project_id ? projectTint(task.project_id) : { bg: 'var(--bg-muted)', text: 'var(--text-2)' }
+  return (
+    <div className="dl-row">
+      <span className="dl-row-pdot" style={{ background: priorityColor(task.priority) }} title={`${task.priority} priority`} />
+      <span className="dl-row-title">{task.title}</span>
+      {task.project_id && (
+        <span className="dl-row-project" style={{ background: tint.bg, color: tint.text }}>
+          <span className="dl-row-pjdot" style={{ background: projectDotColor(task.project_id) }} />
+          Project
+        </span>
+      )}
+      {assignees.slice(0, 3).map(m => <span key={m.id} className="dl-row-av" title={m.display_name}>{initials(m.display_name)}</span>)}
+    </div>
+  )
+}
+
+function ProjectRow({ project }) {
+  return (
+    <div className="dl-row dl-row-milestone" style={{ borderLeftColor: projectDotColor(project.id) }}>
+      <span className="dl-row-flag" style={{ color: projectDotColor(project.id) }}>⚑</span>
+      <span className="dl-row-title">{project.name}</span>
+      <span className="dl-row-tag">Project deadline</span>
+    </div>
+  )
+}
+
+function relativeDateLabel(dateStr, today) {
+  const diff = daysBetween(today, dateStr)
+  if (diff === 0) return 'Today'
+  if (diff === 1) return 'Tomorrow'
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' })
 }
 
 function priorityColor(p) {

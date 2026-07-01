@@ -117,30 +117,116 @@
 .dl-day.today .dl-daynum { background: var(--brand-ink); color: var(--brand-lime); border-radius: 50%; }
 html[data-theme="dark"] .dl-day.today .dl-daynum { background: var(--brand-lime); color: var(--brand-ink); }
 .dl-day.today { background: var(--today-bg); }
+.dl-day.clickable { cursor: pointer; }
+.dl-day.clickable:hover { background: var(--bg-muted); }
+.dl-day.selected { box-shadow: inset 0 0 0 2px var(--brand-lime); }
 
-/* Task chip — pastel pill + priority dot */
-.dl-chip {
-  display: flex; align-items: center; gap: 0.3rem;
-  font-size: 0.68rem;
+/* Day summary tiles — count only; click the day to expand details */
+.dl-count {
+  display: flex; align-items: center; gap: 0.25rem;
+  font-size: 0.68rem; font-weight: 500;
   padding: 0.15rem 0.4rem;
   border-radius: 5px;
 }
-.dl-pdot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
-.dl-chip-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-/* Project milestone — distinct flagged bar */
-.dl-milestone {
-  display: flex; align-items: center; gap: 0.3rem;
-  font-size: 0.68rem; font-weight: 600;
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-  background: var(--bg-muted);
-  border-left: 3px solid var(--text-4);
-  color: var(--text-1);
-}
+.dl-count-task { background: var(--accent-bg); color: var(--accent-text); }
+.dl-count-proj { background: var(--bg-muted); color: var(--text-1); font-weight: 600; }
 .dl-flag { font-size: 0.75rem; line-height: 1; }
-.dl-ms-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dl-more { font-size: 0.62rem; color: var(--text-4); padding-left: 0.15rem; }
+
+/* ── Selected-day detail ── */
+.dl-day-detail {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.dl-detail-head { display: flex; align-items: center; justify-content: space-between; }
+.dl-detail-head h4 { font-size: 0.9rem; font-weight: 600; color: var(--text-1); }
+.dl-detail-close { border: none; background: none; color: var(--text-4); font-size: 0.85rem; }
+.dl-detail-close:hover { color: var(--text-1); }
+
+/* ── Upcoming deadlines ── */
+.dl-upcoming {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+}
+.dl-upcoming h3 { font-size: 0.95rem; font-weight: 600; color: var(--text-1); margin-bottom: 0.65rem; }
+.dl-up-group { margin-bottom: 0.75rem; }
+.dl-up-group:last-child { margin-bottom: 0; }
+.dl-up-date {
+  display: flex; align-items: baseline; gap: 0.5rem;
+  font-size: 0.78rem; font-weight: 600; color: var(--text-2);
+  padding: 0.2rem 0 0.35rem;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 0.35rem;
+}
+.dl-up-full { font-size: 0.72rem; font-weight: 500; color: var(--text-4); }
+
+/* ── Shared deadline rows (detail + upcoming) ── */
+.dl-row {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.4rem 0.15rem;
+  font-size: 0.85rem;
+}
+.dl-row + .dl-row { border-top: 1px solid var(--border-subtle); }
+.dl-row-pdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dl-row-title { flex: 1; color: var(--text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dl-row-project {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  font-size: 0.68rem; font-weight: 500;
+  padding: 0.1rem 0.45rem; border-radius: var(--r-pill);
+}
+.dl-row-pjdot { width: 6px; height: 6px; border-radius: 50%; }
+.dl-row-av {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--bg-muted); border: 1px solid var(--border);
+  color: var(--text-3); font-size: 0.62rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  margin-left: -6px;
+}
+.dl-row-av:first-of-type { margin-left: 0; }
+.dl-row-milestone { border-left: 3px solid var(--text-4); padding-left: 0.5rem; border-radius: 0; }
+.dl-row-flag { font-size: 0.85rem; }
+.dl-row-tag {
+  font-size: 0.68rem; font-weight: 500; color: var(--text-3);
+  background: var(--bg-muted); border-radius: var(--r-pill);
+  padding: 0.1rem 0.5rem;
+}
+
+/* ── People filter ── */
+.dlf-bar {
+  display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;
+  background: var(--bg-surface);
+  border-radius: 10px;
+  padding: 0.55rem 0.75rem;
+}
+.dlf-label {
+  font-size: 0.7rem; font-weight: 600; letter-spacing: 0.03em;
+  text-transform: uppercase; color: var(--text-4); margin-right: 0.15rem;
+}
+.dlf-vr { width: 1px; align-self: stretch; min-height: 20px; background: var(--border); }
+.dlf-chip {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.28rem 0.7rem 0.28rem 0.32rem;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+  background: var(--bg-muted);
+  font-size: 0.8rem; font-weight: 500; color: var(--text-2);
+}
+.dlf-chip:hover { border-color: var(--text-4); }
+.dlf-chip.selected { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+.dlf-everyone { padding: 0.28rem 0.75rem; }
+.dlf-ini {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--bg-surface); color: var(--text-3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.62rem; font-weight: 700; flex-shrink: 0;
+}
+.dlf-chip.selected .dlf-ini { background: var(--brand-lime); color: var(--brand-ink); }
 
 /* ── Legend ── */
 .dl-legend {
