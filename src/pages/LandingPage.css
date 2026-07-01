@@ -145,6 +145,13 @@
 
 /* ── Features ── */
 .l-features { padding: 4rem 0 3.5rem; }
+.l-feat-heading {
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: #071013;
+  letter-spacing: -0.02em;
+  margin: 0 0 2rem;
+}
 .l-feat-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

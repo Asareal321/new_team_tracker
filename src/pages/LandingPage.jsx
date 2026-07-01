@@ -61,7 +61,7 @@ export default function LandingPage({ onSignIn, onSignUp }) {
               <span className="l-underline">everyday</span>.
             </h1>
             <p className="l-sub">
-              Priorities, daily updates, and an end-of-day archive — so your team always knows what got done.
+              Priorities, daily updates, and an end-of-day archive — so your team always knows what got done. Simple task management built for small teams.
             </p>
             <div className="l-cta">
               <button className="l-btn l-btn-primary" onClick={onSignUp}>Get started free</button>
@@ -92,6 +92,7 @@ export default function LandingPage({ onSignIn, onSignUp }) {
 
       <section className="l-features">
         <div className="l-inner">
+          <h2 className="l-feat-heading">Task tracking built for teams</h2>
           <div className="l-feat-grid">
             <div className="l-feat">
               <div className="l-feat-icon"><FeatureBars /></div>
