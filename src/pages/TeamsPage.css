@@ -196,6 +196,29 @@
 }
 .project-tile:focus-visible { outline: 2px solid var(--brand-lime); outline-offset: 2px; }
 
+/* Pastel per-project tint — same hue family as the task-creation dots.
+   Each pc-N redefines the tile's local text tokens so name/desc/stats stay
+   readable on the tint. Light-mode values below; dark overrides further down. */
+.project-tile[class*="pc-"] { border-color: rgba(7,16,19,0.06); }
+.project-tile.pc-0 { background: #E6F1FB; --text-1: #0C447C; --text-3: #185FA5; --text-4: #185FA5; }
+.project-tile.pc-1 { background: #E1F5EE; --text-1: #085041; --text-3: #0F6E56; --text-4: #0F6E56; }
+.project-tile.pc-2 { background: #FBEAF0; --text-1: #72243E; --text-3: #993556; --text-4: #993556; }
+.project-tile.pc-3 { background: #FAEEDA; --text-1: #633806; --text-3: #854F0B; --text-4: #854F0B; }
+.project-tile.pc-4 { background: #EEEDFE; --text-1: #3C3489; --text-3: #534AB7; --text-4: #534AB7; }
+.project-tile.pc-5 { background: #FAECE7; --text-1: #712B13; --text-3: #993C1D; --text-4: #993C1D; }
+
+html[data-theme="dark"] .project-tile[class*="pc-"] { border-color: rgba(255,255,255,0.08); }
+html[data-theme="dark"] .project-tile.pc-0 { background: #0E2E4E; --text-1: #B5D4F4; --text-3: #85B7EB; --text-4: #85B7EB; }
+html[data-theme="dark"] .project-tile.pc-1 { background: #0C3A2E; --text-1: #9FE1CB; --text-3: #5DCAA5; --text-4: #5DCAA5; }
+html[data-theme="dark"] .project-tile.pc-2 { background: #3E1526; --text-1: #F4C0D1; --text-3: #ED93B1; --text-4: #ED93B1; }
+html[data-theme="dark"] .project-tile.pc-3 { background: #3A2408; --text-1: #FAC775; --text-3: #EF9F27; --text-4: #EF9F27; }
+html[data-theme="dark"] .project-tile.pc-4 { background: #201B4A; --text-1: #CECBF6; --text-3: #AFA9EC; --text-4: #AFA9EC; }
+html[data-theme="dark"] .project-tile.pc-5 { background: #3A1810; --text-1: #F5C4B3; --text-3: #F0997B; --text-4: #F0997B; }
+
+/* Progress track: subtle wash so it reads on the tint in both modes */
+.project-tile[class*="pc-"] .tile-progress { background: rgba(7,16,19,0.08); }
+html[data-theme="dark"] .project-tile[class*="pc-"] .tile-progress { background: rgba(255,255,255,0.12); }
+
 .tile-top {
   display: flex;
   align-items: center;
@@ -225,6 +248,15 @@
   font-weight: 600;
   color: var(--text-1);
   line-height: 1.3;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.tile-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 .tile-desc {
   font-size: 0.78rem;

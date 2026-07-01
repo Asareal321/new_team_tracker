@@ -8,6 +8,7 @@ import {
 } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
+import { projectDotColor } from '../lib/projectColors'
 import './TaskBoard.css'
 
 const STATUSES     = ['todo', 'in_progress', 'done', 'archived']
@@ -23,14 +24,6 @@ function initials(name) {
 }
 
 function todayStr() { return new Date().toISOString().slice(0, 10) }
-
-// Stable color per project id so pills are visually distinguishable.
-const PROJECT_COLORS = ['#378ADD', '#1D9E75', '#D4537E', '#BA7517', '#7F77DD', '#D85A30']
-function projectColor(id) {
-  let h = 0
-  for (let i = 0; i < String(id).length; i++) h = (h * 31 + String(id).charCodeAt(i)) >>> 0
-  return PROJECT_COLORS[h % PROJECT_COLORS.length]
-}
 
 // Local-timezone YYYY-MM-DD for a timestamp (or now). Used by the archive
 // calendar so tasks land on the day they were finished in the user's own
@@ -207,7 +200,7 @@ export default function TaskBoard({
                       aria-pressed={form.project_id === p.id}
                       onClick={() => setForm(f => ({ ...f, project_id: f.project_id === p.id ? null : p.id }))}
                     >
-                      <span className="qc-pjdot" style={{ background: projectColor(p.id) }} />
+                      <span className="qc-pjdot" style={{ background: projectDotColor(p.id) }} />
                       {p.name}
                     </button>
                   ))}

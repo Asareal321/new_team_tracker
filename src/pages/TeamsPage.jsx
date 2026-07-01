@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { useAuth } from '../auth/AuthContext'
 import { useTeam } from '../context/TeamContext'
+import { projectColorIndex, projectDotColor } from '../lib/projectColors'
 import './TeamsPage.css'
 
 const PROJECT_STATUSES = ['active', 'on_hold', 'completed']
@@ -252,7 +253,7 @@ export default function TeamsPage() {
 function ProjectTile({ project, stats, onClick, onEdit, onDelete }) {
   const completion = stats.total ? Math.round((stats.done / stats.total) * 100) : 0
   return (
-    <div className="project-tile" onClick={onClick} role="button" tabIndex={0}
+    <div className={`project-tile pc-${projectColorIndex(project.id)}`} onClick={onClick} role="button" tabIndex={0}
       onKeyDown={e => e.key === 'Enter' && onClick()}>
       <div className="tile-top">
         <span className={`project-status ${project.status}`}>{PROJECT_STATUS_LABELS[project.status]}</span>
@@ -261,7 +262,10 @@ function ProjectTile({ project, stats, onClick, onEdit, onDelete }) {
           <button className="tile-action-btn danger" onClick={onDelete} title="Delete">✕</button>
         </div>
       </div>
-      <p className="tile-name">{project.name}</p>
+      <p className="tile-name">
+        <span className="tile-dot" style={{ background: projectDotColor(project.id) }} />
+        {project.name}
+      </p>
       {project.description && <p className="tile-desc">{project.description}</p>}
       <div className="tile-stats">
         <div className="tile-stat">
