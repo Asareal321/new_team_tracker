@@ -99,6 +99,98 @@
   gap: 0.65rem;
 }
 
+/* ── Compact quick-create controls ── */
+.qc-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+.qc-vr { width: 1px; align-self: stretch; min-height: 22px; background: var(--border); }
+
+.qc-prio { display: flex; align-items: center; gap: 0.3rem; }
+.qc-dot {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  transition: border-color 0.12s;
+}
+.qc-dot span { margin: auto; width: 11px; height: 11px; border-radius: 50%; }
+.qc-dot.prio-high    span { background: var(--prio-high); }
+.qc-dot.prio-medium  span { background: var(--prio-medium); }
+.qc-dot.prio-low     span { background: var(--prio-low); }
+.qc-dot:hover { border-color: var(--border); }
+.qc-dot.selected { border-color: var(--text-1); }
+
+.qc-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.32rem 0.7rem;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+  background: var(--bg-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-3);
+  cursor: pointer;
+}
+.qc-date:hover { border-color: var(--text-4); }
+.qc-date.set { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+.qc-cal { font-size: 0.85rem; line-height: 1; }
+.qc-clear {
+  border: none; background: none; cursor: pointer;
+  color: var(--text-4); font-size: 1.05rem; line-height: 1;
+  padding: 0 0.15rem; margin-left: -0.3rem;
+}
+.qc-clear:hover { color: var(--text-1); }
+.qc-datefield {
+  align-self: flex-start;
+  max-width: 180px;
+}
+
+.qc-avatars { display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
+.qc-av {
+  width: 27px; height: 27px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-muted);
+  color: var(--text-3);
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.qc-av:hover { border-color: var(--text-4); }
+.qc-av.selected { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+
+.qc-projects { display: flex; flex-direction: column; gap: 0.4rem; }
+.qc-plabel { font-size: 0.8rem; font-weight: 500; color: var(--text-3); }
+.qc-pills { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.qc-pj {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+  background: var(--bg-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+.qc-pj:hover { border-color: var(--text-4); }
+.qc-pjdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.qc-pj.selected { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+.qc-pj-none { color: var(--text-4); }
+
 .form-actions {
   display: flex;
   justify-content: flex-end;

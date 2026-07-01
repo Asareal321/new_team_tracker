@@ -24,6 +24,14 @@ function initials(name) {
 
 function todayStr() { return new Date().toISOString().slice(0, 10) }
 
+// Stable color per project id so pills are visually distinguishable.
+const PROJECT_COLORS = ['#378ADD', '#1D9E75', '#D4537E', '#BA7517', '#7F77DD', '#D85A30']
+function projectColor(id) {
+  let h = 0
+  for (let i = 0; i < String(id).length; i++) h = (h * 31 + String(id).charCodeAt(i)) >>> 0
+  return PROJECT_COLORS[h % PROJECT_COLORS.length]
+}
+
 // Local-timezone YYYY-MM-DD for a timestamp (or now). Used by the archive
 // calendar so tasks land on the day they were finished in the user's own
 // timezone, not the UTC day.
@@ -63,16 +71,17 @@ export default function TaskBoard({
   const [editingId, setEditingId] = useState(null)
   const [form, setForm]           = useState(defaultForm())
   const [activeTab, setActiveTab] = useState('todo')
+  const [datePickerOpen, setDatePickerOpen] = useState(false)
 
   function defaultForm() {
-    return { title: '', notes: '', status: 'todo', priority: 'medium', due_date: '', project_id: null, assigneeIds: [] }
+    return { title: '', notes: '', status: 'todo', priority: '', due_date: '', project_id: null, assigneeIds: [] }
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.title.trim()) return
     const { assigneeIds, ...rest } = form
-    const payload = { ...rest, due_date: rest.due_date || null, project_id: rest.project_id || null }
+    const payload = { ...rest, priority: rest.priority || 'medium', due_date: rest.due_date || null, project_id: rest.project_id || null }
     if (editingId) {
       await onUpdate(editingId, payload)
       await onUpdateAssignees(editingId, assigneeIds)
@@ -82,6 +91,7 @@ export default function TaskBoard({
       // newId returned by BoardPage
     }
     setForm(defaultForm())
+    setDatePickerOpen(false)
     setShowForm(false)
   }
 
@@ -99,7 +109,7 @@ export default function TaskBoard({
     setShowForm(true)
   }
 
-  function cancelForm() { setForm(defaultForm()); setEditingId(null); setShowForm(false) }
+  function cancelForm() { setForm(defaultForm()); setEditingId(null); setDatePickerOpen(false); setShowForm(false) }
 
   function toggleAssignee(id) {
     setForm(f => ({
@@ -132,51 +142,83 @@ export default function TaskBoard({
                 placeholder="What needs to be done?" />
             </label>
             <label>Notes
-              <textarea rows={3} value={form.notes}
+              <textarea rows={2} value={form.notes}
                 onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                 placeholder="Any context or details…" />
             </label>
-            <div className="form-row">
-              <label>Due Date
-                <input type="date" value={form.due_date}
-                  onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} />
-              </label>
-              <label>Status
-                <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                  {FORM_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-                </select>
-              </label>
-              <label>Priority
-                <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}>
-                  {PRIORITIES.map(p => <option key={p}>{p}</option>)}
-                </select>
-              </label>
-            </div>
-            {currentTeamId && (
-              <>
-                <label>Project
-                  <select value={form.project_id || ''}
-                    onChange={e => setForm(f => ({ ...f, project_id: e.target.value || null }))}>
-                    <option value="">No project</option>
-                    {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                </label>
-                <div className="assignee-field">
-                  <span className="assignee-field-label">Assignees</span>
-                  <div className="assignee-picker">
+
+            <div className="qc-bar">
+              <div className="qc-prio" role="group" aria-label="Priority">
+                {PRIORITIES.map(p => (
+                  <button
+                    key={p} type="button"
+                    className={`qc-dot prio-${p}${form.priority === p ? ' selected' : ''}`}
+                    aria-pressed={form.priority === p}
+                    aria-label={PRIORITY_LABELS[p]}
+                    title={PRIORITY_LABELS[p]}
+                    onClick={() => setForm(f => ({ ...f, priority: f.priority === p ? '' : p }))}
+                  ><span /></button>
+                ))}
+              </div>
+              <span className="qc-vr" />
+              <button
+                type="button"
+                className={`qc-date${form.due_date ? ' set' : ''}`}
+                onClick={() => setDatePickerOpen(o => !o)}
+              >
+                <span className="qc-cal">📅</span>
+                {form.due_date ? formatDate(form.due_date) : 'Due date'}
+              </button>
+              {form.due_date && (
+                <button type="button" className="qc-clear" aria-label="Clear due date"
+                  onClick={() => { setForm(f => ({ ...f, due_date: '' })); setDatePickerOpen(false) }}>×</button>
+              )}
+              {currentTeamId && teamMembers.length > 0 && (
+                <>
+                  <span className="qc-vr" />
+                  <div className="qc-avatars" role="group" aria-label="Assignees">
                     {teamMembers.map(m => (
                       <button
                         key={m.id} type="button"
-                        className={`assignee-chip${form.assigneeIds.includes(m.id) ? ' selected' : ''}`}
+                        className={`qc-av${form.assigneeIds.includes(m.id) ? ' selected' : ''}`}
+                        aria-pressed={form.assigneeIds.includes(m.id)}
+                        title={m.display_name}
                         onClick={() => toggleAssignee(m.id)}
-                      >
-                        <span className="chip-avatar">{initials(m.display_name)}</span>
-                        {m.display_name}
-                      </button>
+                      >{initials(m.display_name)}</button>
                     ))}
                   </div>
+                </>
+              )}
+            </div>
+
+            {datePickerOpen && (
+              <input type="date" className="qc-datefield" autoFocus value={form.due_date}
+                onChange={e => { setForm(f => ({ ...f, due_date: e.target.value })); setDatePickerOpen(false) }} />
+            )}
+
+            {currentTeamId && projects.length > 0 && (
+              <div className="qc-projects">
+                <span className="qc-plabel">Project</span>
+                <div className="qc-pills">
+                  {projects.map(p => (
+                    <button
+                      key={p.id} type="button"
+                      className={`qc-pj${form.project_id === p.id ? ' selected' : ''}`}
+                      aria-pressed={form.project_id === p.id}
+                      onClick={() => setForm(f => ({ ...f, project_id: f.project_id === p.id ? null : p.id }))}
+                    >
+                      <span className="qc-pjdot" style={{ background: projectColor(p.id) }} />
+                      {p.name}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className={`qc-pj qc-pj-none${!form.project_id ? ' selected' : ''}`}
+                    aria-pressed={!form.project_id}
+                    onClick={() => setForm(f => ({ ...f, project_id: null }))}
+                  >None</button>
                 </div>
-              </>
+              </div>
             )}
             <div className="form-actions">
               <button type="button" className="btn-ghost" onClick={cancelForm}>Cancel</button>
