@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import {
   DndContext, DragOverlay, PointerSensor,
   useSensor, useSensors, closestCenter,
@@ -66,6 +66,17 @@ export default function TaskBoard({
   const [activeTab, setActiveTab] = useState('todo')
   const [datePickerOpen, setDatePickerOpen] = useState(false)
 
+  // People filter: which teammates' tasks to show. Default = only me (tasks
+  // I'm assigned to). "Everyone" shows the whole team board.
+  const [peopleEveryone, setPeopleEveryone] = useState(false)
+  const [selectedMembers, setSelectedMembers] = useState(() => new Set(currentUserId ? [currentUserId] : []))
+
+  // Reset the filter to "just me" whenever the team (or user) changes.
+  useEffect(() => {
+    setSelectedMembers(new Set(currentUserId ? [currentUserId] : []))
+    setPeopleEveryone(false)
+  }, [currentTeamId, currentUserId])
+
   function defaultForm() {
     return { title: '', notes: '', status: 'todo', priority: '', due_date: '', project_id: null, assigneeIds: [] }
   }
@@ -115,7 +126,39 @@ export default function TaskBoard({
 
   const projectName    = (id) => projects.find(p => p.id === id)?.name
   const updatesForTask = (taskId) => taskUpdates.filter(u => u.task_id === taskId).slice().reverse()
-  const byStatus       = (status) => tasks.filter(t => t.status === status)
+
+  // The people filter only applies on a team board with a roster to filter by.
+  const showPeopleFilter = !!currentTeamId && teamMembers.length > 0
+  const meMember = teamMembers.find(m => m.id === currentUserId)
+  const otherMembers = teamMembers.filter(m => m.id !== currentUserId)
+
+  function taskAssigneeIds(task) {
+    const ids = new Set((task.task_assignees || []).map(a => a.user_id))
+    if (task.assignee_id) ids.add(task.assignee_id)
+    return ids
+  }
+
+  const visibleTasks = useMemo(() => {
+    if (!showPeopleFilter || peopleEveryone) return tasks
+    if (selectedMembers.size === 0) return []
+    return tasks.filter(t => {
+      const ids = taskAssigneeIds(t)
+      for (const id of selectedMembers) if (ids.has(id)) return true
+      return false
+    })
+  }, [tasks, showPeopleFilter, peopleEveryone, selectedMembers])
+
+  function toggleMember(id) {
+    setPeopleEveryone(false)
+    setSelectedMembers(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const byStatus = (status) => visibleTasks.filter(t => t.status === status)
 
   function resolveAssignees(task) {
     return (task.task_assignees || [])
@@ -270,7 +313,7 @@ function PriorityBoard({
   )
 
   function getZoneTasks(priority) {
-    return tasks
+    return visibleTasks
       .filter(t => t.priority === priority && t.status === activeTab)
       .sort((a, b) => {
         const pa = a.position ?? 0, pb = b.position ?? 0
@@ -320,6 +363,43 @@ function PriorityBoard({
     <DndContext sensors={sensors} collisionDetection={closestCenter}
       onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="board-panel">
+        {showPeopleFilter && (
+          <div className="people-bar">
+            <span className="people-label">Viewing</span>
+            {meMember && (
+              <button
+                type="button"
+                className={`people-chip${!peopleEveryone && selectedMembers.has(currentUserId) ? ' selected' : ''}`}
+                aria-pressed={!peopleEveryone && selectedMembers.has(currentUserId)}
+                onClick={() => toggleMember(currentUserId)}
+              >
+                <span className="people-ini">{initials(meMember.display_name)}</span>
+                My tasks
+              </button>
+            )}
+            {otherMembers.length > 0 && <span className="people-vr" />}
+            {otherMembers.map(m => (
+              <button
+                key={m.id}
+                type="button"
+                className={`people-chip${!peopleEveryone && selectedMembers.has(m.id) ? ' selected' : ''}`}
+                aria-pressed={!peopleEveryone && selectedMembers.has(m.id)}
+                title={m.display_name}
+                onClick={() => toggleMember(m.id)}
+              >
+                <span className="people-ini">{initials(m.display_name)}</span>
+                {m.display_name.split(/\s+/)[0]}
+              </button>
+            ))}
+            <span className="people-vr" />
+            <button
+              type="button"
+              className={`people-chip people-everyone${peopleEveryone ? ' selected' : ''}`}
+              aria-pressed={peopleEveryone}
+              onClick={() => setPeopleEveryone(true)}
+            >Everyone</button>
+          </div>
+        )}
         <div className="tabs">
           <div className="tabs-left">
             {FORM_STATUSES.map(status => (
