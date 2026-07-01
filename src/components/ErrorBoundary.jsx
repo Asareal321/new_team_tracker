@@ -6,7 +6,7 @@ import { Component } from 'react'
 export default class ErrorBoundary extends Component {
   constructor(props) {
     super(props)
-    this.state = { error: null, info: null }
+    this.state = { error: null }
   }
 
   static getDerivedStateFromError(error) {
@@ -14,13 +14,12 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
+    // Logged to the console so a crash can still be diagnosed via devtools.
     console.error('Uncaught error in React tree:', error, info)
-    this.setState({ info })
   }
 
   render() {
     if (this.state.error) {
-      const { error, info } = this.state
       return (
         <div className="error-screen">
           <div className="error-box">
@@ -29,13 +28,6 @@ export default class ErrorBoundary extends Component {
             <p className="error-hint">
               <button className="btn-primary" onClick={() => window.location.reload()}>Reload</button>
             </p>
-            <details className="error-details" open>
-              <summary>Error details</summary>
-              <pre className="error-pre">{`${error?.name || 'Error'}: ${error?.message || String(error)}`}
-
-{String(error?.stack || '')}
-{info?.componentStack || ''}</pre>
-            </details>
           </div>
         </div>
       )

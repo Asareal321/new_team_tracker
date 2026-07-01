@@ -271,6 +271,16 @@ export default function TaskBoard({
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         byStatus={byStatus}
+        peopleFilter={{
+          show: showPeopleFilter,
+          me: meMember,
+          others: otherMembers,
+          currentUserId,
+          selected: selectedMembers,
+          everyone: peopleEveryone,
+          onToggle: toggleMember,
+          onEveryone: () => setPeopleEveryone(true),
+        }}
         projectName={projectName}
         updatesForTask={updatesForTask}
         resolveAssignees={resolveAssignees}
@@ -293,7 +303,7 @@ export default function TaskBoard({
 // ─── Priority board (owns DndContext) ────────────────────────────────────────
 
 function PriorityBoard({
-  tasks, activeTab, setActiveTab, byStatus,
+  tasks, activeTab, setActiveTab, byStatus, peopleFilter,
   projectName, updatesForTask, resolveAssignees, teamMembers,
   onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onStartEdit, onOpenForm, onTaskDone, onArchiveAll,
 }) {
@@ -365,40 +375,40 @@ function PriorityBoard({
     <DndContext sensors={sensors} collisionDetection={closestCenter}
       onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="board-panel">
-        {showPeopleFilter && (
+        {peopleFilter.show && (
           <div className="people-bar">
             <span className="people-label">Viewing</span>
-            {meMember && (
+            {peopleFilter.me && (
               <button
                 type="button"
-                className={`people-chip${!peopleEveryone && selectedMembers.has(currentUserId) ? ' selected' : ''}`}
-                aria-pressed={!peopleEveryone && selectedMembers.has(currentUserId)}
-                onClick={() => toggleMember(currentUserId)}
+                className={`people-chip${!peopleFilter.everyone && peopleFilter.selected.has(peopleFilter.currentUserId) ? ' selected' : ''}`}
+                aria-pressed={!peopleFilter.everyone && peopleFilter.selected.has(peopleFilter.currentUserId)}
+                onClick={() => peopleFilter.onToggle(peopleFilter.currentUserId)}
               >
-                <span className="people-ini">{initials(meMember.display_name)}</span>
+                <span className="people-ini">{initials(peopleFilter.me.display_name)}</span>
                 My tasks
               </button>
             )}
-            {otherMembers.length > 0 && <span className="people-vr" />}
-            {otherMembers.map(m => (
+            {peopleFilter.others.length > 0 && <span className="people-vr" />}
+            {peopleFilter.others.map(m => (
               <button
                 key={m.id}
                 type="button"
-                className={`people-chip${!peopleEveryone && selectedMembers.has(m.id) ? ' selected' : ''}`}
-                aria-pressed={!peopleEveryone && selectedMembers.has(m.id)}
+                className={`people-chip${!peopleFilter.everyone && peopleFilter.selected.has(m.id) ? ' selected' : ''}`}
+                aria-pressed={!peopleFilter.everyone && peopleFilter.selected.has(m.id)}
                 title={m.display_name}
-                onClick={() => toggleMember(m.id)}
+                onClick={() => peopleFilter.onToggle(m.id)}
               >
                 <span className="people-ini">{initials(m.display_name)}</span>
-                {m.display_name.split(/\s+/)[0]}
+                {(m.display_name || '?').split(/\s+/)[0]}
               </button>
             ))}
             <span className="people-vr" />
             <button
               type="button"
-              className={`people-chip people-everyone${peopleEveryone ? ' selected' : ''}`}
-              aria-pressed={peopleEveryone}
-              onClick={() => setPeopleEveryone(true)}
+              className={`people-chip people-everyone${peopleFilter.everyone ? ' selected' : ''}`}
+              aria-pressed={peopleFilter.everyone}
+              onClick={peopleFilter.onEveryone}
             >Everyone</button>
           </div>
         )}
