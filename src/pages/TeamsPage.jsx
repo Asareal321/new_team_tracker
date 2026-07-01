@@ -9,6 +9,18 @@ import './TeamsPage.css'
 const PROJECT_STATUSES = ['active', 'on_hold', 'completed']
 const PROJECT_STATUS_LABELS = { active: 'Active', on_hold: 'On Hold', completed: 'Completed' }
 
+// Countdown label + tone for a project deadline.
+function deadlineInfo(targetDate, status) {
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const target = new Date(targetDate + 'T00:00:00')
+  const days = Math.round((target - today) / 86400000)
+  if (status === 'completed') return { count: 'completed', tone: 'done' }
+  if (days < 0)  return { count: `${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} overdue`, tone: 'overdue' }
+  if (days === 0) return { count: 'due today', tone: 'soon' }
+  if (days <= 7)  return { count: `${days} day${days === 1 ? '' : 's'} left`, tone: 'soon' }
+  return { count: `${days} days left`, tone: 'normal' }
+}
+
 export default function TeamsPage() {
   const { user } = useAuth()
   const { teams, currentTeamId, setCurrentTeam, refreshTeams } = useTeam()
@@ -284,9 +296,16 @@ function ProjectTile({ project, stats, onClick, onEdit, onDelete }) {
       <div className="tile-progress">
         <div className="tile-progress-fill" style={{ width: `${completion}%` }} />
       </div>
-      {project.target_date && (
-        <p className="tile-date">Due {new Date(project.target_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-      )}
+      {project.target_date && (() => {
+        const d = deadlineInfo(project.target_date, project.status)
+        return (
+          <span className={`tile-deadline ${d.tone}`}>
+            <span className="tile-deadline-icon" aria-hidden="true">⚑</span>
+            Due {new Date(project.target_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            <span className="tile-deadline-count">· {d.count}</span>
+          </span>
+        )
+      })()}
     </div>
   )
 }

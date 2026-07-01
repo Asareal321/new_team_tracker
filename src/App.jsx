@@ -5,7 +5,7 @@ import AuthGate from './auth/AuthGate'
 import { TeamProvider } from './context/TeamContext'
 import Layout from './components/Layout'
 import BoardPage from './pages/BoardPage'
-import TimelinePage from './pages/TimelinePage'
+import DeadlinesPage from './pages/DeadlinesPage'
 import TeamsPage from './pages/TeamsPage'
 import SummaryPage from './pages/SummaryPage'
 import AccountPage from './pages/AccountPage'
@@ -38,7 +38,7 @@ export default function App() {
           <Routes>
             <Route element={<Layout />}>
               <Route index element={<BoardPage />} />
-              <Route path="timeline" element={<TimelinePage />} />
+              <Route path="deadlines" element={<DeadlinesPage />} />
               <Route path="teams" element={<TeamsPage />} />
               <Route path="summary" element={<SummaryPage />} />
               <Route path="account" element={<AccountPage />} />

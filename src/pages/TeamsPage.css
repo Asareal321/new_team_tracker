@@ -297,7 +297,23 @@ html[data-theme="dark"] .project-tile[class*="pc-"] .tile-progress { background:
 }
 .tile-progress-fill { height: 100%; background: var(--brand-lime); border-radius: 3px; transition: width 0.4s; }
 
-.tile-date { font-size: 0.72rem; color: var(--text-4); }
+.tile-deadline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  align-self: flex-start;
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 0.22rem 0.55rem;
+  border-radius: var(--r-pill);
+  background: #F1EFE8;
+  color: #2C2C2A;
+}
+.tile-deadline-icon { font-size: 0.78rem; line-height: 1; }
+.tile-deadline-count { font-weight: 600; }
+.tile-deadline.soon    { background: #FAEEDA; color: #854F0B; }
+.tile-deadline.overdue { background: #FCEBEB; color: #A32D2D; }
+.tile-deadline.done    { background: #F1EFE8; color: #5F5E5A; }
 
 .project-list { display: flex; flex-direction: column; gap: 0.45rem; }
 

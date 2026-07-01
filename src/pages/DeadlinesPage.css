@@ -1,0 +1,160 @@
+.deadlines-page { display: flex; flex-direction: column; gap: 0.85rem; }
+
+/* ── Toolbar ── */
+.dl-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  background: var(--bg-surface);
+  border-radius: 10px;
+  padding: 0.6rem 0.85rem;
+}
+.dl-monthnav { display: flex; align-items: center; gap: 0.5rem; }
+.dl-month { font-size: 1rem; font-weight: 600; color: var(--text-1); min-width: 8.5rem; text-align: center; }
+.dl-navbtn {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-muted);
+  color: var(--text-2);
+  font-size: 1.1rem;
+  line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+}
+.dl-navbtn:hover { border-color: var(--text-4); color: var(--text-1); }
+.dl-today-btn {
+  margin-left: 0.25rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-muted);
+  color: var(--text-2);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+.dl-today-btn:hover { border-color: var(--text-4); color: var(--text-1); }
+
+.dl-overdue-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--red-border);
+  background: var(--red-bg);
+  color: var(--red-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.dl-caret { font-size: 0.6rem; }
+
+.dl-overdue-panel {
+  background: var(--red-bg);
+  border: 1px solid var(--red-border);
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.dl-overdue-item { display: flex; align-items: center; gap: 0.55rem; font-size: 0.85rem; }
+.dl-late {
+  font-size: 0.72rem; font-weight: 600;
+  color: var(--red-text); background: var(--bg-surface);
+  border: 1px solid var(--red-border);
+  padding: 0.1rem 0.45rem; border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+.dl-od-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.dl-od-title { flex: 1; color: var(--text-1); }
+.dl-od-date { font-size: 0.78rem; color: var(--text-3); }
+.dl-od-av {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--bg-surface); border: 1px solid var(--red-border);
+  color: var(--red-text); font-size: 0.62rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ── Calendar ── */
+.dl-cal {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.dl-dow { display: grid; grid-template-columns: repeat(7, 1fr); }
+.dl-dow div {
+  text-align: center;
+  font-size: 0.7rem; font-weight: 600;
+  color: var(--text-3);
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.dl-dow div.wknd { color: var(--text-4); }
+
+.dl-weeks { display: grid; grid-template-columns: repeat(7, 1fr); }
+.dl-day {
+  min-height: 92px;
+  border-left: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.dl-day:nth-child(7n+1) { border-left: none; }
+.dl-day.wknd { background: var(--bg-subtle); }
+.dl-day.out { background: var(--bg-muted); }
+.dl-day.out .dl-daynum { color: var(--text-4); opacity: 0.6; }
+.dl-daynum {
+  font-size: 0.72rem; font-weight: 600;
+  color: var(--text-3);
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+}
+.dl-day.today .dl-daynum { background: var(--brand-ink); color: var(--brand-lime); border-radius: 50%; }
+html[data-theme="dark"] .dl-day.today .dl-daynum { background: var(--brand-lime); color: var(--brand-ink); }
+.dl-day.today { background: var(--today-bg); }
+
+/* Task chip — pastel pill + priority dot */
+.dl-chip {
+  display: flex; align-items: center; gap: 0.3rem;
+  font-size: 0.68rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 5px;
+}
+.dl-pdot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.dl-chip-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Project milestone — distinct flagged bar */
+.dl-milestone {
+  display: flex; align-items: center; gap: 0.3rem;
+  font-size: 0.68rem; font-weight: 600;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  background: var(--bg-muted);
+  border-left: 3px solid var(--text-4);
+  color: var(--text-1);
+}
+.dl-flag { font-size: 0.75rem; line-height: 1; }
+.dl-ms-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dl-more { font-size: 0.62rem; color: var(--text-4); padding-left: 0.15rem; }
+
+/* ── Legend ── */
+.dl-legend {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  font-size: 0.72rem; color: var(--text-3);
+  padding: 0 0.25rem;
+}
+.dl-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
+.dl-lg-dot { width: 7px; height: 7px; border-radius: 50%; }
+.dl-lg-flag { color: var(--text-4); font-size: 0.8rem; }
+.dl-lg-sep { padding-left: 0.5rem; border-left: 1px solid var(--border); }
+.dl-lg-note { margin-left: auto; color: var(--text-4); }
+
+@media (max-width: 640px) {
+  .dl-day { min-height: 70px; }
+  .dl-chip, .dl-milestone { font-size: 0.6rem; }
+}

@@ -28,7 +28,7 @@ export default function Layout() {
         </div>
         <nav className="sidebar-nav">
           <NavLink to="/" className={navClass} end>Taskboard</NavLink>
-          <NavLink to="/timeline" className={navClass}>Timeline</NavLink>
+          <NavLink to="/deadlines" className={navClass}>Deadlines</NavLink>
           <NavLink to="/teams" className={navClass}>Teams</NavLink>
           <NavLink to="/summary" className={navClass}>Daily Summary</NavLink>
           <NavLink to="/account" className={navClass}>Account</NavLink>

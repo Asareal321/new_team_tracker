@@ -30,3 +30,22 @@ export function projectColorIndex(id) {
 export function projectDotColor(id) {
   return PROJECT_DOT_COLORS[projectColorIndex(id)]
 }
+
+// Pale tint + readable same-hue text per project, aligned with PROJECT_DOT_COLORS
+// and the .pc-N tiles on the Teams page. Used for calendar chips (a colored pill
+// with dark text reads fine on both light and dark calendars).
+const PROJECT_TINTS = [
+  { bg: '#E6F1FB', text: '#0C447C' }, // blue
+  { bg: '#E1F5EE', text: '#085041' }, // teal
+  { bg: '#FBEAF0', text: '#72243E' }, // pink
+  { bg: '#FAEEDA', text: '#633806' }, // amber
+  { bg: '#EEEDFE', text: '#3C3489' }, // purple
+  { bg: '#FAECE7', text: '#712B13' }, // coral
+  { bg: '#EAF3DE', text: '#27500A' }, // green
+  { bg: '#FCEBEB', text: '#791F1F' }, // red
+  { bg: '#F1EFE8', text: '#2C2C2A' }, // slate
+]
+
+export function projectTint(id) {
+  return PROJECT_TINTS[projectColorIndex(id)]
+}
