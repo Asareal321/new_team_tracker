@@ -87,7 +87,7 @@ export default function TimelinePage() {
   const today = todayStr()
   const tasksWithDue = tasks.filter(t => t.due_date)
   const overdue = tasksWithDue
-    .filter(t => t.due_date < today && t.status !== 'done')
+    .filter(t => t.due_date < today && t.status !== 'done' && t.status !== 'archived')
     .sort((a, b) => a.due_date.localeCompare(b.due_date))
 
   const numDays = RANGES[range].days
