@@ -461,3 +461,9 @@ html[data-theme="dark"] .project-tile[class*="pc-"] .tile-progress { background:
 @media (max-width: 720px) {
   .teams-page { grid-template-columns: 1fr; }
 }
+
+@media (max-width: 640px) {
+  .form-row { grid-template-columns: 1fr; }
+  .teams-toolbar, .project-controls { flex-wrap: wrap; }
+  .invite-code-row { flex-wrap: wrap; }
+}
