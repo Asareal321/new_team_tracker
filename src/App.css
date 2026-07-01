@@ -256,3 +256,19 @@ html[data-theme="dark"] .board-hero-title {
   border-radius: 4px;
   font-size: 0.85rem;
 }
+.error-details { margin-top: 1.25rem; text-align: left; }
+.error-details summary { cursor: pointer; font-size: 0.8rem; color: var(--text-4); }
+.error-pre {
+  margin-top: 0.5rem;
+  max-height: 260px;
+  overflow: auto;
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.6rem;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-2);
+}
