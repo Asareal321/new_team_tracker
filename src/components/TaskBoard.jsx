@@ -154,6 +154,8 @@ export default function TaskBoard({
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
+      // Never leave the board empty — snap back to "just me".
+      if (next.size === 0) return new Set(currentUserId ? [currentUserId] : [])
       return next
     })
   }
@@ -265,7 +267,7 @@ export default function TaskBoard({
       )}
 
       <PriorityBoard
-        tasks={tasks}
+        tasks={visibleTasks}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         byStatus={byStatus}
@@ -313,7 +315,7 @@ function PriorityBoard({
   )
 
   function getZoneTasks(priority) {
-    return visibleTasks
+    return tasks
       .filter(t => t.priority === priority && t.status === activeTab)
       .sort((a, b) => {
         const pa = a.position ?? 0, pb = b.position ?? 0
