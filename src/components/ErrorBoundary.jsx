@@ -31,7 +31,9 @@ export default class ErrorBoundary extends Component {
             </p>
             <details className="error-details" open>
               <summary>Error details</summary>
-              <pre className="error-pre">{String(error?.stack || error?.message || error)}
+              <pre className="error-pre">{`${error?.name || 'Error'}: ${error?.message || String(error)}`}
+
+{String(error?.stack || '')}
 {info?.componentStack || ''}</pre>
             </details>
           </div>
