@@ -57,8 +57,8 @@ export default function LandingPage({ onSignIn, onSignUp }) {
 
           <header className="l-hero">
             <h1 className="l-headline">
-              Tasks, tracked.<br />
-              Days, <span className="l-underline">done</span>.
+              Deliver results<br />
+              <span className="l-underline">everyday</span>.
             </h1>
             <p className="l-sub">
               Priorities, daily updates, and an end-of-day archive — so your team always knows what got done.
