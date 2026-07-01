@@ -1,13 +1,5 @@
 import './LandingPage.css'
 
-function BrandIcon({ stroke = '#071013' }) {
-  return (
-    <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true">
-      <rect x="3" y="3" width="26" height="26" rx="7" fill="none" stroke={stroke} strokeWidth="2.5" />
-      <path d="M10 16.5 L14 20.5 L22 11.5" fill="none" stroke={stroke} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
 
 function FeatureBars() {
   return (
@@ -54,7 +46,7 @@ export default function LandingPage({ onSignIn, onSignUp }) {
         <div className="l-inner">
           <nav className="l-nav">
             <div className="l-brand">
-              <BrandIcon />
+
               <span className="l-wordmark">trakkit</span>
             </div>
             <div className="l-nav-actions">
@@ -128,7 +120,6 @@ export default function LandingPage({ onSignIn, onSignUp }) {
       <footer className="l-foot">
         <div className="l-inner l-foot-inner">
           <div className="l-brand l-brand-sm">
-            <BrandIcon />
             <span className="l-wordmark">trakkit</span>
           </div>
           <span className="l-foot-note">© {new Date().getFullYear()} trakkit</span>
