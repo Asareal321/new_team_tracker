@@ -60,12 +60,13 @@ export default function ProjectPage() {
   }, [projectId])
 
   const fetchTasks = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('tasks')
       .select('*, task_assignees(user_id, response_status, response_reason, suggested_priority, suggested_due_date)')
       .eq('project_id', projectId)
       .order('position', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: true })
+    if (error) console.error('[trakkit] Failed to load project tasks — is the DB migration applied?', error.message)
     setTasks(data || [])
     const ids = (data || []).map(t => t.id)
     if (ids.length) {

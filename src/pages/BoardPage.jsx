@@ -102,7 +102,8 @@ export default function BoardPage() {
     query = currentTeamId
       ? query.eq('team_id', currentTeamId)
       : query.is('team_id', null).eq('user_id', user.id)
-    const { data } = await query
+    const { data, error } = await query
+    if (error) console.error('[trakkit] Failed to load tasks — is the DB migration applied?', error.message)
     let tasks = data || []
 
     // At end of day (in the user's LOCAL timezone), archive any task that
