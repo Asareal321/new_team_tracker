@@ -33,8 +33,10 @@ export default function TeamsPage() {
   const [copied, setCopied] = useState(false)
 
   const [projects, setProjects] = useState([])
+  const [projectMembers, setProjectMembers] = useState([])
   const [taskStats, setTaskStats] = useState({})
   const [sortOrder, setSortOrder] = useState('high')
+  const [projectFilter, setProjectFilter] = useState('mine')
   const [showProjectForm, setShowProjectForm] = useState(false)
   const [editingProjectId, setEditingProjectId] = useState(null)
   const navigate = useNavigate()
@@ -53,13 +55,24 @@ export default function TeamsPage() {
   }, [currentTeamId])
 
   const fetchProjects = useCallback(async () => {
-    if (!currentTeamId) { setProjects([]); setTaskStats({}); return }
+    if (!currentTeamId) { setProjects([]); setTaskStats({}); setProjectMembers([]); return }
     const { data: pData } = await supabase
       .from('projects')
       .select('*')
       .eq('team_id', currentTeamId)
       .order('created_at', { ascending: true })
     setProjects(pData || [])
+
+    const projectIds = (pData || []).map(p => p.id)
+    if (projectIds.length) {
+      const { data: mData } = await supabase
+        .from('project_members')
+        .select('project_id, user_id')
+        .in('project_id', projectIds)
+      setProjectMembers(mData || [])
+    } else {
+      setProjectMembers([])
+    }
 
     const { data: tData } = await supabase
       .from('tasks')
@@ -86,6 +99,7 @@ export default function TeamsPage() {
       .channel(`team-detail-${currentTeamId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'team_members', filter: `team_id=eq.${currentTeamId}` }, fetchMembers)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'projects', filter: `team_id=eq.${currentTeamId}` }, fetchProjects)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'project_members' }, fetchProjects)
       .subscribe()
     return () => supabase.removeChannel(channel)
   }, [currentTeamId, fetchMembers, fetchProjects])
@@ -118,12 +132,32 @@ export default function TeamsPage() {
     setTimeout(() => setCopied(false), 1500)
   }
 
-  async function addProject(project) {
-    await supabase.from('projects').insert([{ ...project, team_id: currentTeamId, created_by: user.id }])
+  async function addProject({ memberIds = [], ...project }) {
+    const { data } = await supabase
+      .from('projects')
+      .insert([{ ...project, team_id: currentTeamId, created_by: user.id }])
+      .select('id')
+      .single()
+    const ids = new Set([user.id, ...memberIds])
+    if (data?.id && ids.size) {
+      await supabase.from('project_members').insert(
+        [...ids].map(uid => ({ project_id: data.id, user_id: uid }))
+      )
+    }
   }
 
-  async function updateProject(id, updates) {
-    await supabase.from('projects').update(updates).eq('id', id)
+  async function updateProject(id, { memberIds, ...updates } = {}) {
+    if (Object.keys(updates).length) {
+      await supabase.from('projects').update(updates).eq('id', id)
+    }
+    if (memberIds) {
+      await supabase.from('project_members').delete().eq('project_id', id)
+      if (memberIds.length) {
+        await supabase.from('project_members').insert(
+          memberIds.map(uid => ({ project_id: id, user_id: uid }))
+        )
+      }
+    }
   }
 
   async function deleteProject(id) {
@@ -205,6 +239,14 @@ export default function TeamsPage() {
                 <h3>Projects</h3>
                 <div className="project-controls">
                   <div className="sort-toggle">
+                    <button className={`sort-btn${projectFilter === 'mine' ? ' active' : ''}`} onClick={() => setProjectFilter('mine')}>
+                      My Projects
+                    </button>
+                    <button className={`sort-btn${projectFilter === 'all' ? ' active' : ''}`} onClick={() => setProjectFilter('all')}>
+                      All Projects
+                    </button>
+                  </div>
+                  <div className="sort-toggle">
                     <button className={`sort-btn${sortOrder === 'high' ? ' active' : ''}`} onClick={() => setSortOrder('high')}>
                       High priority ↓
                     </button>
@@ -222,6 +264,7 @@ export default function TeamsPage() {
 
               <div className="project-grid">
                 {[...projects]
+                  .filter(p => projectFilter === 'all' || projectMembers.some(pm => pm.project_id === p.id && pm.user_id === user.id))
                   .sort((a, b) => {
                     const sa = taskStats[a.id] || {}
                     const sb = taskStats[b.id] || {}
@@ -234,18 +277,29 @@ export default function TeamsPage() {
                       key={p.id}
                       project={p}
                       stats={taskStats[p.id] || {}}
+                      members={members.filter(m => projectMembers.some(pm => pm.project_id === p.id && pm.user_id === m.id))}
                       onClick={() => navigate(`/projects/${p.id}`)}
                       onEdit={e => { e.stopPropagation(); setEditingProjectId(p.id); setShowProjectForm(true) }}
                       onDelete={e => { e.stopPropagation(); deleteProject(p.id) }}
                     />
                   ))
                 }
+                {projectFilter === 'mine' && projects.length > 0 &&
+                  !projects.some(p => projectMembers.some(pm => pm.project_id === p.id && pm.user_id === user.id)) && (
+                  <p className="empty-hint">You're not assigned to any projects yet — switch to "All Projects" to see the team's.</p>
+                )}
               </div>
             </section>
 
             {showProjectForm && (
               <ProjectModal
                 project={editingProject}
+                members={members}
+                initialMemberIds={
+                  editingProjectId
+                    ? projectMembers.filter(pm => pm.project_id === editingProjectId).map(pm => pm.user_id)
+                    : [user.id]
+                }
                 onCancel={() => { setShowProjectForm(false); setEditingProjectId(null) }}
                 onSave={async (form) => {
                   if (editingProjectId) await updateProject(editingProjectId, form)
@@ -262,7 +316,13 @@ export default function TeamsPage() {
   )
 }
 
-function ProjectTile({ project, stats, onClick, onEdit, onDelete }) {
+function initials(name) {
+  if (!name) return '?'
+  const p = name.trim().split(/\s+/)
+  return (p.length === 1 ? p[0][0] : p[0][0] + p[p.length - 1][0]).toUpperCase()
+}
+
+function ProjectTile({ project, stats, members = [], onClick, onEdit, onDelete }) {
   const completion = stats.total ? Math.round((stats.done / stats.total) * 100) : 0
   return (
     <div className={`project-tile pc-${projectColorIndex(project.id)}`} onClick={onClick} role="button" tabIndex={0}
@@ -279,6 +339,14 @@ function ProjectTile({ project, stats, onClick, onEdit, onDelete }) {
         {project.name}
       </p>
       {project.description && <p className="tile-desc">{project.description}</p>}
+      {members.length > 0 && (
+        <div className="tile-members">
+          {members.slice(0, 5).map(m => (
+            <span key={m.id} className="tile-member-av" title={m.display_name}>{initials(m.display_name)}</span>
+          ))}
+          {members.length > 5 && <span className="tile-member-av tile-member-overflow">+{members.length - 5}</span>}
+        </div>
+      )}
       <div className="tile-stats">
         <div className="tile-stat">
           <span className="tile-stat-num high">{stats.high ?? 0}</span>
@@ -331,7 +399,7 @@ function ProjectCard({ project, onEdit, onDelete }) {
   )
 }
 
-function ProjectModal({ project, onCancel, onSave }) {
+function ProjectModal({ project, members = [], initialMemberIds = [], onCancel, onSave }) {
   const [form, setForm] = useState({
     name: project?.name || '',
     description: project?.description || '',
@@ -339,6 +407,15 @@ function ProjectModal({ project, onCancel, onSave }) {
     start_date: project?.start_date || '',
     target_date: project?.target_date || '',
   })
+  const [memberIds, setMemberIds] = useState(new Set(initialMemberIds))
+
+  function toggleMember(id) {
+    setMemberIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -347,6 +424,7 @@ function ProjectModal({ project, onCancel, onSave }) {
       ...form,
       start_date: form.start_date || null,
       target_date: form.target_date || null,
+      memberIds: [...memberIds],
     })
   }
 
@@ -383,6 +461,20 @@ function ProjectModal({ project, onCancel, onSave }) {
             <input type="date" value={form.target_date} onChange={e => setForm(f => ({ ...f, target_date: e.target.value }))} />
           </label>
         </div>
+        {members.length > 0 && (
+          <div className="assignee-field">
+            <span className="assignee-field-label">Team</span>
+            <div className="assignee-picker">
+              {members.map(m => (
+                <button
+                  key={m.id} type="button"
+                  className={`assignee-chip${memberIds.has(m.id) ? ' selected' : ''}`}
+                  onClick={() => toggleMember(m.id)}
+                >{m.display_name}</button>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="form-actions">
           <button type="button" className="btn-ghost" onClick={onCancel}>Cancel</button>
           <button type="submit" className="btn-primary">{project ? 'Save' : 'Create Project'}</button>

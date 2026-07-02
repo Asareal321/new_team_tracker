@@ -53,12 +53,21 @@ function dueClass(dateStr) {
   return ''
 }
 
+// A task is pending approval if any assignee OTHER than its creator hasn't
+// yet accepted (still pending, or has suggested a change awaiting the
+// creator's review). Declining removes the row entirely (see the
+// respond_to_task_assignment RPC), so it can never block a task here.
+function isPendingApproval(task) {
+  return (task.task_assignees || []).some(a => a.user_id !== task.user_id && a.response_status !== 'accepted')
+}
+
 // ─── Main component ─────────────────────────────────────────────────────────
 
 export default function TaskBoard({
-  tasks, teamMembers, projects, taskUpdates,
+  tasks, teamMembers, projects, projectMembers, taskUpdates,
   currentUserId, currentTeamId,
-  onAdd, onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onTaskDone, onArchiveAll,
+  onAdd, onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees,
+  onRespondToAssignment, onResolveChangeRequest, onTaskDone, onArchiveAll,
 }) {
   const [showForm, setShowForm]   = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -130,7 +139,22 @@ export default function TaskBoard({
   // The people filter only applies on a team board with a roster to filter by.
   const showPeopleFilter = !!currentTeamId && teamMembers.length > 0
   const meMember = teamMembers.find(m => m.id === currentUserId)
-  const otherMembers = teamMembers.filter(m => m.id !== currentUserId)
+
+  // Individual filter chips are scoped to teammates who share at least one
+  // project with the current user — you can only "view" someone's tasks if
+  // you're on a project together. (The underlying task data isn't restricted
+  // by this — it's just which people are offered as filter choices.)
+  const projectMateIds = useMemo(() => {
+    const myProjectIds = new Set(
+      (projectMembers || []).filter(pm => pm.user_id === currentUserId).map(pm => pm.project_id)
+    )
+    const mates = new Set()
+    ;(projectMembers || []).forEach(pm => { if (myProjectIds.has(pm.project_id)) mates.add(pm.user_id) })
+    mates.delete(currentUserId)
+    return mates
+  }, [projectMembers, currentUserId])
+
+  const otherMembers = teamMembers.filter(m => m.id !== currentUserId && projectMateIds.has(m.id))
 
   function taskAssigneeIds(task) {
     const ids = new Set((task.task_assignees || []).map(a => a.user_id))
@@ -160,7 +184,22 @@ export default function TaskBoard({
     })
   }
 
-  const byStatus = (status) => visibleTasks.filter(t => t.status === status)
+  // Pending-approval tasks are pulled out of the normal status tabs/zones
+  // entirely — they only appear under the "Pending Assignments" tab until
+  // every non-creator assignee accepts.
+  const boardTasks = useMemo(() => visibleTasks.filter(t => !isPendingApproval(t)), [visibleTasks])
+  const byStatus = (status) => boardTasks.filter(t => t.status === status)
+
+  // Tasks needing my attention: I'm the creator waiting on responses, or I'm
+  // one of the still-pending assignees myself. This intentionally bypasses
+  // the people filter — it's about tasks that involve me, not who I'm
+  // "viewing" right now.
+  const pendingTasksForMe = useMemo(() => tasks.filter(t =>
+    isPendingApproval(t) && (
+      t.user_id === currentUserId ||
+      (t.task_assignees || []).some(a => a.user_id === currentUserId)
+    )
+  ), [tasks, currentUserId])
 
   function resolveAssignees(task) {
     return (task.task_assignees || [])
@@ -267,7 +306,11 @@ export default function TaskBoard({
       )}
 
       <PriorityBoard
-        tasks={visibleTasks}
+        tasks={boardTasks}
+        pendingTasks={pendingTasksForMe}
+        currentUserId={currentUserId}
+        onRespondToAssignment={onRespondToAssignment}
+        onResolveChangeRequest={onResolveChangeRequest}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         byStatus={byStatus}
@@ -303,7 +346,8 @@ export default function TaskBoard({
 // ─── Priority board (owns DndContext) ────────────────────────────────────────
 
 function PriorityBoard({
-  tasks, activeTab, setActiveTab, byStatus, peopleFilter,
+  tasks, pendingTasks, currentUserId, onRespondToAssignment, onResolveChangeRequest,
+  activeTab, setActiveTab, byStatus, peopleFilter,
   projectName, updatesForTask, resolveAssignees, teamMembers,
   onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onStartEdit, onOpenForm, onTaskDone, onArchiveAll,
 }) {
@@ -414,6 +458,19 @@ function PriorityBoard({
         )}
         <div className="tabs">
           <div className="tabs-left">
+            {peopleFilter.show && (
+              <>
+                <button
+                  className={`tab tab-pending ${activeTab === 'pending' ? 'active' : ''}${pendingTasks.length ? ' has-pending' : ''}`}
+                  onClick={() => setActiveTab('pending')}
+                >
+                  <span className="status-dot pending" />
+                  Pending Assignments
+                  <span className="tab-count">{pendingTasks.length}</span>
+                </button>
+                <div className="tab-divider" />
+              </>
+            )}
             {FORM_STATUSES.map(status => (
               <button key={status}
                 className={`tab ${activeTab === status ? 'active' : ''}`}
@@ -446,7 +503,16 @@ function PriorityBoard({
           </div>
         </div>
 
-        {activeTab === 'archived' ? (
+        {activeTab === 'pending' ? (
+          <PendingAssignmentsList
+            tasks={pendingTasks}
+            currentUserId={currentUserId}
+            teamMembers={teamMembers}
+            projectName={projectName}
+            onRespond={onRespondToAssignment}
+            onResolve={onResolveChangeRequest}
+          />
+        ) : activeTab === 'archived' ? (
           <ArchiveCalendar
             tasks={byStatus('archived')}
             updatesForTask={updatesForTask}
@@ -490,6 +556,168 @@ function PriorityBoard({
         )}
       </DragOverlay>
     </DndContext>
+  )
+}
+
+// ─── Pending assignments ─────────────────────────────────────────────────────
+
+function memberName(teamMembers, id) {
+  return teamMembers.find(m => m.id === id)?.display_name || 'Unknown'
+}
+
+function PendingAssignmentsList({ tasks, currentUserId, teamMembers, projectName, onRespond, onResolve }) {
+  if (tasks.length === 0) {
+    return <div className="empty-col">No pending assignments — everyone's accepted.</div>
+  }
+  return (
+    <div className="pending-list">
+      {tasks.map(task => (
+        <PendingAssignmentRow
+          key={task.id}
+          task={task}
+          currentUserId={currentUserId}
+          teamMembers={teamMembers}
+          projectName={projectName(task.project_id)}
+          onRespond={onRespond}
+          onResolve={onResolve}
+        />
+      ))}
+    </div>
+  )
+}
+
+function PendingAssignmentRow({ task, currentUserId, teamMembers, projectName, onRespond, onResolve }) {
+  const [formMode, setFormMode] = useState(null) // null | 'decline' | 'suggest'
+  const [busy, setBusy] = useState(false)
+  const isCreator = task.user_id === currentUserId
+  const myRow = (task.task_assignees || []).find(a => a.user_id === currentUserId)
+  const otherRows = (task.task_assignees || []).filter(a => a.user_id !== task.user_id)
+
+  async function handle(response, extra) {
+    setBusy(true)
+    try {
+      await onRespond(task.id, response, extra)
+      setFormMode(null)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleResolve(assigneeId, apply) {
+    setBusy(true)
+    try {
+      await onResolve(task.id, assigneeId, apply)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="pending-card">
+      <div className="pending-card-top">
+        <span className={`status-dot ${task.priority}`} style={{ width: 8, height: 8 }} />
+        <span className="pending-title">{task.title}</span>
+        {projectName && <span className="project-tag">{projectName}</span>}
+        {task.due_date && <span className="due-badge">{formatDate(task.due_date)}</span>}
+      </div>
+      {task.notes && <p className="task-notes" style={{ paddingLeft: '1.1rem' }}>{task.notes}</p>}
+
+      <div className="pending-assignees">
+        <span className="pending-created-by">
+          Created by {isCreator ? 'you' : memberName(teamMembers, task.user_id)}
+        </span>
+        {otherRows.map(a => (
+          <span key={a.user_id} className={`pending-status-chip status-${a.response_status}`}>
+            {memberName(teamMembers, a.user_id)}
+            {a.response_status === 'accepted' && ' · Accepted'}
+            {a.response_status === 'pending' && ' · Waiting'}
+            {a.response_status === 'change_requested' && ' · Suggested a change'}
+          </span>
+        ))}
+      </div>
+
+      {isCreator && otherRows.filter(a => a.response_status === 'change_requested').map(a => (
+        <div key={a.user_id} className="pending-suggestion">
+          <p className="pending-suggestion-text">
+            <strong>{memberName(teamMembers, a.user_id)}</strong> suggested
+            {a.suggested_priority && <> priority <strong>{PRIORITY_LABELS[a.suggested_priority]}</strong></>}
+            {a.suggested_priority && a.suggested_due_date && ' and'}
+            {a.suggested_due_date && <> due date <strong>{formatDate(a.suggested_due_date)}</strong></>}
+            : &ldquo;{a.response_reason}&rdquo;
+          </p>
+          <div className="pending-suggestion-actions">
+            <button className="btn-primary btn-sm" disabled={busy} onClick={() => handleResolve(a.user_id, true)}>Apply suggestion</button>
+            <button className="btn-ghost btn-sm" disabled={busy} onClick={() => handleResolve(a.user_id, false)}>Keep original</button>
+          </div>
+        </div>
+      ))}
+
+      {myRow && myRow.response_status === 'pending' && (
+        formMode ? (
+          <AssignmentResponseForm
+            mode={formMode}
+            busy={busy}
+            onCancel={() => setFormMode(null)}
+            onSubmit={extra => handle(formMode === 'decline' ? 'declined' : 'change_requested', extra)}
+          />
+        ) : (
+          <div className="pending-my-actions">
+            <button className="btn-primary btn-sm" disabled={busy} onClick={() => handle('accepted')}>Accept</button>
+            <button className="btn-ghost btn-sm" disabled={busy} onClick={() => setFormMode('suggest')}>Suggest change</button>
+            <button className="action-btn action-danger btn-sm" disabled={busy} onClick={() => setFormMode('decline')}>Decline</button>
+          </div>
+        )
+      )}
+      {myRow && myRow.response_status === 'change_requested' && (
+        <p className="pending-waiting-note">Waiting for {memberName(teamMembers, task.user_id)} to review your suggested change.</p>
+      )}
+    </div>
+  )
+}
+
+function AssignmentResponseForm({ mode, busy, onCancel, onSubmit }) {
+  const [reason, setReason] = useState('')
+  const [priority, setPriority] = useState('')
+  const [dueDate, setDueDate] = useState('')
+
+  function submit() {
+    if (!reason.trim()) return
+    onSubmit(mode === 'suggest'
+      ? { reason: reason.trim(), suggestedPriority: priority || null, suggestedDueDate: dueDate || null }
+      : { reason: reason.trim() })
+  }
+
+  return (
+    <div className="response-form">
+      {mode === 'suggest' && (
+        <div className="response-form-row">
+          <div className="qc-prio" role="group" aria-label="Suggested priority">
+            {PRIORITIES.map(p => (
+              <button key={p} type="button"
+                className={`qc-dot prio-${p}${priority === p ? ' selected' : ''}`}
+                aria-pressed={priority === p} title={PRIORITY_LABELS[p]}
+                onClick={() => setPriority(pr => pr === p ? '' : p)}
+              ><span /></button>
+            ))}
+          </div>
+          <input type="date" className="response-date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+        </div>
+      )}
+      <textarea
+        autoFocus
+        rows={2}
+        className="response-reason"
+        value={reason}
+        onChange={e => setReason(e.target.value)}
+        placeholder={mode === 'decline' ? 'Reason for declining (required)…' : 'Why suggest this change? (required)…'}
+      />
+      <div className="response-form-actions">
+        <button type="button" className="btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
+        <button type="button" className="btn-primary btn-sm" disabled={busy || !reason.trim()} onClick={submit}>
+          {mode === 'decline' ? 'Confirm decline' : 'Send suggestion'}
+        </button>
+      </div>
+    </div>
   )
 }
 

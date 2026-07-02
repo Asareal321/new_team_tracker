@@ -439,3 +439,10 @@
   .project-hero { padding: 1rem; gap: 1rem; }
   .project-hero-right { min-width: 0; width: 100%; }
 }
+
+.pp-pending-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  background: var(--yellow-bg); color: var(--yellow-text);
+  border-radius: var(--r-md); padding: 0.55rem 0.85rem;
+  font-size: 0.85rem; font-weight: 500;
+}

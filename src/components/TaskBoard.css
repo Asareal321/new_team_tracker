@@ -1024,3 +1024,83 @@
   /* People filter: allow horizontal scroll if it gets long */
   .people-bar { flex-wrap: wrap; }
 }
+
+/* ── Pending Task Assignments ── */
+.status-dot.pending { background: var(--yellow-text); }
+.tab-pending.has-pending .tab-count { background: var(--yellow-bg); color: var(--yellow-text); }
+
+.pending-list { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.pending-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--yellow-text);
+  border-radius: var(--r-md);
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  box-shadow: var(--shadow-card);
+}
+
+.pending-card-top { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.pending-title { font-size: 0.925rem; font-weight: 500; color: var(--text-1); flex: 1; min-width: 0; }
+
+.pending-assignees { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.pending-created-by { font-size: 0.75rem; color: var(--text-4); }
+
+.pending-status-chip {
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--r-pill);
+  background: var(--bg-muted);
+  color: var(--text-3);
+}
+.pending-status-chip.status-accepted        { background: var(--green-bg);  color: var(--green-text); }
+.pending-status-chip.status-pending         { background: var(--yellow-bg); color: var(--yellow-text); }
+.pending-status-chip.status-change_requested{ background: var(--accent-bg); color: var(--accent-text); }
+
+.pending-suggestion {
+  background: var(--accent-bg);
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.pending-suggestion-text { font-size: 0.82rem; color: var(--text-1); line-height: 1.45; }
+.pending-suggestion-actions { display: flex; gap: 0.5rem; }
+
+.pending-my-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.pending-waiting-note { font-size: 0.8rem; color: var(--text-3); font-style: italic; }
+
+.response-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--bg-muted);
+  border-radius: 8px;
+  padding: 0.6rem;
+}
+.response-form-row { display: flex; align-items: center; gap: 0.6rem; }
+.response-date {
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-2);
+  font-size: 0.82rem;
+}
+.response-reason {
+  width: 100%;
+  resize: vertical;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-1);
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+.response-form-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }

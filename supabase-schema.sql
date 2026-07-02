@@ -10,6 +10,7 @@
 drop trigger if exists on_auth_user_created on auth.users;
 drop table if exists task_updates cascade;
 drop table if exists tasks cascade;
+drop table if exists project_members cascade;
 drop table if exists projects cascade;
 drop table if exists team_invites cascade;
 drop table if exists team_members cascade;
@@ -64,6 +65,13 @@ create table projects (
   created_at timestamptz not null default now()
 );
 
+create table project_members (
+  project_id uuid not null references projects(id) on delete cascade,
+  user_id    uuid not null references profiles(id) on delete cascade,
+  added_at   timestamptz not null default now(),
+  primary key (project_id, user_id)
+);
+
 create table tasks (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -95,6 +103,15 @@ create trigger tasks_set_updated_at
 create table task_assignees (
   task_id uuid not null references tasks(id) on delete cascade,
   user_id uuid not null references profiles(id) on delete cascade,
+  -- An assignee (other than the task's creator) starts 'pending' and must
+  -- accept, decline, or suggest a priority/deadline change before the task
+  -- counts as live — see respond_to_task_assignment() below.
+  response_status text not null default 'pending'
+    check (response_status in ('pending', 'accepted', 'declined', 'change_requested')),
+  response_reason text,
+  suggested_priority text check (suggested_priority in ('low', 'medium', 'high')),
+  suggested_due_date date,
+  responded_at timestamptz,
   primary key (task_id, user_id)
 );
 
@@ -213,6 +230,102 @@ grant execute on function create_team(text) to authenticated;
 grant execute on function join_team_with_code(text) to authenticated;
 
 -- ============================================================
+-- RPCs for task-assignment approvals
+-- ============================================================
+
+-- Called by an assignee to accept, decline, or suggest a change to their own
+-- pending assignment. Declining removes them from the task and leaves a note
+-- on the task so the creator sees the reason in the task's update feed.
+create or replace function respond_to_task_assignment(
+  _task_id uuid,
+  _response text,
+  _reason text default null,
+  _suggested_priority text default null,
+  _suggested_due_date date default null
+) returns void language plpgsql security definer as $$
+declare
+  _responder_name text;
+begin
+  if not exists (select 1 from task_assignees where task_id = _task_id and user_id = auth.uid()) then
+    raise exception 'You are not an assignee on this task';
+  end if;
+
+  select display_name into _responder_name from profiles where id = auth.uid();
+
+  if _response = 'accepted' then
+    update task_assignees
+      set response_status = 'accepted', response_reason = null,
+          suggested_priority = null, suggested_due_date = null, responded_at = now()
+      where task_id = _task_id and user_id = auth.uid();
+
+  elsif _response = 'declined' then
+    if _reason is null or trim(_reason) = '' then
+      raise exception 'A reason is required to decline an assignment';
+    end if;
+    insert into task_updates (task_id, user_id, body)
+      values (_task_id, auth.uid(), coalesce(_responder_name, 'Someone') || ' declined this assignment: ' || _reason);
+    delete from task_assignees where task_id = _task_id and user_id = auth.uid();
+
+  elsif _response = 'change_requested' then
+    if _reason is null or trim(_reason) = '' then
+      raise exception 'A reason is required to suggest a change';
+    end if;
+    update task_assignees
+      set response_status = 'change_requested', response_reason = _reason,
+          suggested_priority = _suggested_priority, suggested_due_date = _suggested_due_date,
+          responded_at = now()
+      where task_id = _task_id and user_id = auth.uid();
+
+  else
+    raise exception 'Invalid response type: %', _response;
+  end if;
+end;
+$$;
+
+grant execute on function respond_to_task_assignment(uuid, text, text, text, date) to authenticated;
+
+-- Called by the task's creator to apply or dismiss a suggested change from
+-- one assignee. Applying updates the task and marks that assignee accepted;
+-- dismissing resets them to pending so they can accept/decline the original.
+create or replace function resolve_change_request(
+  _task_id uuid,
+  _assignee_id uuid,
+  _apply boolean
+) returns void language plpgsql security definer as $$
+declare
+  _creator uuid;
+  _row task_assignees%rowtype;
+begin
+  select user_id into _creator from tasks where id = _task_id;
+  if _creator is null then raise exception 'Task not found'; end if;
+  if _creator != auth.uid() then raise exception 'Only the task creator can resolve a suggested change'; end if;
+
+  select * into _row from task_assignees where task_id = _task_id and user_id = _assignee_id;
+  if not found then raise exception 'Assignment not found'; end if;
+
+  if _apply then
+    update tasks set
+      priority = coalesce(_row.suggested_priority, priority),
+      due_date = case when _row.suggested_due_date is not null then _row.suggested_due_date else due_date end
+      where id = _task_id;
+    update task_assignees
+      set response_status = 'accepted', response_reason = null,
+          suggested_priority = null, suggested_due_date = null, responded_at = now()
+      where task_id = _task_id and user_id = _assignee_id;
+  else
+    update task_assignees
+      set response_status = 'pending', response_reason = null,
+          suggested_priority = null, suggested_due_date = null
+      where task_id = _task_id and user_id = _assignee_id;
+    insert into task_updates (task_id, user_id, body)
+      values (_task_id, auth.uid(), 'Kept the original priority/deadline — please accept or decline.');
+  end if;
+end;
+$$;
+
+grant execute on function resolve_change_request(uuid, uuid, boolean) to authenticated;
+
+-- ============================================================
 -- Row Level Security
 -- ============================================================
 
@@ -221,6 +334,7 @@ alter table teams enable row level security;
 alter table team_members enable row level security;
 alter table team_invites enable row level security;
 alter table projects enable row level security;
+alter table project_members enable row level security;
 alter table tasks enable row level security;
 alter table task_assignees enable row level security;
 alter table task_updates enable row level security;
@@ -281,6 +395,24 @@ create policy "projects_update" on projects
 create policy "projects_delete" on projects
   for delete using (is_team_member(team_id, auth.uid()));
 
+-- project_members: who's assigned to a project. Any team member can read or
+-- manage membership for their team's projects (same trust level as the
+-- projects table itself).
+create policy "project_members_select" on project_members
+  for select using (
+    exists (select 1 from projects p where p.id = project_id and is_team_member(p.team_id, auth.uid()))
+  );
+
+create policy "project_members_insert" on project_members
+  for insert with check (
+    exists (select 1 from projects p where p.id = project_id and is_team_member(p.team_id, auth.uid()))
+  );
+
+create policy "project_members_delete" on project_members
+  for delete using (
+    exists (select 1 from projects p where p.id = project_id and is_team_member(p.team_id, auth.uid()))
+  );
+
 -- tasks: visible/editable if you created it, you're the assignee, or it
 -- belongs to a team you're a member of. Personal tasks (team_id is null)
 -- are only visible to their creator/assignee.
@@ -340,5 +472,6 @@ create policy "task_updates_delete" on task_updates
 alter publication supabase_realtime add table tasks;
 alter publication supabase_realtime add table task_assignees;
 alter publication supabase_realtime add table projects;
+alter publication supabase_realtime add table project_members;
 alter publication supabase_realtime add table team_members;
 alter publication supabase_realtime add table task_updates;

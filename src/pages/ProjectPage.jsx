@@ -27,6 +27,13 @@ function initials(name) {
   return (p.length === 1 ? p[0][0] : p[0][0] + p[p.length - 1][0]).toUpperCase()
 }
 
+// A task is pending approval if any assignee other than its creator hasn't
+// yet accepted. Pending tasks are hidden here — they only appear on the
+// Taskboard's "Pending Assignments" tab until fully accepted.
+function isPendingApproval(task) {
+  return (task.task_assignees || []).some(a => a.user_id !== task.user_id && a.response_status !== 'accepted')
+}
+
 function defaultForm() {
   return { title: '', notes: '', priority: 'medium', status: 'todo', due_date: '', assigneeIds: [] }
 }
@@ -55,7 +62,7 @@ export default function ProjectPage() {
   const fetchTasks = useCallback(async () => {
     const { data } = await supabase
       .from('tasks')
-      .select('*, task_assignees(user_id)')
+      .select('*, task_assignees(user_id, response_status, response_reason, suggested_priority, suggested_due_date)')
       .eq('project_id', projectId)
       .order('position', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: true })
@@ -104,7 +111,8 @@ export default function ProjectPage() {
   if (loading) return <div className="loading">Loading project…</div>
   if (!project) return <div className="loading">Project not found.</div>
 
-  const activeTasks  = tasks.filter(t => t.status !== 'archived')
+  const activeTasks  = tasks.filter(t => t.status !== 'archived' && !isPendingApproval(t))
+  const pendingTasks = tasks.filter(t => t.status !== 'archived' && isPendingApproval(t))
   const archivedTasks = tasks.filter(t => t.status === 'archived')
   const outstanding  = activeTasks.filter(t => t.status !== 'done')
   const done         = activeTasks.filter(t => t.status === 'done')
@@ -158,7 +166,10 @@ export default function ProjectPage() {
       .single()
     if (data?.id && assigneeIds.length) {
       await supabase.from('task_assignees').insert(
-        assigneeIds.map(uid => ({ task_id: data.id, user_id: uid }))
+        assigneeIds.map(uid => ({
+          task_id: data.id, user_id: uid,
+          response_status: uid === user.id ? 'accepted' : 'pending',
+        }))
       )
     }
     setForm(defaultForm())
@@ -290,6 +301,13 @@ export default function ProjectPage() {
           </div>
         </div>
       </div>
+
+      {pendingTasks.length > 0 && (
+        <div className="pp-pending-banner">
+          <span>{pendingTasks.length} task{pendingTasks.length !== 1 ? 's' : ''} waiting on assignment approval</span>
+          <button className="btn-ghost btn-sm" onClick={() => navigate('/')}>Review on Taskboard →</button>
+        </div>
+      )}
 
       <div className="project-view-controls">
         <div className="view-toggle">

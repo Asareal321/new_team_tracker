@@ -78,6 +78,7 @@ export default function BoardPage() {
   const [tasks, setTasks] = useState([])
   const [teamMembers, setTeamMembers] = useState([])
   const [projects, setProjects] = useState([])
+  const [projectMembers, setProjectMembers] = useState([])
   const [taskUpdates, setTaskUpdates] = useState([])
   const [loading, setLoading] = useState(true)
   const [doneTask, setDoneTask] = useState(null)
@@ -95,7 +96,7 @@ export default function BoardPage() {
   const fetchTasks = useCallback(async () => {
     let query = supabase
       .from('tasks')
-      .select('*, task_assignees(user_id)')
+      .select('*, task_assignees(user_id, response_status, response_reason, suggested_priority, suggested_due_date, responded_at)')
       .order('position', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: true })
     query = currentTeamId
@@ -157,20 +158,30 @@ export default function BoardPage() {
     setProjects(data || [])
   }, [currentTeamId])
 
+  const fetchProjectMembers = useCallback(async () => {
+    if (!currentTeamId) { setProjectMembers([]); return }
+    const { data } = await supabase
+      .from('project_members')
+      .select('project_id, user_id, projects!inner(team_id)')
+      .eq('projects.team_id', currentTeamId)
+    setProjectMembers((data || []).map(r => ({ project_id: r.project_id, user_id: r.user_id })))
+  }, [currentTeamId])
+
   useEffect(() => {
     setLoading(true)
-    Promise.all([fetchTasks(), fetchTeamMembers(), fetchProjects()]).then(() => setLoading(false))
+    Promise.all([fetchTasks(), fetchTeamMembers(), fetchProjects(), fetchProjectMembers()]).then(() => setLoading(false))
 
     const channel = supabase
       .channel(`board-${currentTeamId ?? 'personal'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchTasks)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'task_assignees' }, fetchTasks)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'projects', filter: currentTeamId ? `team_id=eq.${currentTeamId}` : undefined }, fetchProjects)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'project_members' }, fetchProjectMembers)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'task_updates' }, fetchTasks)
       .subscribe()
 
     return () => supabase.removeChannel(channel)
-  }, [fetchTasks, fetchTeamMembers, fetchProjects, currentTeamId])
+  }, [fetchTasks, fetchTeamMembers, fetchProjects, fetchProjectMembers, currentTeamId])
 
   async function addTask({ assigneeIds = [], ...task }) {
     const samePriority = tasks.filter(t => t.priority === task.priority && t.status === task.status)
@@ -182,7 +193,10 @@ export default function BoardPage() {
       .single()
     if (data?.id && assigneeIds.length) {
       await supabase.from('task_assignees').insert(
-        assigneeIds.map(uid => ({ task_id: data.id, user_id: uid }))
+        assigneeIds.map(uid => ({
+          task_id: data.id, user_id: uid,
+          response_status: uid === user.id ? 'accepted' : 'pending',
+        }))
       )
     }
     return data?.id
@@ -207,13 +221,46 @@ export default function BoardPage() {
     await supabase.from('task_updates').delete().eq('id', updateId)
   }
 
+  // Diffs against the task's current assignees so an unrelated add/remove
+  // doesn't reset someone who already accepted back to "pending".
   async function updateAssignees(taskId, assigneeIds) {
-    await supabase.from('task_assignees').delete().eq('task_id', taskId)
-    if (assigneeIds.length) {
+    const task = tasks.find(t => t.id === taskId)
+    const creatorId = task?.user_id
+    const existingIds = new Set((task?.task_assignees || []).map(a => a.user_id))
+    const nextIds = new Set(assigneeIds)
+    const toRemove = [...existingIds].filter(id => !nextIds.has(id))
+    const toAdd = [...nextIds].filter(id => !existingIds.has(id))
+    if (toRemove.length) {
+      await supabase.from('task_assignees').delete().eq('task_id', taskId).in('user_id', toRemove)
+    }
+    if (toAdd.length) {
       await supabase.from('task_assignees').insert(
-        assigneeIds.map(uid => ({ task_id: taskId, user_id: uid }))
+        toAdd.map(uid => ({
+          task_id: taskId, user_id: uid,
+          response_status: uid === creatorId ? 'accepted' : 'pending',
+        }))
       )
     }
+  }
+
+  async function respondToAssignment(taskId, response, { reason, suggestedPriority, suggestedDueDate } = {}) {
+    const { error } = await supabase.rpc('respond_to_task_assignment', {
+      _task_id: taskId,
+      _response: response,
+      _reason: reason || null,
+      _suggested_priority: suggestedPriority || null,
+      _suggested_due_date: suggestedDueDate || null,
+    })
+    if (error) throw error
+  }
+
+  async function resolveChangeRequest(taskId, assigneeId, apply) {
+    const { error } = await supabase.rpc('resolve_change_request', {
+      _task_id: taskId,
+      _assignee_id: assigneeId,
+      _apply: apply,
+    })
+    if (error) throw error
   }
 
   async function updateProject(id, updates) {
@@ -243,6 +290,7 @@ export default function BoardPage() {
         tasks={tasks}
         teamMembers={teamMembers}
         projects={projects}
+        projectMembers={projectMembers}
         taskUpdates={taskUpdates}
         currentUserId={user.id}
         currentTeamId={currentTeamId}
@@ -252,6 +300,8 @@ export default function BoardPage() {
         onAddUpdate={addUpdate}
         onDeleteUpdate={deleteUpdate}
         onUpdateAssignees={updateAssignees}
+        onRespondToAssignment={respondToAssignment}
+        onResolveChangeRequest={resolveChangeRequest}
         onTaskDone={task => setDoneTask(task)}
         onArchiveAll={archiveDoneTasks}
       />
