@@ -39,6 +39,7 @@ export default function TeamsPage() {
   const [projectFilter, setProjectFilter] = useState('mine')
   const [showProjectForm, setShowProjectForm] = useState(false)
   const [editingProjectId, setEditingProjectId] = useState(null)
+  const [assignMode, setAssignMode] = useState(false)
   const navigate = useNavigate()
 
   const fetchMembers = useCallback(async () => {
@@ -254,6 +255,11 @@ export default function TeamsPage() {
                       Outstanding ↓
                     </button>
                   </div>
+                  {members.length > 1 && (
+                    <button className="assign-mode-btn" onClick={() => setAssignMode(true)}>
+                      ⚡ Quick Assign
+                    </button>
+                  )}
                   <button className="btn-primary" onClick={() => { setEditingProjectId(null); setShowProjectForm(true) }}>
                     + New Project
                   </button>
@@ -307,6 +313,16 @@ export default function TeamsPage() {
                   setShowProjectForm(false)
                   setEditingProjectId(null)
                 }}
+              />
+            )}
+
+            {assignMode && (
+              <AssignmentModeModal
+                teamId={currentTeamId}
+                currentUserId={user.id}
+                members={members}
+                projects={projects}
+                onClose={() => setAssignMode(false)}
               />
             )}
           </>
@@ -480,6 +496,122 @@ function ProjectModal({ project, members = [], initialMemberIds = [], onCancel, 
           <button type="submit" className="btn-primary">{project ? 'Save' : 'Create Project'}</button>
         </div>
       </form>
+    </div>
+  )
+}
+
+// Quick-assign mode: pulls the team's active tasks and lets you toggle people
+// onto them one click at a time. Assigning anyone other than a task's creator
+// creates a pending request they must accept (same flow as the board).
+function AssignmentModeModal({ teamId, currentUserId, members, projects, onClose }) {
+  const [tasks, setTasks] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchTasks = useCallback(async () => {
+    const { data } = await supabase
+      .from('tasks')
+      .select('id, title, project_id, priority, status, user_id, task_assignees(user_id, response_status)')
+      .eq('team_id', teamId)
+      .in('status', ['todo', 'in_progress'])
+      .order('created_at', { ascending: true })
+    setTasks(data || [])
+    setLoading(false)
+  }, [teamId])
+
+  useEffect(() => { fetchTasks() }, [fetchTasks])
+
+  async function toggleAssign(task, memberId) {
+    const assigned = (task.task_assignees || []).some(a => a.user_id === memberId)
+    // Optimistic local update so the click feels instant.
+    setTasks(prev => prev.map(t => t.id !== task.id ? t : {
+      ...t,
+      task_assignees: assigned
+        ? t.task_assignees.filter(a => a.user_id !== memberId)
+        : [...(t.task_assignees || []), { user_id: memberId, response_status: memberId === t.user_id ? 'accepted' : 'pending' }],
+    }))
+    if (assigned) {
+      await supabase.from('task_assignees').delete().eq('task_id', task.id).eq('user_id', memberId)
+    } else {
+      await supabase.from('task_assignees').insert({
+        task_id: task.id, user_id: memberId,
+        response_status: memberId === task.user_id ? 'accepted' : 'pending',
+      })
+    }
+  }
+
+  return (
+    <AssignmentModeView
+      tasks={tasks}
+      loading={loading}
+      members={members}
+      projects={projects}
+      currentUserId={currentUserId}
+      onToggle={toggleAssign}
+      onClose={onClose}
+    />
+  )
+}
+
+export function AssignmentModeView({ tasks, loading, members, projects, currentUserId, onToggle, onClose }) {
+  const groups = [
+    ...projects
+      .map(p => ({ id: p.id, name: p.name, tasks: tasks.filter(t => t.project_id === p.id) }))
+      .filter(g => g.tasks.length),
+  ]
+  const noProject = tasks.filter(t => !t.project_id)
+  if (noProject.length) groups.push({ id: 'none', name: 'No project', tasks: noProject })
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="assign-modal" onClick={e => e.stopPropagation()}>
+        <div className="assign-head">
+          <div className="assign-head-top">
+            <h2>⚡ Quick Assign</h2>
+            <button className="assign-close" aria-label="Close" onClick={onClose}>✕</button>
+          </div>
+          <p className="assign-hint">Click a teammate to assign or unassign them. Assigning someone else sends a request they must accept.</p>
+        </div>
+        <div className="assign-body">
+          {loading ? (
+            <p className="empty-hint">Loading tasks…</p>
+          ) : tasks.length === 0 ? (
+            <p className="empty-hint">No active tasks to assign right now.</p>
+          ) : (
+            groups.map(g => (
+              <div key={g.id} className="assign-group">
+                <div className="assign-group-label">{g.name}</div>
+                {g.tasks.map(task => (
+                  <div key={task.id} className="assign-row">
+                    <span className={`status-dot ${task.priority}`} style={{ width: 8, height: 8, flexShrink: 0 }} />
+                    <span className="assign-task-title">{task.title}</span>
+                    <div className="assign-avatars">
+                      {members.map(m => {
+                        const row = (task.task_assignees || []).find(a => a.user_id === m.id)
+                        const assigned = !!row
+                        const pending = assigned && m.id !== task.user_id && row.response_status !== 'accepted'
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            className={`assign-av${assigned ? ' assigned' : ''}${pending ? ' pending' : ''}`}
+                            title={`${m.display_name}${pending ? ' · pending acceptance' : assigned ? ' · assigned' : ''}`}
+                            aria-pressed={assigned}
+                            onClick={() => onToggle(task, m.id)}
+                          >{initials(m.display_name)}</button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))
+          )}
+        </div>
+        <div className="assign-foot">
+          <span className="assign-legend"><span className="assign-av assigned assign-legend-av" />assigned <span className="assign-av pending assign-legend-av" />pending</span>
+          <button className="btn-primary" onClick={onClose}>Done</button>
+        </div>
+      </div>
     </div>
   )
 }
