@@ -174,6 +174,20 @@ export default function TeamsPage() {
     await supabase.from('projects').delete().eq('id', id)
   }
 
+  // Quick-assign a teammate to a project (project membership). Optimistic so
+  // the click feels instant; the realtime channel keeps it in sync.
+  async function toggleProjectMember(projectId, userId) {
+    const assigned = projectMembers.some(pm => pm.project_id === projectId && pm.user_id === userId)
+    setProjectMembers(prev => assigned
+      ? prev.filter(pm => !(pm.project_id === projectId && pm.user_id === userId))
+      : [...prev, { project_id: projectId, user_id: userId }])
+    if (assigned) {
+      await supabase.from('project_members').delete().eq('project_id', projectId).eq('user_id', userId)
+    } else {
+      await supabase.from('project_members').insert({ project_id: projectId, user_id: userId })
+    }
+  }
+
   const currentTeam = teams.find(t => t.id === currentTeamId)
   const isOwner = members.find(m => m.id === user.id)?.role === 'owner'
   const editingProject = projects.find(p => p.id === editingProjectId) || null
@@ -331,6 +345,8 @@ export default function TeamsPage() {
                 currentUserId={user.id}
                 members={members}
                 projects={projects}
+                projectMembers={projectMembers}
+                onToggleProjectMember={toggleProjectMember}
                 onClose={() => setAssignMode(false)}
               />
             )}
@@ -512,7 +528,7 @@ function ProjectModal({ project, members = [], initialMemberIds = [], onCancel, 
 // Quick-assign mode: pulls the team's active tasks and lets you toggle people
 // onto them one click at a time. Assigning anyone other than a task's creator
 // creates a pending request they must accept (same flow as the board).
-function AssignmentModeModal({ teamId, currentUserId, members, projects, onClose }) {
+function AssignmentModeModal({ teamId, currentUserId, members, projects, projectMembers, onToggleProjectMember, onClose }) {
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -554,14 +570,18 @@ function AssignmentModeModal({ teamId, currentUserId, members, projects, onClose
       loading={loading}
       members={members}
       projects={projects}
+      projectMembers={projectMembers}
       currentUserId={currentUserId}
       onToggle={toggleAssign}
+      onToggleProjectMember={onToggleProjectMember}
       onClose={onClose}
     />
   )
 }
 
-export function AssignmentModeView({ tasks, loading, members, projects, currentUserId, onToggle, onClose }) {
+export function AssignmentModeView({ tasks, loading, members, projects, projectMembers = [], currentUserId, onToggle, onToggleProjectMember, onClose }) {
+  const [tab, setTab] = useState('tasks')
+
   const groups = [
     ...projects
       .map(p => ({ id: p.id, name: p.name, tasks: tasks.filter(t => t.project_id === p.id) }))
@@ -569,6 +589,9 @@ export function AssignmentModeView({ tasks, loading, members, projects, currentU
   ]
   const noProject = tasks.filter(t => !t.project_id)
   if (noProject.length) groups.push({ id: 'none', name: 'No project', tasks: noProject })
+
+  const memberOnProject = (projectId, userId) =>
+    projectMembers.some(pm => pm.project_id === projectId && pm.user_id === userId)
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -578,46 +601,88 @@ export function AssignmentModeView({ tasks, loading, members, projects, currentU
             <h2>⚡ Quick Assign</h2>
             <button className="assign-close" aria-label="Close" onClick={onClose}>✕</button>
           </div>
-          <p className="assign-hint">Click a teammate to assign or unassign them. Assigning someone else sends a request they must accept.</p>
+          <div className="assign-tabs">
+            <button type="button" className={`assign-tab${tab === 'tasks' ? ' active' : ''}`} onClick={() => setTab('tasks')}>Tasks</button>
+            <button type="button" className={`assign-tab${tab === 'projects' ? ' active' : ''}`} onClick={() => setTab('projects')}>Projects</button>
+          </div>
+          <p className="assign-hint">
+            {tab === 'tasks'
+              ? 'Click a teammate to assign or unassign them on a task. Assigning someone else sends a request they must accept.'
+              : 'Click a teammate to add or remove them from a project. Project members can view each other on the board’s people filter.'}
+          </p>
         </div>
+
         <div className="assign-body">
-          {loading ? (
-            <p className="empty-hint">Loading tasks…</p>
-          ) : tasks.length === 0 ? (
-            <p className="empty-hint">No active tasks to assign right now.</p>
-          ) : (
-            groups.map(g => (
-              <div key={g.id} className="assign-group">
-                <div className="assign-group-label">{g.name}</div>
-                {g.tasks.map(task => (
-                  <div key={task.id} className="assign-row">
-                    <span className={`status-dot ${task.priority}`} style={{ width: 8, height: 8, flexShrink: 0 }} />
-                    <span className="assign-task-title">{task.title}</span>
-                    <div className="assign-avatars">
-                      {members.map(m => {
-                        const row = (task.task_assignees || []).find(a => a.user_id === m.id)
-                        const assigned = !!row
-                        const pending = assigned && m.id !== task.user_id && row.response_status !== 'accepted'
-                        return (
-                          <button
-                            key={m.id}
-                            type="button"
-                            className={`assign-av${assigned ? ' assigned' : ''}${pending ? ' pending' : ''}`}
-                            title={`${m.display_name}${pending ? ' · pending acceptance' : assigned ? ' · assigned' : ''}`}
-                            aria-pressed={assigned}
-                            onClick={() => onToggle(task, m.id)}
-                          >{initials(m.display_name)}</button>
-                        )
-                      })}
+          {tab === 'tasks' ? (
+            loading ? (
+              <p className="empty-hint">Loading tasks…</p>
+            ) : tasks.length === 0 ? (
+              <p className="empty-hint">No active tasks to assign right now.</p>
+            ) : (
+              groups.map(g => (
+                <div key={g.id} className="assign-group">
+                  <div className="assign-group-label">{g.name}</div>
+                  {g.tasks.map(task => (
+                    <div key={task.id} className="assign-row">
+                      <span className={`status-dot ${task.priority}`} style={{ width: 8, height: 8, flexShrink: 0 }} />
+                      <span className="assign-task-title">{task.title}</span>
+                      <div className="assign-avatars">
+                        {members.map(m => {
+                          const row = (task.task_assignees || []).find(a => a.user_id === m.id)
+                          const assigned = !!row
+                          const pending = assigned && m.id !== task.user_id && row.response_status !== 'accepted'
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              className={`assign-av${assigned ? ' assigned' : ''}${pending ? ' pending' : ''}`}
+                              title={`${m.display_name}${pending ? ' · pending acceptance' : assigned ? ' · assigned' : ''}`}
+                              aria-pressed={assigned}
+                              onClick={() => onToggle(task, m.id)}
+                            >{initials(m.display_name)}</button>
+                          )
+                        })}
+                      </div>
                     </div>
+                  ))}
+                </div>
+              ))
+            )
+          ) : (
+            projects.length === 0 ? (
+              <p className="empty-hint">No projects yet.</p>
+            ) : (
+              projects.map(p => (
+                <div key={p.id} className="assign-row">
+                  <span className="tile-dot" style={{ background: projectDotColor(p.id), flexShrink: 0 }} />
+                  <span className="assign-task-title">{p.name}</span>
+                  <div className="assign-avatars">
+                    {members.map(m => {
+                      const assigned = memberOnProject(p.id, m.id)
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          className={`assign-av${assigned ? ' assigned' : ''}`}
+                          title={`${m.display_name}${assigned ? ' · on project' : ''}`}
+                          aria-pressed={assigned}
+                          onClick={() => onToggleProjectMember(p.id, m.id)}
+                        >{initials(m.display_name)}</button>
+                      )
+                    })}
                   </div>
-                ))}
-              </div>
-            ))
+                </div>
+              ))
+            )
           )}
         </div>
+
         <div className="assign-foot">
-          <span className="assign-legend"><span className="assign-av assigned assign-legend-av" />assigned <span className="assign-av pending assign-legend-av" />pending</span>
+          {tab === 'tasks' ? (
+            <span className="assign-legend"><span className="assign-av assigned assign-legend-av" />assigned <span className="assign-av pending assign-legend-av" />pending</span>
+          ) : (
+            <span className="assign-legend"><span className="assign-av assigned assign-legend-av" />on project</span>
+          )}
           <button className="btn-primary" onClick={onClose}>Done</button>
         </div>
       </div>
