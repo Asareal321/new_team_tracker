@@ -9,13 +9,6 @@ import './TeamsPage.css'
 const PROJECT_STATUSES = ['active', 'on_hold', 'completed']
 const PROJECT_STATUS_LABELS = { active: 'Active', on_hold: 'On Hold', completed: 'Completed' }
 
-// A task is pending approval if any assignee other than its creator hasn't yet
-// accepted. Such tasks are hidden inside the project, so they must not be
-// counted in the tile stats either. (Mirrors ProjectPage/TaskBoard.)
-function isPendingApproval(task) {
-  return (task.task_assignees || []).some(a => a.user_id !== task.user_id && a.response_status !== 'accepted')
-}
-
 // Countdown label + tone for a project deadline.
 function deadlineInfo(targetDate, status) {
   const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -82,18 +75,17 @@ export default function TeamsPage() {
       setProjectMembers([])
     }
 
-    // Count only tasks that also count on the project page: not archived and
-    // not still pending assignment-approval. Keeps the tile in sync with what
-    // you actually see inside the project.
+    // Count every non-archived task (including pending-approval ones, which now
+    // show on the board and project with a "Pending" badge). Matches the
+    // project page's active-task set.
     const { data: tData } = await supabase
       .from('tasks')
-      .select('project_id, priority, status, user_id, task_assignees(user_id, response_status)')
+      .select('project_id, priority, status')
       .eq('team_id', currentTeamId)
       .not('project_id', 'is', null)
       .neq('status', 'archived')
     const stats = {}
     ;(tData || []).forEach(t => {
-      if (isPendingApproval(t)) return
       if (!stats[t.project_id]) stats[t.project_id] = { high: 0, outstanding: 0, done: 0, total: 0 }
       stats[t.project_id].total++
       if (t.status === 'done') {

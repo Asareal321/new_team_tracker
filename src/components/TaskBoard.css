@@ -513,6 +513,19 @@
 .priority-badge.medium { background: var(--yellow-bg); color: var(--yellow-text); }
 .priority-badge.low    { background: var(--bg-muted);  color: var(--text-3); }
 
+.pending-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--r-pill);
+  background: var(--yellow-bg);
+  color: var(--yellow-text);
+  border: 1px dashed var(--yellow-text);
+  flex-shrink: 0;
+}
+
 .task-title { font-size: 0.925rem; font-weight: 500; color: var(--text-1); line-height: 1.35; }
 .task-notes { font-size: 0.82rem; color: var(--text-3); line-height: 1.5; }
 

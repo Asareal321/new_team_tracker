@@ -111,7 +111,9 @@ export default function ProjectPage() {
   if (loading) return <div className="loading">Loading project…</div>
   if (!project) return <div className="loading">Project not found.</div>
 
-  const activeTasks  = tasks.filter(t => t.status !== 'archived' && !isPendingApproval(t))
+  // Pending-approval tasks stay in the list (with a "Pending" badge) rather
+  // than being hidden; the banner just summarises how many still need action.
+  const activeTasks  = tasks.filter(t => t.status !== 'archived')
   const pendingTasks = tasks.filter(t => t.status !== 'archived' && isPendingApproval(t))
   const archivedTasks = tasks.filter(t => t.status === 'archived')
   const outstanding  = activeTasks.filter(t => t.status !== 'done')
@@ -405,7 +407,10 @@ function ProjectTaskRow({ task, assignees, updates, onStatusChange, onAddUpdate,
       <div className="pp-task-main">
         {showPriority && <span className={`pp-priority-dot dot-${task.priority}`} title={task.priority} />}
         <div className="pp-task-info">
-          <p className="pp-task-title">{task.title}</p>
+          <p className="pp-task-title">
+            {isPendingApproval(task) && <span className="pending-badge">Pending</span>}
+            {task.title}
+          </p>
           {task.notes && <p className="pp-task-notes">{task.notes}</p>}
         </div>
         <div className="pp-task-meta">

@@ -184,11 +184,10 @@ export default function TaskBoard({
     })
   }
 
-  // Pending-approval tasks are pulled out of the normal status tabs/zones
-  // entirely — they only appear under the "Pending Assignments" tab until
-  // every non-creator assignee accepts.
-  const boardTasks = useMemo(() => visibleTasks.filter(t => !isPendingApproval(t)), [visibleTasks])
-  const byStatus = (status) => boardTasks.filter(t => t.status === status)
+  // Pending-approval tasks stay on the board in their normal status zones with
+  // a "Pending" badge; the Pending Assignments tab is just a focused shortcut
+  // for the people who need to accept/decline them.
+  const byStatus = (status) => visibleTasks.filter(t => t.status === status)
 
   // Tasks needing my attention: I'm the creator waiting on responses, or I'm
   // one of the still-pending assignees myself. This intentionally bypasses
@@ -306,7 +305,7 @@ export default function TaskBoard({
       )}
 
       <PriorityBoard
-        tasks={boardTasks}
+        tasks={visibleTasks}
         pendingTasks={pendingTasksForMe}
         currentUserId={currentUserId}
         onRespondToAssignment={onRespondToAssignment}
@@ -791,6 +790,7 @@ function TaskRow({
   const [showHistory, setShowHistory] = useState(false)
   const [expanded, setExpanded] = useState(() => draftText.length > 0)
   const isArchived = task.status === 'archived'
+  const isPending = isPendingApproval(task)
 
   const today = todayStr()
   const todaysUpdates  = updates.filter(u => u.created_at.slice(0, 10) === today)
@@ -834,6 +834,7 @@ function TaskRow({
             {showPriorityBadge && (
               <span className={`priority-badge ${task.priority}`}>{task.priority}</span>
             )}
+            {isPending && <span className="pending-badge" title="Waiting on assignment acceptance">Pending</span>}
             <p className="task-title">{task.title}</p>
           </div>
           {task.notes && <p className="task-notes">{task.notes}</p>}
