@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
+import { isIsolatedSession, isolatedSessionLabel } from '../supabase'
 import '../App.css'
 
 const navClass = ({ isActive }) => (isActive ? 'nav-btn active' : 'nav-btn')
@@ -27,6 +28,11 @@ export default function Layout() {
       <aside className="app-sidebar">
         <div className="sidebar-brand">
           <span className="brand-wordmark">trakkit</span>
+          {isIsolatedSession && (
+            <span className="isolated-badge" title="This tab uses its own separate login (sessionStorage). It won't affect your other tabs.">
+              ⧉ {isolatedSessionLabel}
+            </span>
+          )}
         </div>
         <nav className="sidebar-nav">
           <NavLink to="/" className={navClass} end>Taskboard</NavLink>

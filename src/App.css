@@ -87,6 +87,21 @@ html[data-theme="dark"] .app-sidebar {
   background: var(--rail-track);
 }
 
+.isolated-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--brand-ink);
+  background: var(--brand-lime);
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+  max-width: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .sidebar-nav { display: flex; flex-direction: column; gap: 0.2rem; }
 
 .nav-btn {
