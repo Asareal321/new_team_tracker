@@ -246,10 +246,7 @@ html[data-theme="dark"] .project-tile[class*="pc-"] .tile-progress { background:
 .tile-actions {
   display: flex;
   gap: 0.3rem;
-  opacity: 0;
-  transition: opacity 0.12s;
 }
-.project-tile:hover .tile-actions { opacity: 1; }
 .tile-action-btn {
   background: none;
   border: none;
