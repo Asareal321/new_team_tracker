@@ -103,6 +103,19 @@
   color: var(--text-1);
 }
 
+.member-role-actions { display: flex; align-items: center; gap: 0.45rem; }
+.role-toggle-btn {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-3);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  padding: 0.12rem 0.5rem;
+  cursor: pointer;
+}
+.role-toggle-btn:hover { color: var(--text-1); border-color: var(--text-4); background: var(--bg-muted); }
+
 .invite-code-row {
   margin-top: 0.85rem;
   display: flex;

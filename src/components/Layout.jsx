@@ -10,8 +10,10 @@ function getInitialTheme() {
 }
 
 export default function Layout() {
-  const { teams, currentTeamId, setCurrentTeam } = useTeam()
+  const { teams, currentTeam, currentTeamId, setCurrentTeam } = useTeam()
   const [theme, setTheme] = useState(getInitialTheme)
+
+  const isAdmin = currentTeam?.role === 'owner' || currentTeam?.role === 'admin'
 
   function toggleTheme() {
     const next = theme === 'dark' ? 'light' : 'dark'
@@ -30,6 +32,7 @@ export default function Layout() {
           <NavLink to="/" className={navClass} end>Taskboard</NavLink>
           <NavLink to="/deadlines" className={navClass}>Deadlines</NavLink>
           <NavLink to="/teams" className={navClass}>Teams</NavLink>
+          {isAdmin && <NavLink to="/dashboard" className={navClass}>Dashboard</NavLink>}
           <NavLink to="/summary" className={navClass}>Daily Summary</NavLink>
           <NavLink to="/account" className={navClass}>Account</NavLink>
         </nav>

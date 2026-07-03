@@ -155,6 +155,15 @@ export default function TeamsPage() {
     setCurrentTeam(data)
   }
 
+  async function setMemberRole(userId, role) {
+    // Optimistic — the team-members realtime channel will confirm.
+    setMembers(prev => prev.map(m => m.id === userId ? { ...m, role } : m))
+    const { error } = await supabase.rpc('set_member_role', {
+      _team_id: currentTeamId, _user_id: userId, _role: role,
+    })
+    if (error) { console.error('[trakkit] Failed to set member role', error.message); fetchMembers() }
+  }
+
   function copyInvite() {
     navigator.clipboard.writeText(currentTeam?.invite_code || '')
     setCopied(true)
@@ -303,7 +312,17 @@ export default function TeamsPage() {
                 {members.map(m => (
                   <div key={m.id} className="member-row">
                     <span>{m.display_name}{m.id === user.id ? ' (you)' : ''}</span>
-                    {m.role === 'owner' && <span className="role-tag">owner</span>}
+                    <div className="member-role-actions">
+                      {m.role !== 'member' && <span className="role-tag">{m.role}</span>}
+                      {isOwner && m.role !== 'owner' && m.id !== user.id && (
+                        <button
+                          className="role-toggle-btn"
+                          onClick={() => setMemberRole(m.id, m.role === 'admin' ? 'member' : 'admin')}
+                        >
+                          {m.role === 'admin' ? 'Remove admin' : 'Make admin'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

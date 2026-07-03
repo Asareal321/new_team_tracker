@@ -7,6 +7,7 @@ import Layout from './components/Layout'
 import BoardPage from './pages/BoardPage'
 import DeadlinesPage from './pages/DeadlinesPage'
 import TeamsPage from './pages/TeamsPage'
+import DashboardPage from './pages/DashboardPage'
 import SummaryPage from './pages/SummaryPage'
 import AccountPage from './pages/AccountPage'
 import ProjectPage from './pages/ProjectPage'
@@ -40,6 +41,7 @@ export default function App() {
               <Route index element={<BoardPage />} />
               <Route path="deadlines" element={<DeadlinesPage />} />
               <Route path="teams" element={<TeamsPage />} />
+              <Route path="dashboard" element={<DashboardPage />} />
               <Route path="summary" element={<SummaryPage />} />
               <Route path="account" element={<AccountPage />} />
               <Route path="projects/:projectId" element={<ProjectPage />} />
