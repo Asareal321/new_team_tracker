@@ -362,6 +362,13 @@ export default function TeamsPage() {
                     <div className="section-header-title">
                       <button className="btn-ghost back-btn" onClick={() => setSelectedGroupId(null)}>← Projects</button>
                       <h3>{selectedGroup ? selectedGroup.name : 'Ungrouped Sprints'}</h3>
+                      {selectedGroup && (
+                        <button
+                          className="tile-action-btn"
+                          title="Rename project"
+                          onClick={() => { setEditingGroupId(selectedGroup.id); setShowGroupForm(true) }}
+                        >✎</button>
+                      )}
                     </div>
                     <div className="project-controls">
                       <div className="sort-toggle">
