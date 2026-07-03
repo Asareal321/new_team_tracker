@@ -242,6 +242,17 @@ export default function TeamsPage() {
       : []
   const ungroupedCount = projects.filter(p => !p.group_id).length
 
+  function aggregateStats(sprints) {
+    return sprints.reduce((acc, p) => {
+      const s = taskStats[p.id] || {}
+      acc.high += s.high ?? 0
+      acc.outstanding += s.outstanding ?? 0
+      acc.total += s.total ?? 0
+      acc.done += s.done ?? 0
+      return acc
+    }, { high: 0, outstanding: 0, total: 0, done: 0 })
+  }
+
   return (
     <div className="teams-page">
       <div className="teams-list-col">
@@ -325,20 +336,12 @@ export default function TeamsPage() {
                   <div className="project-grid">
                     {projectGroups.map(g => {
                       const sprints = projects.filter(p => p.group_id === g.id)
-                      const agg = sprints.reduce((acc, p) => {
-                        const s = taskStats[p.id] || {}
-                        acc.high += s.high ?? 0
-                        acc.outstanding += s.outstanding ?? 0
-                        acc.total += s.total ?? 0
-                        acc.done += s.done ?? 0
-                        return acc
-                      }, { high: 0, outstanding: 0, total: 0, done: 0 })
                       return (
                         <GroupTile
                           key={g.id}
                           group={g}
                           sprintCount={sprints.length}
-                          stats={agg}
+                          stats={aggregateStats(sprints)}
                           onClick={() => setSelectedGroupId(g.id)}
                           onEdit={e => { e.stopPropagation(); setEditingGroupId(g.id); setShowGroupForm(true) }}
                           onDelete={e => { e.stopPropagation(); deleteProjectGroup(g.id) }}
@@ -349,7 +352,7 @@ export default function TeamsPage() {
                       <GroupTile
                         group={{ id: 'ungrouped', name: 'Ungrouped Sprints' }}
                         sprintCount={ungroupedCount}
-                        stats={{}}
+                        stats={aggregateStats(projects.filter(p => !p.group_id))}
                         ungrouped
                         onClick={() => setSelectedGroupId('ungrouped')}
                       />
