@@ -42,6 +42,12 @@ export default function TeamsPage() {
   const [assignMode, setAssignMode] = useState(false)
   const navigate = useNavigate()
 
+  const [projectGroups, setProjectGroups] = useState([])
+  const [selectedGroupId, setSelectedGroupId] = useState(null)
+  const [showGroupForm, setShowGroupForm] = useState(false)
+  const [editingGroupId, setEditingGroupId] = useState(null)
+  const [showAddSprints, setShowAddSprints] = useState(false)
+
   const fetchMembers = useCallback(async () => {
     if (!currentTeamId) { setMembers([]); return }
     const { data } = await supabase
@@ -53,6 +59,17 @@ export default function TeamsPage() {
       role: r.role,
       display_name: r.profiles?.display_name || r.profiles?.email || 'Unknown',
     })))
+  }, [currentTeamId])
+
+  const fetchProjectGroups = useCallback(async () => {
+    if (!currentTeamId) { setProjectGroups([]); return }
+    const { data, error } = await supabase
+      .from('project_groups')
+      .select('*')
+      .eq('team_id', currentTeamId)
+      .order('created_at', { ascending: true })
+    if (error) console.error('[trakkit] Failed to load project groups — is the DB migration applied?', error.message)
+    setProjectGroups(data || [])
   }, [currentTeamId])
 
   const fetchProjects = useCallback(async () => {
@@ -101,18 +118,20 @@ export default function TeamsPage() {
   useEffect(() => {
     fetchMembers()
     fetchProjects()
+    fetchProjectGroups()
 
     if (!currentTeamId) return
     const channel = supabase
       .channel(`team-detail-${currentTeamId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'team_members', filter: `team_id=eq.${currentTeamId}` }, fetchMembers)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'projects', filter: `team_id=eq.${currentTeamId}` }, fetchProjects)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'project_groups', filter: `team_id=eq.${currentTeamId}` }, fetchProjectGroups)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'project_members' }, fetchProjects)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: `team_id=eq.${currentTeamId}` }, fetchProjects)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'task_assignees' }, fetchProjects)
       .subscribe()
     return () => supabase.removeChannel(channel)
-  }, [currentTeamId, fetchMembers, fetchProjects])
+  }, [currentTeamId, fetchMembers, fetchProjects, fetchProjectGroups])
 
   async function handleCreateTeam(e) {
     e.preventDefault()
@@ -174,6 +193,26 @@ export default function TeamsPage() {
     await supabase.from('projects').delete().eq('id', id)
   }
 
+  async function addProjectGroup(name) {
+    await supabase.from('project_groups').insert({ team_id: currentTeamId, name, created_by: user.id })
+  }
+
+  async function updateProjectGroup(id, name) {
+    await supabase.from('project_groups').update({ name }).eq('id', id)
+  }
+
+  async function deleteProjectGroup(id) {
+    await supabase.from('project_groups').delete().eq('id', id)
+    if (selectedGroupId === id) setSelectedGroupId(null)
+  }
+
+  // Add/remove a sprint (the "projects" table) from a project group. Setting
+  // group_id back to null returns it to the "Ungrouped" bucket.
+  async function setSprintGroup(sprintId, groupId) {
+    setProjects(prev => prev.map(p => p.id === sprintId ? { ...p, group_id: groupId } : p))
+    await supabase.from('projects').update({ group_id: groupId }).eq('id', sprintId)
+  }
+
   // Quick-assign a teammate to a project (project membership). Optimistic so
   // the click feels instant; the realtime channel keeps it in sync.
   async function toggleProjectMember(projectId, userId) {
@@ -191,6 +230,17 @@ export default function TeamsPage() {
   const currentTeam = teams.find(t => t.id === currentTeamId)
   const isOwner = members.find(m => m.id === user.id)?.role === 'owner'
   const editingProject = projects.find(p => p.id === editingProjectId) || null
+  const editingGroup = projectGroups.find(g => g.id === editingGroupId) || null
+
+  const selectedGroup = selectedGroupId && selectedGroupId !== 'ungrouped'
+    ? projectGroups.find(g => g.id === selectedGroupId)
+    : null
+  const sprintsInView = selectedGroupId === 'ungrouped'
+    ? projects.filter(p => !p.group_id)
+    : selectedGroupId
+      ? projects.filter(p => p.group_id === selectedGroupId)
+      : []
+  const ungroupedCount = projects.filter(p => !p.group_id).length
 
   return (
     <div className="teams-page">
@@ -259,66 +309,147 @@ export default function TeamsPage() {
             </section>
 
             <section className="projects-section">
-              <div className="section-header">
-                <h3>Projects</h3>
-                <div className="project-controls">
-                  <div className="sort-toggle">
-                    <button className={`sort-btn${projectFilter === 'mine' ? ' active' : ''}`} onClick={() => setProjectFilter('mine')}>
-                      My Projects
-                    </button>
-                    <button className={`sort-btn${projectFilter === 'all' ? ' active' : ''}`} onClick={() => setProjectFilter('all')}>
-                      All Projects
-                    </button>
+              {!selectedGroupId ? (
+                <>
+                  <div className="section-header">
+                    <h3>Projects</h3>
+                    <div className="project-controls">
+                      <button className="btn-primary" onClick={() => { setEditingGroupId(null); setShowGroupForm(true) }}>
+                        + New Project
+                      </button>
+                    </div>
                   </div>
-                  <div className="sort-toggle">
-                    <button className={`sort-btn${sortOrder === 'high' ? ' active' : ''}`} onClick={() => setSortOrder('high')}>
-                      High priority ↓
-                    </button>
-                    <button className={`sort-btn${sortOrder === 'outstanding' ? ' active' : ''}`} onClick={() => setSortOrder('outstanding')}>
-                      Outstanding ↓
-                    </button>
+
+                  {projectGroups.length === 0 && ungroupedCount === 0 && <p className="empty-hint">No projects yet.</p>}
+
+                  <div className="project-grid">
+                    {projectGroups.map(g => {
+                      const sprints = projects.filter(p => p.group_id === g.id)
+                      const agg = sprints.reduce((acc, p) => {
+                        const s = taskStats[p.id] || {}
+                        acc.high += s.high ?? 0
+                        acc.outstanding += s.outstanding ?? 0
+                        acc.total += s.total ?? 0
+                        acc.done += s.done ?? 0
+                        return acc
+                      }, { high: 0, outstanding: 0, total: 0, done: 0 })
+                      return (
+                        <GroupTile
+                          key={g.id}
+                          group={g}
+                          sprintCount={sprints.length}
+                          stats={agg}
+                          onClick={() => setSelectedGroupId(g.id)}
+                          onEdit={e => { e.stopPropagation(); setEditingGroupId(g.id); setShowGroupForm(true) }}
+                          onDelete={e => { e.stopPropagation(); deleteProjectGroup(g.id) }}
+                        />
+                      )
+                    })}
+                    {ungroupedCount > 0 && (
+                      <GroupTile
+                        group={{ id: 'ungrouped', name: 'Ungrouped Sprints' }}
+                        sprintCount={ungroupedCount}
+                        stats={{}}
+                        ungrouped
+                        onClick={() => setSelectedGroupId('ungrouped')}
+                      />
+                    )}
                   </div>
-                  {members.length > 1 && (
-                    <button className="assign-mode-btn" onClick={() => setAssignMode(true)}>
-                      ⚡ Quick Assign
-                    </button>
-                  )}
-                  <button className="btn-primary" onClick={() => { setEditingProjectId(null); setShowProjectForm(true) }}>
-                    + New Project
-                  </button>
-                </div>
-              </div>
+                </>
+              ) : (
+                <>
+                  <div className="section-header">
+                    <div className="section-header-title">
+                      <button className="btn-ghost back-btn" onClick={() => setSelectedGroupId(null)}>← Projects</button>
+                      <h3>{selectedGroup ? selectedGroup.name : 'Ungrouped Sprints'}</h3>
+                    </div>
+                    <div className="project-controls">
+                      <div className="sort-toggle">
+                        <button className={`sort-btn${projectFilter === 'mine' ? ' active' : ''}`} onClick={() => setProjectFilter('mine')}>
+                          My Sprints
+                        </button>
+                        <button className={`sort-btn${projectFilter === 'all' ? ' active' : ''}`} onClick={() => setProjectFilter('all')}>
+                          All Sprints
+                        </button>
+                      </div>
+                      <div className="sort-toggle">
+                        <button className={`sort-btn${sortOrder === 'high' ? ' active' : ''}`} onClick={() => setSortOrder('high')}>
+                          High priority ↓
+                        </button>
+                        <button className={`sort-btn${sortOrder === 'outstanding' ? ' active' : ''}`} onClick={() => setSortOrder('outstanding')}>
+                          Outstanding ↓
+                        </button>
+                      </div>
+                      {members.length > 1 && (
+                        <button className="assign-mode-btn" onClick={() => setAssignMode(true)}>
+                          ⚡ Quick Assign
+                        </button>
+                      )}
+                      {selectedGroup && (
+                        <button className="btn-ghost" onClick={() => setShowAddSprints(true)}>
+                          + Add Sprints
+                        </button>
+                      )}
+                      <button className="btn-primary" onClick={() => { setEditingProjectId(null); setShowProjectForm(true) }}>
+                        + New Sprint
+                      </button>
+                    </div>
+                  </div>
 
-              {projects.length === 0 && <p className="empty-hint">No projects yet.</p>}
+                  {sprintsInView.length === 0 && <p className="empty-hint">No sprints in this project yet.</p>}
 
-              <div className="project-grid">
-                {[...projects]
-                  .filter(p => projectFilter === 'all' || projectMembers.some(pm => pm.project_id === p.id && pm.user_id === user.id))
-                  .sort((a, b) => {
-                    const sa = taskStats[a.id] || {}
-                    const sb = taskStats[b.id] || {}
-                    return sortOrder === 'high'
-                      ? (sb.high ?? 0) - (sa.high ?? 0)
-                      : (sb.outstanding ?? 0) - (sa.outstanding ?? 0)
-                  })
-                  .map(p => (
-                    <ProjectTile
-                      key={p.id}
-                      project={p}
-                      stats={taskStats[p.id] || {}}
-                      members={members.filter(m => projectMembers.some(pm => pm.project_id === p.id && pm.user_id === m.id))}
-                      onClick={() => navigate(`/projects/${p.id}`)}
-                      onEdit={e => { e.stopPropagation(); setEditingProjectId(p.id); setShowProjectForm(true) }}
-                      onDelete={e => { e.stopPropagation(); deleteProject(p.id) }}
-                    />
-                  ))
-                }
-                {projectFilter === 'mine' && projects.length > 0 &&
-                  !projects.some(p => projectMembers.some(pm => pm.project_id === p.id && pm.user_id === user.id)) && (
-                  <p className="empty-hint">You're not assigned to any projects yet — switch to "All Projects" to see the team's.</p>
-                )}
-              </div>
+                  <div className="project-grid">
+                    {[...sprintsInView]
+                      .filter(p => projectFilter === 'all' || projectMembers.some(pm => pm.project_id === p.id && pm.user_id === user.id))
+                      .sort((a, b) => {
+                        const sa = taskStats[a.id] || {}
+                        const sb = taskStats[b.id] || {}
+                        return sortOrder === 'high'
+                          ? (sb.high ?? 0) - (sa.high ?? 0)
+                          : (sb.outstanding ?? 0) - (sa.outstanding ?? 0)
+                      })
+                      .map(p => (
+                        <ProjectTile
+                          key={p.id}
+                          project={p}
+                          stats={taskStats[p.id] || {}}
+                          members={members.filter(m => projectMembers.some(pm => pm.project_id === p.id && pm.user_id === m.id))}
+                          onClick={() => navigate(`/projects/${p.id}`)}
+                          onEdit={e => { e.stopPropagation(); setEditingProjectId(p.id); setShowProjectForm(true) }}
+                          onDelete={e => { e.stopPropagation(); deleteProject(p.id) }}
+                        />
+                      ))
+                    }
+                    {projectFilter === 'mine' && sprintsInView.length > 0 &&
+                      !sprintsInView.some(p => projectMembers.some(pm => pm.project_id === p.id && pm.user_id === user.id)) && (
+                      <p className="empty-hint">You're not assigned to any sprints here yet — switch to "All Sprints" to see the team's.</p>
+                    )}
+                  </div>
+                </>
+              )}
             </section>
+
+            {showGroupForm && (
+              <GroupModal
+                group={editingGroup}
+                onCancel={() => { setShowGroupForm(false); setEditingGroupId(null) }}
+                onSave={async (name) => {
+                  if (editingGroupId) await updateProjectGroup(editingGroupId, name)
+                  else await addProjectGroup(name)
+                  setShowGroupForm(false)
+                  setEditingGroupId(null)
+                }}
+              />
+            )}
+
+            {showAddSprints && selectedGroup && (
+              <AddSprintsModal
+                group={selectedGroup}
+                projects={projects}
+                onToggle={(sprintId, inGroup) => setSprintGroup(sprintId, inGroup ? null : selectedGroup.id)}
+                onClose={() => setShowAddSprints(false)}
+              />
+            )}
 
             {showProjectForm && (
               <ProjectModal
@@ -331,8 +462,9 @@ export default function TeamsPage() {
                 }
                 onCancel={() => { setShowProjectForm(false); setEditingProjectId(null) }}
                 onSave={async (form) => {
+                  const groupId = selectedGroupId && selectedGroupId !== 'ungrouped' ? selectedGroupId : null
                   if (editingProjectId) await updateProject(editingProjectId, form)
-                  else await addProject(form)
+                  else await addProject({ ...form, group_id: groupId })
                   setShowProjectForm(false)
                   setEditingProjectId(null)
                 }}
@@ -415,6 +547,106 @@ function ProjectTile({ project, stats, members = [], onClick, onEdit, onDelete }
           </span>
         )
       })()}
+    </div>
+  )
+}
+
+function GroupTile({ group, sprintCount, stats = {}, ungrouped, onClick, onEdit, onDelete }) {
+  const completion = stats.total ? Math.round((stats.done / stats.total) * 100) : 0
+  return (
+    <div className={ungrouped ? 'project-tile pc-ungrouped' : `project-tile pc-${projectColorIndex(group.id)}`} onClick={onClick} role="button" tabIndex={0}
+      onKeyDown={e => e.key === 'Enter' && onClick()}>
+      <div className="tile-top">
+        <span className="project-status active">{sprintCount} sprint{sprintCount === 1 ? '' : 's'}</span>
+        {!ungrouped && (
+          <div className="tile-actions">
+            <button className="tile-action-btn" onClick={onEdit} title="Edit">✎</button>
+            <button className="tile-action-btn danger" onClick={onDelete} title="Delete">✕</button>
+          </div>
+        )}
+      </div>
+      <p className="tile-name">
+        {!ungrouped && <span className="tile-dot" style={{ background: projectDotColor(group.id) }} />}
+        {group.name}
+      </p>
+      <div className="tile-stats">
+        <div className="tile-stat">
+          <span className="tile-stat-num high">{stats.high ?? 0}</span>
+          <span className="tile-stat-label">High priority</span>
+        </div>
+        <div className="tile-stat">
+          <span className="tile-stat-num">{stats.outstanding ?? 0}</span>
+          <span className="tile-stat-label">Outstanding</span>
+        </div>
+        <div className="tile-stat">
+          <span className="tile-stat-num">{completion}%</span>
+          <span className="tile-stat-label">Complete</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function GroupModal({ group, onCancel, onSave }) {
+  const [name, setName] = useState(group?.name || '')
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (!name.trim()) return
+    onSave(name.trim())
+  }
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <form className="task-form" onSubmit={handleSubmit} onClick={e => e.stopPropagation()}>
+        <h2>{group ? 'Edit Project' : 'New Project'}</h2>
+        <label>Name
+          <input autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="Project name" />
+        </label>
+        <div className="form-actions">
+          <button type="button" className="btn-ghost" onClick={onCancel}>Cancel</button>
+          <button type="submit" className="btn-primary">{group ? 'Save' : 'Create Project'}</button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+function AddSprintsModal({ group, projects, onToggle, onClose }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="assign-modal" onClick={e => e.stopPropagation()}>
+        <div className="assign-head">
+          <div className="assign-head-top">
+            <h2>Add Sprints to {group.name}</h2>
+            <button className="assign-close" aria-label="Close" onClick={onClose}>✕</button>
+          </div>
+          <p className="assign-hint">Click a sprint to add or remove it from this project — one click, no dragging.</p>
+        </div>
+        <div className="assign-body">
+          {projects.length === 0 ? (
+            <p className="empty-hint">No sprints on this team yet.</p>
+          ) : (
+            projects.map(p => {
+              const inGroup = p.group_id === group.id
+              return (
+                <div key={p.id} className="assign-row">
+                  <span className="tile-dot" style={{ background: projectDotColor(p.id), flexShrink: 0 }} />
+                  <span className="assign-task-title">{p.name}</span>
+                  <button
+                    type="button"
+                    className={`sort-btn${inGroup ? ' active' : ''}`}
+                    onClick={() => onToggle(p.id, inGroup)}
+                  >
+                    {inGroup ? '✓ In project' : 'Add'}
+                  </button>
+                </div>
+              )
+            })
+          )}
+        </div>
+        <div className="assign-foot">
+          <button className="btn-primary" onClick={onClose}>Done</button>
+        </div>
+      </div>
     </div>
   )
 }
