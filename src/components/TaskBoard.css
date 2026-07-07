@@ -386,6 +386,25 @@
   border-radius: 6px;
 }
 
+/* Sprint clusters within the Medium and Low zones */
+.sprint-group { display: flex; flex-direction: column; gap: 0.3rem; }
+.sprint-group + .sprint-group { margin-top: 0.5rem; }
+.sprint-group-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.1rem 0.15rem 0.05rem;
+}
+.sprint-group-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.sprint-group-name { font-size: 0.75rem; font-weight: 600; color: var(--text-3); }
+.sprint-group-count {
+  font-size: 0.68rem;
+  color: var(--text-4);
+  background: rgba(0,0,0,0.06);
+  padding: 0.02rem 0.32rem;
+  border-radius: 8px;
+}
+
 /* Drag handle */
 .drag-handle {
   background: none;

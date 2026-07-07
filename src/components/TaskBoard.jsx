@@ -785,10 +785,67 @@ function AssignmentResponseForm({ mode, busy, onCancel, onSubmit }) {
 
 // ─── Priority zone ───────────────────────────────────────────────────────────
 
+// Cluster a zone's tasks by sprint (project), preserving task order and putting
+// the "No sprint" bucket last. Returns null when there are no real sprints to
+// group by (e.g. a personal board), so the zone renders as a flat list.
+function groupTasksBySprint(tasks, projectName) {
+  const order = []
+  const map = new Map()
+  for (const t of tasks) {
+    const key = t.project_id || '__none__'
+    if (!map.has(key)) { map.set(key, []); order.push(key) }
+    map.get(key).push(t)
+  }
+  if (!order.some(k => k !== '__none__')) return null
+  const keys = order.filter(k => k !== '__none__')
+  if (map.has('__none__')) keys.push('__none__')
+  return keys.map(key => ({
+    key,
+    name: key === '__none__' ? 'No sprint' : (projectName(key) || 'Unknown sprint'),
+    color: key === '__none__' ? 'var(--prio-low)' : projectDotColor(key),
+    tasks: map.get(key),
+  }))
+}
+
 function PriorityZone({ priority, tasks, limit, resolveAssignees, projectName, updatesForTask, teamMembers, onEdit, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, onUpdateAssignees, draftUpdates, setDraft, onTaskDone }) {
   const { setNodeRef, isOver } = useDroppable({ id: `zone-${priority}` })
-  const items = tasks.map(t => t.id)
   const atLimit = limit != null && tasks.length >= limit
+
+  // Medium and Low zones cluster their tasks by sprint; High stays a flat
+  // ranked list.
+  const groups = (priority === 'medium' || priority === 'low')
+    ? groupTasksBySprint(tasks, projectName)
+    : null
+
+  // SortableContext needs the flat id list in rendered (grouped) order.
+  const orderedTasks = groups ? groups.flatMap(g => g.tasks) : tasks
+  const items = orderedTasks.map(t => t.id)
+
+  const renderRow = (task, rank, showProject = true) => (
+    <SortableTaskRow key={task.id} task={task}
+      rank={rank}
+      assignees={resolveAssignees(task)}
+      projectName={showProject ? projectName(task.project_id) : null}
+      updates={updatesForTask(task.id)}
+      teamMembers={teamMembers}
+      onEdit={() => onEdit(task)}
+      onDelete={() => onDelete(task.id)}
+      onStatusChange={s => {
+        onUpdate(task.id, { status: s })
+        // Completing a top-slot (High + To Do) task frees a slot — prompt
+        // the user to fill it. The update-form completion path already
+        // calls onTaskDone; this covers the action-menu "→ Done".
+        if (s === 'done' && task.status === 'todo' && task.priority === 'high') onTaskDone?.(task)
+      }}
+      onAddUpdate={(body, status) => onAddUpdate(task.id, body, status)}
+      onDeleteUpdate={onDeleteUpdate}
+      onUpdateAssignees={ids => onUpdateAssignees(task.id, ids)}
+      statuses={FORM_STATUSES} statusLabels={STATUS_LABELS}
+      draftText={draftUpdates[task.id] || ''}
+      onDraftChange={text => setDraft(task.id, text)}
+      onTaskDone={onTaskDone}
+    />
+  )
 
   return (
     <div className={`priority-zone zone-${priority}${isOver ? ' zone-over' : ''}${atLimit ? ' zone-full' : ''}`}>
@@ -798,31 +855,18 @@ function PriorityZone({ priority, tasks, limit, resolveAssignees, projectName, u
       </div>
       <SortableContext items={items} strategy={verticalListSortingStrategy}>
         <div ref={setNodeRef} className="zone-body">
-          {tasks.map((task, i) => (
-            <SortableTaskRow key={task.id} task={task}
-              rank={limit != null ? i + 1 : null}
-              assignees={resolveAssignees(task)}
-              projectName={projectName(task.project_id)}
-              updates={updatesForTask(task.id)}
-              teamMembers={teamMembers}
-              onEdit={() => onEdit(task)}
-              onDelete={() => onDelete(task.id)}
-              onStatusChange={s => {
-                onUpdate(task.id, { status: s })
-                // Completing a top-slot (High + To Do) task frees a slot — prompt
-                // the user to fill it. The update-form completion path already
-                // calls onTaskDone; this covers the action-menu "→ Done".
-                if (s === 'done' && task.status === 'todo' && task.priority === 'high') onTaskDone?.(task)
-              }}
-              onAddUpdate={(body, status) => onAddUpdate(task.id, body, status)}
-              onDeleteUpdate={onDeleteUpdate}
-              onUpdateAssignees={ids => onUpdateAssignees(task.id, ids)}
-              statuses={FORM_STATUSES} statusLabels={STATUS_LABELS}
-              draftText={draftUpdates[task.id] || ''}
-              onDraftChange={text => setDraft(task.id, text)}
-              onTaskDone={onTaskDone}
-            />
-          ))}
+          {groups
+            ? groups.map(g => (
+                <div key={g.key} className="sprint-group">
+                  <div className="sprint-group-head">
+                    <span className="sprint-group-dot" style={{ background: g.color }} />
+                    <span className="sprint-group-name">{g.name}</span>
+                    <span className="sprint-group-count">{g.tasks.length}</span>
+                  </div>
+                  {g.tasks.map(task => renderRow(task, null, false))}
+                </div>
+              ))
+            : tasks.map((task, i) => renderRow(task, limit != null ? i + 1 : null))}
           {tasks.length === 0 && (
             <div className="zone-empty">Drop tasks here</div>
           )}
