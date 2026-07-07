@@ -189,16 +189,21 @@ export default function TaskBoard({
   // for the people who need to accept/decline them.
   const byStatus = (status) => visibleTasks.filter(t => t.status === status)
 
-  // Tasks needing my attention: I'm the creator waiting on responses, or I'm
-  // one of the still-pending assignees myself. This intentionally bypasses
-  // the people filter — it's about tasks that involve me, not who I'm
-  // "viewing" right now.
-  const pendingTasksForMe = useMemo(() => tasks.filter(t =>
-    isPendingApproval(t) && (
+  // Tasks needing attention in the Pending tab:
+  //  • pending-approval tasks that involve me (I created them and am waiting on
+  //    responses, or I'm a still-pending assignee myself), and
+  //  • tasks with nobody attached at all — they need someone assigned, so they
+  //    surface here for triage regardless of who created them.
+  // This intentionally bypasses the people filter.
+  const pendingTasksForMe = useMemo(() => tasks.filter(t => {
+    if (t.status === 'archived' || t.status === 'done') return false
+    const unassigned = (t.task_assignees || []).length === 0 && !t.assignee_id
+    if (unassigned) return true
+    return isPendingApproval(t) && (
       t.user_id === currentUserId ||
       (t.task_assignees || []).some(a => a.user_id === currentUserId)
     )
-  ), [tasks, currentUserId])
+  }), [tasks, currentUserId])
 
   function resolveAssignees(task) {
     return (task.task_assignees || [])
@@ -510,6 +515,8 @@ function PriorityBoard({
             projectName={projectName}
             onRespond={onRespondToAssignment}
             onResolve={onResolveChangeRequest}
+            onAssign={onUpdateAssignees}
+            onDelete={onDelete}
           />
         ) : activeTab === 'archived' ? (
           <ArchiveCalendar
@@ -564,7 +571,7 @@ function memberName(teamMembers, id) {
   return teamMembers.find(m => m.id === id)?.display_name || 'Unknown'
 }
 
-function PendingAssignmentsList({ tasks, currentUserId, teamMembers, projectName, onRespond, onResolve }) {
+function PendingAssignmentsList({ tasks, currentUserId, teamMembers, projectName, onRespond, onResolve, onAssign, onDelete }) {
   if (tasks.length === 0) {
     return <div className="empty-col">No pending assignments — everyone's accepted.</div>
   }
@@ -579,18 +586,21 @@ function PendingAssignmentsList({ tasks, currentUserId, teamMembers, projectName
           projectName={projectName(task.project_id)}
           onRespond={onRespond}
           onResolve={onResolve}
+          onAssign={onAssign}
+          onDelete={onDelete}
         />
       ))}
     </div>
   )
 }
 
-function PendingAssignmentRow({ task, currentUserId, teamMembers, projectName, onRespond, onResolve }) {
+function PendingAssignmentRow({ task, currentUserId, teamMembers, projectName, onRespond, onResolve, onAssign, onDelete }) {
   const [formMode, setFormMode] = useState(null) // null | 'decline' | 'suggest'
   const [busy, setBusy] = useState(false)
   const isCreator = task.user_id === currentUserId
   const myRow = (task.task_assignees || []).find(a => a.user_id === currentUserId)
   const otherRows = (task.task_assignees || []).filter(a => a.user_id !== task.user_id)
+  const isUnassigned = (task.task_assignees || []).length === 0 && !task.assignee_id
 
   async function handle(response, extra) {
     setBusy(true)
@@ -625,6 +635,7 @@ function PendingAssignmentRow({ task, currentUserId, teamMembers, projectName, o
         <span className="pending-created-by">
           Created by {isCreator ? 'you' : memberName(teamMembers, task.user_id)}
         </span>
+        {isUnassigned && <span className="pending-status-chip status-pending">Unassigned</span>}
         {otherRows.map(a => (
           <span key={a.user_id} className={`pending-status-chip status-${a.response_status}`}>
             {memberName(teamMembers, a.user_id)}
@@ -634,6 +645,24 @@ function PendingAssignmentRow({ task, currentUserId, teamMembers, projectName, o
           </span>
         ))}
       </div>
+
+      {isUnassigned && (
+        <div className="pending-my-actions pending-assign-row">
+          <span className="pending-assign-label">Assign to:</span>
+          <div className="action-assign">
+            {teamMembers.map(m => (
+              <button key={m.id} type="button" title={m.display_name}
+                className="action-assign-chip"
+                disabled={busy}
+                onClick={async () => { setBusy(true); try { await onAssign(task.id, [m.id]) } finally { setBusy(false) } }}>
+                {initials(m.display_name)}
+              </button>
+            ))}
+          </div>
+          <button className="action-btn action-danger btn-sm" disabled={busy}
+            onClick={() => onDelete(task.id)}>Delete</button>
+        </div>
+      )}
 
       {isCreator && otherRows.filter(a => a.response_status === 'change_requested').map(a => (
         <div key={a.user_id} className="pending-suggestion">
@@ -853,7 +882,7 @@ function TaskRow({
         <button
           className={`menu-btn${showActions ? ' active' : ''}`}
           onMouseEnter={() => setShowActions(true)}
-          onClick={() => setShowActions(s => !s)}
+          onClick={() => setShowActions(false)}
           aria-label="Actions"
         >•••</button>
       </div>

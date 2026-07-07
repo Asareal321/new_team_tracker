@@ -1086,6 +1086,9 @@
 .pending-suggestion-actions { display: flex; gap: 0.5rem; }
 
 .pending-my-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.pending-assign-row { align-items: center; }
+.pending-assign-label { font-size: 0.78rem; color: var(--text-3); }
+.pending-assign-row .action-assign { border-right: none; padding-right: 0; margin-right: 0; }
 .pending-waiting-note { font-size: 0.8rem; color: var(--text-3); font-style: italic; }
 
 .response-form {
