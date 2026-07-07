@@ -25,6 +25,8 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState([])
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
+  const [sortKey, setSortKey] = useState('age')
+  const [sortDir, setSortDir] = useState('desc')
 
   const isAdmin = currentTeam?.role === 'owner' || currentTeam?.role === 'admin'
 
@@ -76,6 +78,11 @@ export default function DashboardPage() {
     return id => (id ? m.get(id) || 'Unknown project' : 'No project')
   }, [projects])
 
+  const memberName = useMemo(() => {
+    const m = new Map(members.map(mm => [mm.id, mm.display_name]))
+    return id => m.get(id) || 'Unknown'
+  }, [members])
+
   // Non-archived tasks, split into "active" (still needs work) vs done.
   const liveTasks = useMemo(() => tasks.filter(t => t.status !== 'archived'), [tasks])
   const activeTasks = useMemo(() => liveTasks.filter(t => t.status === 'todo' || t.status === 'in_progress'), [liveTasks])
@@ -97,6 +104,46 @@ export default function DashboardPage() {
     const stalest = [...withAge].sort((a, b) => b.age - a.age).slice(0, 6)
     return { avg: Math.round(avg * 10) / 10, stalest }
   }, [activeTasks])
+
+  // Full sortable list — every active task with its days-outstanding, sprint,
+  // and assignee(s), for the "Days outstanding" table below the summary cards.
+  const outstandingRows = useMemo(() => {
+    const rows = activeTasks.map(t => {
+      const accepted = (t.task_assignees || []).filter(a => a.response_status === 'accepted').map(a => a.user_id)
+      const assigneeIds = accepted.length ? accepted : [t.user_id]
+      const assigneeLabel = assigneeIds.length > 1
+        ? `${memberName(assigneeIds[0])} +${assigneeIds.length - 1}`
+        : memberName(assigneeIds[0])
+      return {
+        ...t,
+        age: daysAgo(t.updated_at),
+        sprintName: projectName(t.project_id),
+        assigneeLabel,
+      }
+    })
+    const dir = sortDir === 'asc' ? 1 : -1
+    return rows.sort((a, b) => {
+      let av, bv
+      switch (sortKey) {
+        case 'title':    av = a.title.toLowerCase();     bv = b.title.toLowerCase(); break
+        case 'sprint':   av = a.sprintName.toLowerCase(); bv = b.sprintName.toLowerCase(); break
+        case 'assignee': av = a.assigneeLabel.toLowerCase(); bv = b.assigneeLabel.toLowerCase(); break
+        default:         av = a.age; bv = b.age
+      }
+      if (av < bv) return -1 * dir
+      if (av > bv) return 1 * dir
+      return b.age - a.age
+    })
+  }, [activeTasks, memberName, projectName, sortKey, sortDir])
+
+  function toggleSort(key) {
+    if (sortKey === key) {
+      setSortDir(d => (d === 'desc' ? 'asc' : 'desc'))
+    } else {
+      setSortKey(key)
+      setSortDir(key === 'title' || key === 'sprint' || key === 'assignee' ? 'asc' : 'desc')
+    }
+  }
 
   // Workload split: attribute each active task to its accepted assignees, or to
   // its creator if nobody has accepted yet. Build a per-member breakdown by
@@ -252,7 +299,59 @@ export default function DashboardPage() {
           )}
         </section>
       </div>
+
+      {/* Days outstanding — every active task, sortable */}
+      <section className="dash-card dash-table-card">
+        <div className="dash-card-head">
+          <h2>Days outstanding</h2>
+        </div>
+        <p className="dash-card-sub">Every active task, ranked by days since it was last touched.</p>
+        {outstandingRows.length === 0 ? (
+          <p className="empty-hint">No active tasks right now.</p>
+        ) : (
+          <table className="dash-table">
+            <thead>
+              <tr>
+                <SortableHeader label="Task" col="title" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                <SortableHeader label="Sprint" col="sprint" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="dash-th-muted" />
+                <SortableHeader label="Assignee" col="assignee" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="dash-th-muted" />
+                <SortableHeader label="Days" col="age" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} align="right" />
+              </tr>
+            </thead>
+            <tbody>
+              {outstandingRows.map(t => (
+                <tr key={t.id}>
+                  <td className="dash-td-title">
+                    <span className="stale-dot" style={{ background: colorFor(t.project_id || 'none') }} />
+                    {t.title}
+                  </td>
+                  <td className="dash-td-muted">{t.sprintName}</td>
+                  <td className="dash-td-muted">{t.assigneeLabel}</td>
+                  <td className="dash-td-age">
+                    <span className={`stale-age${t.age >= 7 ? ' hot' : t.age >= 3 ? ' warm' : ''}`}>
+                      {t.age === 0 ? 'today' : `${t.age}d`}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
     </div>
+  )
+}
+
+function SortableHeader({ label, col, sortKey, sortDir, onSort, align, className = '' }) {
+  const active = sortKey === col
+  return (
+    <th
+      className={`dash-th${align === 'right' ? ' align-right' : ''}${active ? ' active' : ''}${className ? ` ${className}` : ''}`}
+      onClick={() => onSort(col)}
+    >
+      {label}
+      <span className="dash-th-arrow">{active ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span>
+    </th>
   )
 }
 

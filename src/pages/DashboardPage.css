@@ -106,7 +106,40 @@
   min-width: 2.4rem;
   text-align: center;
 }
+.stale-age.warm { background: var(--yellow-bg); color: var(--yellow-text); }
 .stale-age.hot { background: var(--red-bg); color: var(--red-text); }
+
+/* Days outstanding — full sortable table */
+.dash-table-card { margin-top: 1rem; }
+.dash-table { width: 100%; border-collapse: collapse; font-size: var(--fs-md); }
+.dash-th {
+  text-align: left;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-4);
+  padding: 0 0.5rem 0.5rem 0.1rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.dash-th:hover { color: var(--text-2); }
+.dash-th.active { color: var(--text-1); }
+.dash-th.align-right { text-align: right; }
+.dash-th-arrow { display: inline-block; margin-left: 0.3rem; font-size: 0.6rem; }
+.dash-table tbody tr { border-bottom: 1px solid var(--border-subtle); }
+.dash-table tbody tr:last-child { border-bottom: none; }
+.dash-table td { padding: 0.5rem 0.5rem 0.5rem 0.1rem; }
+.dash-td-title { display: flex; align-items: center; gap: 0.5rem; color: var(--text-1); }
+.dash-td-muted { color: var(--text-3); font-size: var(--fs-sm); }
+.dash-td-age { text-align: right; }
+
+@media (max-width: 640px) {
+  .dash-table { font-size: var(--fs-sm); }
+  .dash-td-muted, .dash-th-muted { display: none; }
+}
 
 /* Workload bars */
 .workload-list { display: flex; flex-direction: column; gap: 0.7rem; }
