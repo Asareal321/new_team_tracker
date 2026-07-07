@@ -520,25 +520,30 @@
 
 .task-row-top { display: flex; align-items: center; gap: 0.5rem; }
 
-/* Rank medal for the top-3 High priority focus list — the number is the rank,
-   #1 gets a ring so the top task stands out. Drag to reorder changes rank. */
-.rank-badge {
-  flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
+/* Rank rail for the top-3 High priority focus list — a full-height colored cap
+   flush to the row's left edge, numbered by rank. Drag to reorder changes rank. */
+.task-row.has-rank { padding-left: calc(26px + 0.85rem); }
+.task-row.has-rank::before { display: none; }
+.rank-rail {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 26px;
+  display: flex;
+  align-items: flex-start;
   justify-content: center;
-  font-size: 0.74rem;
+  padding-top: 0.55rem;
+  font-size: 0.85rem;
   font-weight: 800;
-  background: var(--prio-high);
   color: #fff;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.18);
+  background: var(--prio-high);
+  border-top-left-radius: var(--r-md);
+  border-bottom-left-radius: var(--r-md);
 }
-.rank-badge.rank-1 { box-shadow: 0 0 0 2px var(--bg-surface), 0 0 0 4px var(--prio-high); }
-.rank-badge.rank-2 { background: #f2685f; }
-.rank-badge.rank-3 { background: #f79089; }
+.rank-rail.rank-1 { background: #A32D2D; }
+.rank-rail.rank-2 { background: #E24B4A; }
+.rank-rail.rank-3 { background: #F09595; }
 
 .priority-badge {
   font-size: 0.65rem;

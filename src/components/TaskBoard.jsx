@@ -892,15 +892,15 @@ function TaskRow({
   const secondaryNext = statuses.filter(s => s !== task.status && s !== primaryNext)
 
   return (
-    <div className={`task-row priority-${task.priority}${isArchived ? ' archived' : ''}`}>
+    <div className={`task-row priority-${task.priority}${isArchived ? ' archived' : ''}${rank != null ? ' has-rank' : ''}`}>
+      {rank != null && (
+        <span className={`rank-rail rank-${rank}`} title={`Priority rank ${rank} — drag to reorder`}>{rank}</span>
+      )}
       <div className="task-row-main">
         {dragListeners && (
           <button className="drag-handle" type="button"
             aria-label="Drag to reorder"
             {...dragListeners} {...dragAttributes}>⠿</button>
-        )}
-        {rank != null && (
-          <span className={`rank-badge rank-${rank}`} title={`Priority rank ${rank} — drag to reorder`}>{rank}</span>
         )}
         <div className="task-row-info">
           <div className="task-row-top">
