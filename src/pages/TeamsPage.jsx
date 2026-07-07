@@ -31,6 +31,7 @@ export default function TeamsPage() {
 
   const [members, setMembers] = useState([])
   const [copied, setCopied] = useState(false)
+  const [roleError, setRoleError] = useState('')
 
   const [projects, setProjects] = useState([])
   const [projectMembers, setProjectMembers] = useState([])
@@ -156,12 +157,22 @@ export default function TeamsPage() {
   }
 
   async function setMemberRole(userId, role) {
+    setRoleError('')
     // Optimistic — the team-members realtime channel will confirm.
+    const prevMembers = members
     setMembers(prev => prev.map(m => m.id === userId ? { ...m, role } : m))
     const { error } = await supabase.rpc('set_member_role', {
       _team_id: currentTeamId, _user_id: userId, _role: role,
     })
-    if (error) { console.error('[trakkit] Failed to set member role', error.message); fetchMembers() }
+    if (error) {
+      console.error('[trakkit] Failed to set member role', error.message)
+      setMembers(prevMembers)
+      setRoleError(
+        error.message.includes('function') || error.message.includes('does not exist')
+          ? 'Admin roles need a one-time database migration — run migration-admin-role.sql in the Supabase SQL editor, then try again.'
+          : `Couldn't update that role: ${error.message}`
+      )
+    }
   }
 
   function copyInvite() {
@@ -326,6 +337,7 @@ export default function TeamsPage() {
                   </div>
                 ))}
               </div>
+              {roleError && <p className="role-error">{roleError}</p>}
               {isOwner && currentTeam?.invite_code && (
                 <div className="invite-code-row">
                   <span className="invite-code-label">Invite code</span>

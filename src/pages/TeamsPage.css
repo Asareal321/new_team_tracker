@@ -116,6 +116,15 @@
 }
 .role-toggle-btn:hover { color: var(--text-1); border-color: var(--text-4); background: var(--bg-muted); }
 
+.role-error {
+  margin-top: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--red-bg);
+  color: var(--red-text);
+  border-radius: var(--r-sm);
+  font-size: 0.8rem;
+}
+
 .invite-code-row {
   margin-top: 0.85rem;
   display: flex;
