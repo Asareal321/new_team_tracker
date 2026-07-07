@@ -798,8 +798,9 @@ function PriorityZone({ priority, tasks, limit, resolveAssignees, projectName, u
       </div>
       <SortableContext items={items} strategy={verticalListSortingStrategy}>
         <div ref={setNodeRef} className="zone-body">
-          {tasks.map(task => (
+          {tasks.map((task, i) => (
             <SortableTaskRow key={task.id} task={task}
+              rank={limit != null ? i + 1 : null}
               assignees={resolveAssignees(task)}
               projectName={projectName(task.project_id)}
               updates={updatesForTask(task.id)}
@@ -848,7 +849,7 @@ function SortableTaskRow({ task, ...props }) {
 const PRIMARY_NEXT = { todo: 'in_progress', in_progress: 'done' }
 
 function TaskRow({
-  task, assignees, projectName, updates,
+  task, assignees, projectName, updates, rank,
   teamMembers = [], onUpdateAssignees,
   onEdit, onDelete, onStatusChange, onAddUpdate, onDeleteUpdate,
   statuses, statusLabels, showPriorityBadge,
@@ -897,6 +898,9 @@ function TaskRow({
           <button className="drag-handle" type="button"
             aria-label="Drag to reorder"
             {...dragListeners} {...dragAttributes}>⠿</button>
+        )}
+        {rank != null && (
+          <span className={`rank-badge rank-${rank}`} title={`Priority rank ${rank} — drag to reorder`}>{rank}</span>
         )}
         <div className="task-row-info">
           <div className="task-row-top">

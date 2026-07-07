@@ -520,6 +520,26 @@
 
 .task-row-top { display: flex; align-items: center; gap: 0.5rem; }
 
+/* Rank medal for the top-3 High priority focus list — the number is the rank,
+   #1 gets a ring so the top task stands out. Drag to reorder changes rank. */
+.rank-badge {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.74rem;
+  font-weight: 800;
+  background: var(--prio-high);
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.18);
+}
+.rank-badge.rank-1 { box-shadow: 0 0 0 2px var(--bg-surface), 0 0 0 4px var(--prio-high); }
+.rank-badge.rank-2 { background: #f2685f; }
+.rank-badge.rank-3 { background: #f79089; }
+
 .priority-badge {
   font-size: 0.65rem;
   font-weight: 600;
