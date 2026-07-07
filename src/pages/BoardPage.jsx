@@ -4,10 +4,17 @@ import { useAuth } from '../auth/AuthContext'
 import { useTeam } from '../context/TeamContext'
 import TaskBoard from '../components/TaskBoard'
 
-function DoneTaskModal({ task, projects, onAdd, onUpdateProject, onDismiss }) {
+function DoneTaskModal({ task, tasks = [], projects, onAdd, onUpdateProject, onPromote, onDismiss }) {
   const [nextTitle, setNextTitle] = useState('')
   const [adding, setAdding] = useState(false)
   const project = projects.find(p => p.id === task.project_id)
+
+  // If a top-slot task (High + To Do) was just completed, offer to promote an
+  // existing to-do into the freed slot.
+  const wasTopSlot = task.priority === 'high'
+  const promotable = tasks
+    .filter(t => t.status === 'todo' && t.priority !== 'high' && t.id !== task.id)
+    .slice(0, 6)
 
   async function handleAddNext() {
     const title = nextTitle.trim()
@@ -34,9 +41,32 @@ function DoneTaskModal({ task, projects, onAdd, onUpdateProject, onDismiss }) {
     <div className="modal-overlay" onClick={onDismiss}>
       <div className="done-modal" onClick={e => e.stopPropagation()}>
         <div className="done-check">✓</div>
-        <h3 className="done-modal-heading">Task completed!</h3>
+        <h3 className="done-modal-heading">{wasTopSlot ? 'Top slot open!' : 'Task completed!'}</h3>
         <p className="done-modal-task">"{task.title}"</p>
         {project && <p className="done-modal-project">{project.name}</p>}
+
+        {wasTopSlot && (
+          <div className="done-next-section">
+            <label className="done-next-label">Promote a task to your top slot</label>
+            {promotable.length === 0 ? (
+              <p className="done-modal-hint">No other to-do tasks to promote — add one below.</p>
+            ) : (
+              <div className="promote-list">
+                {promotable.map(t => (
+                  <button
+                    key={t.id}
+                    className="promote-item"
+                    onClick={async () => { await onPromote(t.id, { priority: 'high' }); onDismiss() }}
+                  >
+                    <span className={`status-dot ${t.priority}`} />
+                    <span className="promote-item-title">{t.title}</span>
+                    <span className="promote-item-cta">Promote →</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="done-next-section">
           <label className="done-next-label">Add a follow-up task</label>
@@ -309,9 +339,11 @@ export default function BoardPage() {
       {doneTask && (
         <DoneTaskModal
           task={doneTask}
+          tasks={tasks}
           projects={projects}
           onAdd={addTask}
           onUpdateProject={updateProject}
+          onPromote={updateTask}
           onDismiss={() => setDoneTask(null)}
         />
       )}

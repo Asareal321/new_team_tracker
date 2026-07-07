@@ -17,6 +17,15 @@ const FORM_STATUSES = ['todo', 'in_progress', 'done']
 const PRIORITIES    = ['high', 'medium', 'low']
 const PRIORITY_LABELS = { high: 'High', medium: 'Medium', low: 'Low' }
 
+// The High-priority zone on the To Do tab is a focus list — keep it to the top
+// few things so it stays meaningful. Completing one frees a slot (see the
+// completion prompt).
+const MAX_HIGH_TODO = 3
+
+function highTodoCount(tasks, exceptId) {
+  return tasks.filter(t => t.priority === 'high' && t.status === 'todo' && t.id !== exceptId).length
+}
+
 function initials(name) {
   if (!name) return '?'
   const parts = name.trim().split(/\s+/)
@@ -74,6 +83,7 @@ export default function TaskBoard({
   const [form, setForm]           = useState(defaultForm())
   const [activeTab, setActiveTab] = useState('todo')
   const [datePickerOpen, setDatePickerOpen] = useState(false)
+  const [formNotice, setFormNotice] = useState('')
 
   // People filter: which teammates' tasks to show. Default = only me (tasks
   // I'm assigned to). "Everyone" shows the whole team board.
@@ -95,6 +105,12 @@ export default function TaskBoard({
     if (!form.title.trim()) return
     const { assigneeIds, ...rest } = form
     const payload = { ...rest, priority: rest.priority || 'medium', due_date: rest.due_date || null, project_id: rest.project_id || null }
+    // Enforce the High/To-Do cap on create and edit.
+    if (payload.priority === 'high' && payload.status === 'todo'
+        && highTodoCount(tasks, editingId) >= MAX_HIGH_TODO) {
+      setFormNotice(`Your High priority to-do list is full (${MAX_HIGH_TODO}). Complete or lower one first.`)
+      return
+    }
     if (editingId) {
       await onUpdate(editingId, payload)
       await onUpdateAssignees(editingId, assigneeIds)
@@ -122,7 +138,7 @@ export default function TaskBoard({
     setShowForm(true)
   }
 
-  function cancelForm() { setForm(defaultForm()); setEditingId(null); setDatePickerOpen(false); setShowForm(false) }
+  function cancelForm() { setForm(defaultForm()); setEditingId(null); setDatePickerOpen(false); setShowForm(false); setFormNotice('') }
 
   function toggleAssignee(id) {
     setForm(f => ({
@@ -237,7 +253,7 @@ export default function TaskBoard({
                     aria-pressed={form.priority === p}
                     aria-label={PRIORITY_LABELS[p]}
                     title={PRIORITY_LABELS[p]}
-                    onClick={() => setForm(f => ({ ...f, priority: f.priority === p ? '' : p }))}
+                    onClick={() => { setForm(f => ({ ...f, priority: f.priority === p ? '' : p })); setFormNotice('') }}
                   ><span /></button>
                 ))}
               </div>
@@ -301,6 +317,7 @@ export default function TaskBoard({
                 </div>
               </div>
             )}
+            {formNotice && <p className="form-notice">{formNotice}</p>}
             <div className="form-actions">
               <button type="button" className="btn-ghost" onClick={cancelForm}>Cancel</button>
               <button type="submit" className="btn-primary">{editingId ? 'Save' : 'Add Task'}</button>
@@ -356,6 +373,7 @@ function PriorityBoard({
   onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onStartEdit, onOpenForm, onTaskDone, onArchiveAll,
 }) {
   const [activeId, setActiveId] = useState(null)
+  const [zoneNotice, setZoneNotice] = useState('')
   const [draftUpdates, setDraftUpdates] = useState(() => {
     try { return JSON.parse(localStorage.getItem('trakkit-drafts') || '{}') } catch { return {} }
   })
@@ -371,6 +389,12 @@ function PriorityBoard({
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   )
+
+  useEffect(() => {
+    if (!zoneNotice) return
+    const t = setTimeout(() => setZoneNotice(''), 4000)
+    return () => clearTimeout(t)
+  }, [zoneNotice])
 
   function getZoneTasks(priority) {
     return tasks
@@ -399,6 +423,12 @@ function PriorityBoard({
       : (tasks.find(t => t.id === over.id)?.priority ?? srcTask.priority)
 
     const zoneTasks = getZoneTasks(tgtPriority).filter(t => t.id !== active.id)
+
+    // Enforce the High/To-Do cap: don't let a drag overfill the top slot.
+    if (activeTab === 'todo' && tgtPriority === 'high' && zoneTasks.length >= MAX_HIGH_TODO) {
+      setZoneNotice(`Your High priority list holds ${MAX_HIGH_TODO}. Complete one to free a slot.`)
+      return
+    }
 
     let insertIdx = zoneTasks.length
     if (!overId.startsWith('zone-')) {
@@ -525,26 +555,30 @@ function PriorityBoard({
             projectName={projectName}
           />
         ) : (
-          <div className="priority-zones">
-            {PRIORITIES.map(priority => (
-              <PriorityZone key={priority} priority={priority}
-                tasks={getZoneTasks(priority)}
-                resolveAssignees={resolveAssignees}
-                projectName={projectName}
-                updatesForTask={updatesForTask}
-                teamMembers={teamMembers}
-                onEdit={onStartEdit}
-                onDelete={onDelete}
-                onUpdate={onUpdate}
-                onAddUpdate={onAddUpdate}
-                onDeleteUpdate={onDeleteUpdate}
-                onUpdateAssignees={onUpdateAssignees}
-                draftUpdates={draftUpdates}
-                setDraft={setDraft}
-                onTaskDone={onTaskDone}
-              />
-            ))}
-          </div>
+          <>
+            {zoneNotice && <div className="zone-notice">{zoneNotice}</div>}
+            <div className="priority-zones">
+              {PRIORITIES.map(priority => (
+                <PriorityZone key={priority} priority={priority}
+                  tasks={getZoneTasks(priority)}
+                  limit={activeTab === 'todo' && priority === 'high' ? MAX_HIGH_TODO : null}
+                  resolveAssignees={resolveAssignees}
+                  projectName={projectName}
+                  updatesForTask={updatesForTask}
+                  teamMembers={teamMembers}
+                  onEdit={onStartEdit}
+                  onDelete={onDelete}
+                  onUpdate={onUpdate}
+                  onAddUpdate={onAddUpdate}
+                  onDeleteUpdate={onDeleteUpdate}
+                  onUpdateAssignees={onUpdateAssignees}
+                  draftUpdates={draftUpdates}
+                  setDraft={setDraft}
+                  onTaskDone={onTaskDone}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
 
@@ -751,15 +785,16 @@ function AssignmentResponseForm({ mode, busy, onCancel, onSubmit }) {
 
 // ─── Priority zone ───────────────────────────────────────────────────────────
 
-function PriorityZone({ priority, tasks, resolveAssignees, projectName, updatesForTask, teamMembers, onEdit, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, onUpdateAssignees, draftUpdates, setDraft, onTaskDone }) {
+function PriorityZone({ priority, tasks, limit, resolveAssignees, projectName, updatesForTask, teamMembers, onEdit, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, onUpdateAssignees, draftUpdates, setDraft, onTaskDone }) {
   const { setNodeRef, isOver } = useDroppable({ id: `zone-${priority}` })
   const items = tasks.map(t => t.id)
+  const atLimit = limit != null && tasks.length >= limit
 
   return (
-    <div className={`priority-zone zone-${priority}${isOver ? ' zone-over' : ''}`}>
+    <div className={`priority-zone zone-${priority}${isOver ? ' zone-over' : ''}${atLimit ? ' zone-full' : ''}`}>
       <div className="zone-header">
         <span className="zone-label">{PRIORITY_LABELS[priority]}</span>
-        <span className="zone-count">{tasks.length}</span>
+        <span className="zone-count">{tasks.length}{limit != null ? `/${limit}` : ''}</span>
       </div>
       <SortableContext items={items} strategy={verticalListSortingStrategy}>
         <div ref={setNodeRef} className="zone-body">
@@ -771,7 +806,13 @@ function PriorityZone({ priority, tasks, resolveAssignees, projectName, updatesF
               teamMembers={teamMembers}
               onEdit={() => onEdit(task)}
               onDelete={() => onDelete(task.id)}
-              onStatusChange={s => onUpdate(task.id, { status: s })}
+              onStatusChange={s => {
+                onUpdate(task.id, { status: s })
+                // Completing a top-slot (High + To Do) task frees a slot — prompt
+                // the user to fill it. The update-form completion path already
+                // calls onTaskDone; this covers the action-menu "→ Done".
+                if (s === 'done' && task.status === 'todo' && task.priority === 'high') onTaskDone?.(task)
+              }}
               onAddUpdate={(body, status) => onAddUpdate(task.id, body, status)}
               onDeleteUpdate={onDeleteUpdate}
               onUpdateAssignees={ids => onUpdateAssignees(task.id, ids)}
