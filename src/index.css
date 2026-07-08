@@ -64,43 +64,52 @@
 }
 
 html[data-theme="dark"] {
-  --bg-page:    #071013;
-  --bg-surface: #172820;
-  --bg-subtle:  #0f1c14;
-  --bg-muted:   #1e3520;
-  --bg-accent:  #1e3510;
+  /* "Warm charcoal" — a neutral charcoal base instead of green-black, with the
+     brand lime reserved for buttons and small highlights (never headings or
+     body text) so long sessions don't fight full-neon text on near-black. */
+  --bg-page:    #17191B;
+  --bg-surface: #202325;
+  --bg-subtle:  #1B1D20;
+  --bg-muted:   #282B2E;
+  --bg-accent:  #262A18;
 
-  --border:        #1e3520;
-  --border-subtle: #1a2e1c;
+  --border:        #2B2E31;
+  --border-subtle: #24272A;
 
-  --text-1: #ffffff;
-  --text-2: #C3F73A;
-  --text-3: #95E06C;
-  --text-4: #4a7a5a;
+  --text-1: #ECEDEC;
+  --text-2: #C9D1CB;
+  --text-3: #9AA39C;
+  --text-4: #6B726C;
 
-  --on-page-1:      #C3F73A;
-  --on-page-2:      #95E06C;
-  --on-page-3:      #68B684;
-  --on-page-border: rgba(195,247,58,0.2);
+  --on-page-1:      #ECEDEC;
+  --on-page-2:      #C9D1CB;
+  --on-page-3:      #9AA39C;
+  --on-page-border: rgba(236,237,236,0.12);
 
   --accent:      #C3F73A;
   --accent-hover:#aee030;
-  --accent-dim:  #4a5e1a;
-  --accent-bg:   #2a3d10;
+  --accent-dim:  #454B30;
+  --accent-bg:   #262A18;
   --accent-text: #C3F73A;
-  --accent-on:   #071013;
+  --accent-on:   #17191B;
 
-  --red-bg:     #3b0a0a;
-  --red-text:   #fca5a5;
-  --red-border: #7f1d1d;
-  --yellow-bg:  #3b1a00;
-  --yellow-text:#fcd34d;
-  --green-bg:   #052e16;
-  --green-text: #86efac;
-  --today-bg:   #1c2f08;
+  /* Softened priority accents for dark — the light-mode reds/ambers read as
+     glare against a dark surface, so dial them back a notch here only. */
+  --prio-high:   #E27272;
+  --prio-medium: #E0B15A;
+  --prio-low:    #7C8A96;
 
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.4);
-  --shadow-pop:  0 16px 48px rgba(0,0,0,0.55);
+  --red-bg:     #3A1B1B;
+  --red-text:   #EFAEAE;
+  --red-border: #5C2626;
+  --yellow-bg:  #332412;
+  --yellow-text:#E8C878;
+  --green-bg:   #16281F;
+  --green-text: #7FCB9A;
+  --today-bg:   #232B18;
+
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.35);
+  --shadow-pop:  0 16px 48px rgba(0,0,0,0.5);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

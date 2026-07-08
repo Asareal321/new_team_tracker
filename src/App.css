@@ -225,7 +225,8 @@ html[data-theme="dark"] .app-sidebar {
 
 .loading { color: var(--on-page-2); font-size: 0.9rem; padding: 2rem 0; }
 
-.board-hero { padding: 0 0 0.85rem; text-align: center; }
+.board-hero { padding: 0 0 0.85rem; text-align: center; position: relative; display: flex; align-items: center; justify-content: center; }
+.board-hero .btn-ghost { position: absolute; right: 0; }
 .board-hero-title {
   display: inline-block;
   font-size: var(--fs-xl);

@@ -293,9 +293,9 @@ export default function TaskBoard({
                 onChange={e => { setForm(f => ({ ...f, due_date: e.target.value })); setDatePickerOpen(false) }} />
             )}
 
-            {currentTeamId && projects.length > 0 && (
+            {projects.length > 0 && (
               <div className="qc-projects">
-                <span className="qc-plabel">Project</span>
+                <span className="qc-plabel">Sprint</span>
                 <div className="qc-pills">
                   {projects.map(p => (
                     <button

@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../auth/AuthContext'
 import { useTeam } from '../context/TeamContext'
 import TaskBoard from '../components/TaskBoard'
+import PersonalProjectsModal from '../components/PersonalProjectsModal'
 
 function DoneTaskModal({ task, tasks = [], projects, onAdd, onUpdateProject, onPromote, onDismiss }) {
   const [nextTitle, setNextTitle] = useState('')
@@ -108,10 +109,12 @@ export default function BoardPage() {
   const [tasks, setTasks] = useState([])
   const [teamMembers, setTeamMembers] = useState([])
   const [projects, setProjects] = useState([])
+  const [projectGroups, setProjectGroups] = useState([])
   const [projectMembers, setProjectMembers] = useState([])
   const [taskUpdates, setTaskUpdates] = useState([])
   const [loading, setLoading] = useState(true)
   const [doneTask, setDoneTask] = useState(null)
+  const [showProjectsManager, setShowProjectsManager] = useState(false)
 
   const fetchTaskUpdates = useCallback(async (taskIds) => {
     if (!taskIds.length) { setTaskUpdates([]); return }
@@ -180,14 +183,20 @@ export default function BoardPage() {
   }, [currentTeamId, user])
 
   const fetchProjects = useCallback(async () => {
-    if (!currentTeamId) { setProjects([]); return }
-    const { data } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('team_id', currentTeamId)
-      .order('created_at', { ascending: true })
+    let query = supabase.from('projects').select('*').order('created_at', { ascending: true })
+    query = currentTeamId ? query.eq('team_id', currentTeamId) : query.is('team_id', null).eq('created_by', user.id)
+    const { data, error } = await query
+    if (error) console.error('[trakkit] Failed to load sprints', error.message)
     setProjects(data || [])
-  }, [currentTeamId])
+  }, [currentTeamId, user])
+
+  const fetchProjectGroups = useCallback(async () => {
+    let query = supabase.from('project_groups').select('*').order('created_at', { ascending: true })
+    query = currentTeamId ? query.eq('team_id', currentTeamId) : query.is('team_id', null).eq('created_by', user.id)
+    const { data, error } = await query
+    if (error) console.error('[trakkit] Failed to load projects — is the DB migration applied?', error.message)
+    setProjectGroups(data || [])
+  }, [currentTeamId, user])
 
   const fetchProjectMembers = useCallback(async () => {
     if (!currentTeamId) { setProjectMembers([]); return }
@@ -200,19 +209,20 @@ export default function BoardPage() {
 
   useEffect(() => {
     setLoading(true)
-    Promise.all([fetchTasks(), fetchTeamMembers(), fetchProjects(), fetchProjectMembers()]).then(() => setLoading(false))
+    Promise.all([fetchTasks(), fetchTeamMembers(), fetchProjects(), fetchProjectGroups(), fetchProjectMembers()]).then(() => setLoading(false))
 
     const channel = supabase
       .channel(`board-${currentTeamId ?? 'personal'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchTasks)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'task_assignees' }, fetchTasks)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'projects', filter: currentTeamId ? `team_id=eq.${currentTeamId}` : undefined }, fetchProjects)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'project_groups', filter: currentTeamId ? `team_id=eq.${currentTeamId}` : undefined }, fetchProjectGroups)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'project_members' }, fetchProjectMembers)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'task_updates' }, fetchTasks)
       .subscribe()
 
     return () => supabase.removeChannel(channel)
-  }, [fetchTasks, fetchTeamMembers, fetchProjects, fetchProjectMembers, currentTeamId])
+  }, [fetchTasks, fetchTeamMembers, fetchProjects, fetchProjectGroups, fetchProjectMembers, currentTeamId])
 
   async function addTask({ assigneeIds = [], ...task }) {
     const samePriority = tasks.filter(t => t.priority === task.priority && t.status === task.status)
@@ -294,8 +304,33 @@ export default function BoardPage() {
     if (error) throw error
   }
 
+  async function addProject(form) {
+    await supabase.from('projects').insert([{ ...form, team_id: currentTeamId, created_by: user.id }])
+  }
+
   async function updateProject(id, updates) {
     await supabase.from('projects').update(updates).eq('id', id)
+  }
+
+  async function deleteProject(id) {
+    await supabase.from('projects').delete().eq('id', id)
+  }
+
+  async function addProjectGroup(name) {
+    await supabase.from('project_groups').insert({ team_id: currentTeamId, name, created_by: user.id })
+  }
+
+  async function updateProjectGroup(id, name) {
+    await supabase.from('project_groups').update({ name }).eq('id', id)
+  }
+
+  async function deleteProjectGroup(id) {
+    await supabase.from('project_groups').delete().eq('id', id)
+  }
+
+  async function setSprintGroup(sprintId, groupId) {
+    setProjects(prev => prev.map(p => p.id === sprintId ? { ...p, group_id: groupId } : p))
+    await supabase.from('projects').update({ group_id: groupId }).eq('id', sprintId)
   }
 
   async function archiveDoneTasks() {
@@ -316,6 +351,11 @@ export default function BoardPage() {
     <div>
       <div className="board-hero">
         <h1 className="board-hero-title">{teamName} Taskboard</h1>
+        {!currentTeamId && (
+          <button className="btn-ghost btn-sm" onClick={() => setShowProjectsManager(true)}>
+            Projects &amp; sprints
+          </button>
+        )}
       </div>
       <TaskBoard
         tasks={tasks}
@@ -345,6 +385,20 @@ export default function BoardPage() {
           onUpdateProject={updateProject}
           onPromote={updateTask}
           onDismiss={() => setDoneTask(null)}
+        />
+      )}
+      {showProjectsManager && (
+        <PersonalProjectsModal
+          projects={projects}
+          projectGroups={projectGroups}
+          onAddSprint={addProject}
+          onUpdateSprint={updateProject}
+          onDeleteSprint={deleteProject}
+          onAddGroup={addProjectGroup}
+          onUpdateGroup={updateProjectGroup}
+          onDeleteGroup={deleteProjectGroup}
+          onSetSprintGroup={setSprintGroup}
+          onClose={() => setShowProjectsManager(false)}
         />
       )}
     </div>
