@@ -304,33 +304,55 @@ export default function BoardPage() {
     if (error) throw error
   }
 
+  // Personal-project mutations are optimistic (so they appear instantly, not
+  // only after the realtime refetch) and surface errors — the likeliest one
+  // being that migration-personal-projects.sql hasn't been run, which leaves
+  // projects.team_id NOT NULL and rejects a personal (team_id null) row.
   async function addProject(form) {
-    await supabase.from('projects').insert([{ ...form, team_id: currentTeamId, created_by: user.id }])
+    const id = crypto.randomUUID()
+    const row = { id, ...form, team_id: currentTeamId, created_by: user.id, created_at: new Date().toISOString() }
+    setProjects(prev => [...prev, row])
+    const { error } = await supabase.from('projects').insert(row)
+    if (error) { setProjects(prev => prev.filter(p => p.id !== id)); throw error }
   }
 
   async function updateProject(id, updates) {
-    await supabase.from('projects').update(updates).eq('id', id)
+    setProjects(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p))
+    const { error } = await supabase.from('projects').update(updates).eq('id', id)
+    if (error) { fetchProjects(); throw error }
   }
 
   async function deleteProject(id) {
-    await supabase.from('projects').delete().eq('id', id)
+    setProjects(prev => prev.filter(p => p.id !== id))
+    const { error } = await supabase.from('projects').delete().eq('id', id)
+    if (error) { fetchProjects(); throw error }
   }
 
   async function addProjectGroup(name) {
-    await supabase.from('project_groups').insert({ team_id: currentTeamId, name, created_by: user.id })
+    const id = crypto.randomUUID()
+    const row = { id, team_id: currentTeamId, name, created_by: user.id, created_at: new Date().toISOString() }
+    setProjectGroups(prev => [...prev, row])
+    const { error } = await supabase.from('project_groups').insert(row)
+    if (error) { setProjectGroups(prev => prev.filter(g => g.id !== id)); throw error }
   }
 
   async function updateProjectGroup(id, name) {
-    await supabase.from('project_groups').update({ name }).eq('id', id)
+    setProjectGroups(prev => prev.map(g => g.id === id ? { ...g, name } : g))
+    const { error } = await supabase.from('project_groups').update({ name }).eq('id', id)
+    if (error) { fetchProjectGroups(); throw error }
   }
 
   async function deleteProjectGroup(id) {
-    await supabase.from('project_groups').delete().eq('id', id)
+    setProjectGroups(prev => prev.filter(g => g.id !== id))
+    setProjects(prev => prev.map(p => p.group_id === id ? { ...p, group_id: null } : p))
+    const { error } = await supabase.from('project_groups').delete().eq('id', id)
+    if (error) { fetchProjectGroups(); fetchProjects(); throw error }
   }
 
   async function setSprintGroup(sprintId, groupId) {
     setProjects(prev => prev.map(p => p.id === sprintId ? { ...p, group_id: groupId } : p))
-    await supabase.from('projects').update({ group_id: groupId }).eq('id', sprintId)
+    const { error } = await supabase.from('projects').update({ group_id: groupId }).eq('id', sprintId)
+    if (error) { fetchProjects(); throw error }
   }
 
   async function archiveDoneTasks() {

@@ -121,6 +121,15 @@
   max-width: 7.5rem;
 }
 
+.ppm-error {
+  margin-top: 0.85rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--red-bg);
+  color: var(--red-text);
+  border-radius: var(--r-sm);
+  font-size: 0.8rem;
+}
+
 .ppm-foot {
   display: flex;
   justify-content: flex-end;

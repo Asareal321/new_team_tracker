@@ -20,36 +20,54 @@ export default function PersonalProjectsModal({
   const [editingGroupName, setEditingGroupName] = useState('')
   const [editingSprintId, setEditingSprintId] = useState(null)
   const [editingSprintName, setEditingSprintName] = useState('')
+  const [error, setError] = useState('')
+
+  // Any save can fail if the personal-projects migration hasn't run yet
+  // (projects.team_id / project_groups.team_id still NOT NULL). Surface that
+  // instead of the click doing nothing.
+  async function run(fn) {
+    setError('')
+    try {
+      await fn()
+      return true
+    } catch (e) {
+      const msg = e?.message || String(e)
+      setError(/null value|not-null|violates|does not exist|policy|column/i.test(msg)
+        ? 'Personal projects need a one-time database migration — run migration-personal-projects.sql in the Supabase SQL editor, then try again.'
+        : `Couldn't save: ${msg}`)
+      return false
+    }
+  }
 
   async function handleAddGroup(e) {
     e.preventDefault()
     const name = newGroupName.trim()
     if (!name) return
-    await onAddGroup(name)
-    setNewGroupName('')
+    if (await run(() => onAddGroup(name))) setNewGroupName('')
   }
 
   async function handleAddSprint(e) {
     e.preventDefault()
     const name = newSprintName.trim()
     if (!name) return
-    await onAddSprint({ name, status: 'active', group_id: newSprintGroup || null })
-    setNewSprintName('')
-    setNewSprintGroup('')
+    if (await run(() => onAddSprint({ name, status: 'active', group_id: newSprintGroup || null }))) {
+      setNewSprintName('')
+      setNewSprintGroup('')
+    }
   }
 
   function startEditGroup(g) { setEditingGroupId(g.id); setEditingGroupName(g.name) }
   async function saveEditGroup(id) {
     const name = editingGroupName.trim()
     setEditingGroupId(null)
-    if (name) await onUpdateGroup(id, name)
+    if (name) await run(() => onUpdateGroup(id, name))
   }
 
   function startEditSprint(p) { setEditingSprintId(p.id); setEditingSprintName(p.name) }
   async function saveEditSprint(id) {
     const name = editingSprintName.trim()
     setEditingSprintId(null)
-    if (name) await onUpdateSprint(id, { name })
+    if (name) await run(() => onUpdateSprint(id, { name }))
   }
 
   return (
@@ -82,7 +100,7 @@ export default function PersonalProjectsModal({
                   )}
                   <span className="ppm-row-count">{count} sprint{count === 1 ? '' : 's'}</span>
                   <button className="ppm-icon-btn" onClick={() => startEditGroup(g)} title="Rename">✎</button>
-                  <button className="ppm-icon-btn danger" onClick={() => onDeleteGroup(g.id)} title="Delete">✕</button>
+                  <button className="ppm-icon-btn danger" onClick={() => run(() => onDeleteGroup(g.id))} title="Delete">✕</button>
                 </div>
               )
             })}
@@ -113,13 +131,13 @@ export default function PersonalProjectsModal({
                 <select
                   className="ppm-group-select"
                   value={p.group_id || ''}
-                  onChange={e => onSetSprintGroup(p.id, e.target.value || null)}
+                  onChange={e => run(() => onSetSprintGroup(p.id, e.target.value || null))}
                 >
                   <option value="">No project</option>
                   {projectGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                 </select>
                 <button className="ppm-icon-btn" onClick={() => startEditSprint(p)} title="Rename">✎</button>
-                <button className="ppm-icon-btn danger" onClick={() => onDeleteSprint(p.id)} title="Delete">✕</button>
+                <button className="ppm-icon-btn danger" onClick={() => run(() => onDeleteSprint(p.id))} title="Delete">✕</button>
               </div>
             ))}
           </div>
@@ -132,6 +150,8 @@ export default function PersonalProjectsModal({
             <button type="submit" className="btn-primary btn-sm">+ Add</button>
           </form>
         </section>
+
+        {error && <p className="ppm-error">{error}</p>}
 
         <div className="ppm-foot">
           <button className="btn-primary" onClick={onClose}>Done</button>
