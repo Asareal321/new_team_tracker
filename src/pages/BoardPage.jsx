@@ -245,18 +245,16 @@ export default function BoardPage() {
     return data?.id
   }
 
-  // Landing a task in Done drops a rain cloud for the garden. Personal board
-  // only — clouds shouldn't float over a shared team board. Guarded on the
-  // previous status so re-saving an already-done task doesn't farm clouds.
-  function maybeSpawnCloud(id, newStatus) {
-    if (currentTeamId) return
-    if (newStatus !== 'done') return
-    if (tasks.find(t => t.id === id)?.status === 'done') return
-    spawnCloud()
+  // Finishing a task earns a rain cloud for the garden, but it waits until the
+  // completion modal is out of the way (follow-up task added, or skipped) so
+  // the cloud gets the centre of the screen to itself. Personal board only —
+  // clouds shouldn't interrupt work on a shared team board.
+  function dismissDoneTask() {
+    setDoneTask(null)
+    if (!currentTeamId) spawnCloud()
   }
 
   async function updateTask(id, updates) {
-    if ('status' in updates) maybeSpawnCloud(id, updates.status)
     await supabase.from('tasks').update(updates).eq('id', id)
   }
 
@@ -267,7 +265,6 @@ export default function BoardPage() {
   async function addUpdate(taskId, body, newStatus) {
     await supabase.from('task_updates').insert([{ task_id: taskId, user_id: user.id, body }])
     if (newStatus) {
-      maybeSpawnCloud(taskId, newStatus)
       await supabase.from('tasks').update({ status: newStatus }).eq('id', taskId)
     }
   }
@@ -420,7 +417,7 @@ export default function BoardPage() {
           onAdd={addTask}
           onUpdateProject={updateProject}
           onPromote={updateTask}
-          onDismiss={() => setDoneTask(null)}
+          onDismiss={dismissDoneTask}
         />
       )}
       {showProjectsManager && (

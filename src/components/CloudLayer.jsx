@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { CLOUD_MAX_CLICKS, CLOUD_LIFETIME_MS, formatDuration } from '../lib/garden'
+import {
+  CLOUD_MAX_TAPS, CLOUD_LIFETIME_MS, cloudTier, rollCloudGrowth, formatDuration,
+} from '../lib/garden'
 import './CloudLayer.css'
 
-// Rain clouds spawned by completing a task. Click one repeatedly to fatten it
-// up before it drifts away — the bigger it gets, the more grow time it shaves
-// off the seed in your garden.
+// The rain cloud you get for finishing a task. It arrives front and centre;
+// tapping it *might* bump it up a rarity tier, and the tier it ends on is what
+// gets shaved off your growing flower. Only one is shown at a time — extras
+// queue behind it so each gets the centre of the screen.
 export default function CloudLayer({ clouds, onPop, onExpire }) {
   const [toasts, setToasts] = useState([])
+  const cloud = clouds[0]
 
   function showToast(reward) {
     if (!reward) return
@@ -17,21 +21,20 @@ export default function CloudLayer({ clouds, onPop, onExpire }) {
         : `+${reward.amount} coins`,
     }
     setToasts(prev => [...prev, toast])
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== toast.id)), 2400)
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== toast.id)), 2600)
   }
 
-  if (!clouds.length && !toasts.length) return null
+  if (!cloud && !toasts.length) return null
 
   return (
-    <div className="cloud-layer">
-      {clouds.map(cloud => (
+    <div className={`cloud-layer${cloud ? ' active' : ''}`}>
+      {cloud && (
         <Cloud
           key={cloud.id}
-          cloud={cloud}
-          onPop={async clicks => showToast(await onPop(cloud.id, clicks))}
+          onPop={async tier => showToast(await onPop(cloud.id, tier))}
           onExpire={() => onExpire(cloud.id)}
         />
-      ))}
+      )}
       <div className="cloud-toasts">
         {toasts.map(t => <div key={t.id} className="cloud-toast">{t.text}</div>)}
       </div>
@@ -39,51 +42,94 @@ export default function CloudLayer({ clouds, onPop, onExpire }) {
   )
 }
 
-function Cloud({ cloud, onPop, onExpire }) {
-  const [clicks, setClicks] = useState(0)
+function Cloud({ onPop, onExpire }) {
+  const [tier, setTier] = useState(1)
+  const [taps, setTaps] = useState(0)
   const [bursting, setBursting] = useState(false)
-  const clicksRef = useRef(0)
+  // `n` bumps on every tap so remounting restarts the CSS animation; `type`
+  // says whether the roll grew the cloud or fizzled.
+  const [anim, setAnim] = useState({ n: 0, type: null })
+  // Taps and tier are mirrored in refs: fast tapping fires several handlers
+  // before React re-renders, and reading the state values there would be stale.
+  const tierRef = useRef(1)
+  const tapsRef = useRef(0)
   const settled = useRef(false)
 
-  // The cloud drifts off on its own. Whatever size it reached still pays out —
-  // ignoring it entirely is the only way to get nothing.
+  const info = cloudTier(tier)
+  const tapsLeft = CLOUD_MAX_TAPS - taps
+
+  function settle(finalTier) {
+    if (settled.current) return
+    settled.current = true
+    setBursting(true)
+    setTimeout(() => onPop(finalTier), 380)
+  }
+
+  // The cloud drifts off on its own. Whatever tier it reached still pays out —
+  // walking away entirely is the only way to get nothing.
   useEffect(() => {
     const timer = setTimeout(() => {
       if (settled.current) return
       settled.current = true
-      if (clicksRef.current > 0) onPop(clicksRef.current)
-      else onExpire()
+      onExpire()
     }, CLOUD_LIFETIME_MS)
     return () => clearTimeout(timer)
-  }, [onPop, onExpire])
+  }, [onExpire])
 
-  function handleClick() {
+  function handleTap() {
     if (settled.current) return
-    const next = clicks + 1
-    clicksRef.current = next
-    setClicks(next)
-    if (next >= CLOUD_MAX_CLICKS) {
-      settled.current = true
-      setBursting(true)
-      setTimeout(() => onPop(next), 320)
-    }
+    const nextTaps = tapsRef.current + 1
+    const nextTier = rollCloudGrowth(tierRef.current)
+    const grew = nextTier !== tierRef.current
+    tapsRef.current = nextTaps
+    tierRef.current = nextTier
+    setTaps(nextTaps)
+    setTier(nextTier)
+    setAnim(a => ({ n: a.n + 1, type: grew ? 'grow' : 'wobble' }))
+    if (nextTaps >= CLOUD_MAX_TAPS) settle(nextTier)
   }
 
-  const scale = 1 + clicks * 0.22
-
   return (
-    <button
-      className={`cloud-drop${bursting ? ' bursting' : ''}`}
-      style={{ left: `${cloud.left}%`, top: `${cloud.top}%`, '--cloud-scale': scale }}
-      onClick={handleClick}
-      aria-label={`Rain cloud — tap to grow (${clicks} of ${CLOUD_MAX_CLICKS})`}
-    >
-      <span className="cloud-emoji">{clicks >= CLOUD_MAX_CLICKS ? '🌧️' : '☁️'}</span>
-      <span className="cloud-pips">
-        {Array.from({ length: CLOUD_MAX_CLICKS }, (_, i) => (
-          <span key={i} className={`cloud-pip${i < clicks ? ' filled' : ''}`} />
-        ))}
-      </span>
-    </button>
+    <div className="cloud-stage">
+      <button
+        className={`cloud-drop${bursting ? ' bursting' : ''}`}
+        data-tier={tier}
+        style={{ '--tier-color': info.color, '--tier-glow': info.glow }}
+        onClick={handleTap}
+        aria-label={`${info.name} rain cloud — tap to grow it, ${tapsLeft} taps left`}
+      >
+        <span className="cloud-art" key={anim.n} data-anim={anim.type || undefined}>
+          <span className="puff puff-a" />
+          <span className="puff puff-b" />
+          <span className="puff puff-c" />
+          <span className="cloud-base" />
+          {tier >= 2 && (
+            <span className="cloud-rain">
+              {Array.from({ length: tier >= 4 ? 7 : 4 }, (_, i) => <span key={i} className="drop" style={{ '--i': i }} />)}
+            </span>
+          )}
+          {tier >= 4 && <span className="cloud-bolt">⚡</span>}
+          {tier >= 5 && (
+            <span className="cloud-sparkles">
+              {Array.from({ length: 6 }, (_, i) => <span key={i} className="spark" style={{ '--i': i }} />)}
+            </span>
+          )}
+        </span>
+      </button>
+
+      <div className="cloud-meta">
+        <span className="cloud-rarity" style={{ '--tier-color': info.color }}>{info.name}</span>
+        <span className="cloud-reward">−{info.shaveMinutes} min grow time</span>
+        <div className="cloud-taps">
+          {Array.from({ length: CLOUD_MAX_TAPS }, (_, i) => (
+            <span key={i} className={`tap-pip${i < taps ? ' used' : ''}`} />
+          ))}
+        </div>
+        <span className="cloud-hint">
+          {taps === 0 ? 'Tap it — each tap might grow it' : tapsLeft > 0 ? `${tapsLeft} tap${tapsLeft === 1 ? '' : 's'} left` : 'Bursting!'}
+        </span>
+        <div className="cloud-timer"><span /></div>
+      </div>
+    </div>
   )
 }

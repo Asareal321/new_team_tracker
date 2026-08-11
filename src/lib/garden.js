@@ -21,20 +21,41 @@ export function seedByKey(key) {
   return SEEDS.find(s => s.key === key) || null
 }
 
-// A cloud is worth more the bigger you grow it. Index = clicks - 1.
-export const CLOUD_SHAVE_MINUTES = [5, 11, 19, 30, 45]
-export const CLOUD_IDLE_COINS    = [2, 5, 9, 14, 20]
-export const CLOUD_MAX_CLICKS    = 5
-export const CLOUD_LIFETIME_MS   = 8000
+// A cloud starts Common and may grow a tier on each tap — `growChance` is the
+// probability that tapping a cloud at this tier bumps it to the next one, so a
+// Legendary takes real luck. `shaveMinutes` is what the tier pays out.
+//
+// Over CLOUD_MAX_TAPS taps these odds land roughly: Rare 52%, Epic 32%,
+// Uncommon 13%, Legendary 3%, Common <1%. Rare is the everyday result and a
+// Legendary is a genuine event; retune here if the loop feels off.
+export const CLOUD_TIERS = [
+  { tier: 1, name: 'Common',    color: '#b9c6cf', glow: 'rgba(185,198,207,0.5)', shaveMinutes: 5,  coins: 2,  growChance: 0.60 },
+  { tier: 2, name: 'Uncommon',  color: '#5aa9d6', glow: 'rgba(90,169,214,0.55)', shaveMinutes: 11, coins: 5,  growChance: 0.40 },
+  { tier: 3, name: 'Rare',      color: '#a97fd6', glow: 'rgba(169,127,214,0.6)', shaveMinutes: 19, coins: 9,  growChance: 0.20 },
+  { tier: 4, name: 'Epic',      color: '#e08a4f', glow: 'rgba(224,138,79,0.65)', shaveMinutes: 30, coins: 14, growChance: 0.08 },
+  { tier: 5, name: 'Legendary', color: '#e0b93f', glow: 'rgba(224,185,63,0.75)', shaveMinutes: 45, coins: 20, growChance: 0 },
+]
 
-export function cloudShaveSeconds(clicks) {
-  if (clicks < 1) return 0
-  return CLOUD_SHAVE_MINUTES[Math.min(clicks, CLOUD_MAX_CLICKS) - 1] * 60
+export const CLOUD_MAX_TAPS    = 6
+export const CLOUD_LIFETIME_MS = 11000
+
+export function cloudTier(tier) {
+  return CLOUD_TIERS[Math.min(Math.max(tier, 1), CLOUD_TIERS.length) - 1]
 }
 
-export function cloudIdleCoins(clicks) {
-  if (clicks < 1) return 0
-  return CLOUD_IDLE_COINS[Math.min(clicks, CLOUD_MAX_CLICKS) - 1]
+// Roll for growth. Returns the tier the cloud ends up at after one tap.
+export function rollCloudGrowth(tier) {
+  const current = cloudTier(tier)
+  if (tier >= CLOUD_TIERS.length) return tier
+  return Math.random() < current.growChance ? tier + 1 : tier
+}
+
+export function cloudShaveSeconds(tier) {
+  return cloudTier(tier).shaveMinutes * 60
+}
+
+export function cloudIdleCoins(tier) {
+  return cloudTier(tier).coins
 }
 
 // Garden starts at 3 x 4 = 12 plots and expands one row of 3 at a time.

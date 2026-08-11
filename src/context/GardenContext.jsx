@@ -68,30 +68,26 @@ export function GardenProvider({ children }) {
   // the current page and expires on its own if ignored.
   const spawnCloud = useCallback(() => {
     if (!user) return
-    setClouds(prev => [...prev, {
-      id: crypto.randomUUID(),
-      // Keep clouds off the sidebar and away from the very edges.
-      left: 30 + Math.random() * 40,
-      top: 20 + Math.random() * 35,
-    }])
+    setClouds(prev => [...prev, { id: crypto.randomUUID() }])
   }, [user])
 
   const dismissCloud = useCallback(id => {
     setClouds(prev => prev.filter(c => c.id !== id))
   }, [])
 
-  // A popped cloud shaves time off whatever is growing. With an empty plot
-  // the effort still counts — it converts to coins instead.
-  const popCloud = useCallback(async (id, clicks) => {
+  // A popped cloud shaves time off whatever is growing, scaled by the rarity
+  // tier it reached. With nothing planted the effort still counts — it
+  // converts to coins instead.
+  const popCloud = useCallback(async (id, tier) => {
     dismissCloud(id)
     const current = stateRef.current
-    if (!current || clicks < 1) return null
+    if (!current) return null
     if (current.growing_seed) {
-      const shaved = cloudShaveSeconds(clicks)
+      const shaved = cloudShaveSeconds(tier)
       await save({ shaved_seconds: (current.shaved_seconds || 0) + shaved })
       return { type: 'shave', amount: shaved }
     }
-    const coins = cloudIdleCoins(clicks)
+    const coins = cloudIdleCoins(tier)
     await save({ coins: (current.coins || 0) + coins })
     return { type: 'coins', amount: coins }
   }, [save, dismissCloud])
