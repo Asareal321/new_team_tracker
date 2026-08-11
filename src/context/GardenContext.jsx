@@ -64,8 +64,8 @@ export function GardenProvider({ children }) {
 
   // --- clouds -------------------------------------------------------------
 
-  // Called whenever a task lands in Done, on any board. The cloud floats over
-  // the current page and expires on its own if ignored.
+  // Called once the task-completion modal is dismissed. The cloud holds the
+  // centre of the screen until it's tapped out or collected — no timer.
   const spawnCloud = useCallback(() => {
     if (!user) return
     setClouds(prev => [...prev, { id: crypto.randomUUID() }])
@@ -181,7 +181,7 @@ export function GardenProvider({ children }) {
   return (
     <GardenContext.Provider value={value}>
       {children}
-      <CloudLayer clouds={clouds} onPop={popCloud} onExpire={dismissCloud} />
+      <CloudLayer clouds={clouds} onPop={popCloud} />
     </GardenContext.Provider>
   )
 }
