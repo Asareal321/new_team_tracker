@@ -1,0 +1,182 @@
+/* Game chrome.
+   The sidebar, page headers and buttons carry the Animal-Crossing character;
+   task rows and data surfaces stay exactly as they were, so the board is still
+   dense and fast to scan. Loaded last (see main.jsx) so it reliably wins the
+   cascade over the per-component stylesheets without specificity hacks. */
+
+:root {
+  --wood:        #A9773F;
+  --wood-dark:   #855B2C;
+  --wood-deep:   #6D4A22;
+  --wood-ink:    #FDF3E0;
+  --leaf:        #8FD45F;
+  --leaf-dark:   #6FB843;
+  --leaf-deep:   #5C9C37;
+  --leaf-ink:    #23500F;
+  --chrome-btn-bg:     #FFFDF7;
+  --chrome-btn-border: #D8C4A3;
+  --chrome-btn-edge:   #CBB593;
+  --chrome-btn-ink:    #4A3B2A;
+}
+
+html[data-theme="dark"] {
+  --wood:        #6E4E2B;
+  --wood-dark:   #533A20;
+  --wood-deep:   #3E2B18;
+  --wood-ink:    #F0E2CC;
+  --leaf:        #7BB84E;
+  --leaf-dark:   #5F9A39;
+  --leaf-deep:   #4A7A2C;
+  --leaf-ink:    #17240E;
+  --chrome-btn-bg:     #2A2E30;
+  --chrome-btn-border: #454B4D;
+  --chrome-btn-edge:   #1E2223;
+  --chrome-btn-ink:    #ECEDEC;
+}
+
+/* --- sidebar ------------------------------------------------------------ */
+
+.app-sidebar {
+  --rail-bg: var(--wood);
+  --rail-border: var(--wood-dark);
+  --rail-brand: #FFFDF5;
+  --rail-track: var(--leaf);
+  --rail-nav: var(--wood-ink);
+  --rail-nav-hover-bg: rgba(255, 253, 245, 0.16);
+  --rail-active-bg: var(--leaf);
+  --rail-active-text: var(--leaf-ink);
+  --rail-active-bar: transparent;
+  --rail-foot-border: rgba(255, 253, 245, 0.22);
+  --rail-ctrl-bg: rgba(255, 253, 245, 0.12);
+  --rail-ctrl-border: rgba(255, 253, 245, 0.3);
+  --rail-ctrl-text: var(--wood-ink);
+  --rail-ctrl-hover: rgba(255, 253, 245, 0.2);
+  border-right-width: 4px;
+}
+
+/* App.css defines `html[data-theme="dark"] .app-sidebar` (specificity 0,2,1),
+   which outranks the plain `.app-sidebar` above no matter how late this file
+   loads. The dark palette therefore has to be restated at equal specificity
+   rather than inherited from the block above. Same story for the hero title. */
+html[data-theme="dark"] .app-sidebar {
+  --rail-bg: var(--wood);
+  --rail-border: var(--wood-dark);
+  --rail-brand: #FFF3DF;
+  --rail-track: var(--leaf);
+  --rail-nav: var(--wood-ink);
+  --rail-nav-hover-bg: rgba(255, 243, 223, 0.12);
+  --rail-active-bg: var(--leaf);
+  --rail-active-text: var(--leaf-ink);
+  --rail-active-bar: transparent;
+  --rail-foot-border: rgba(255, 243, 223, 0.18);
+  --rail-ctrl-bg: rgba(255, 243, 223, 0.1);
+  --rail-ctrl-border: rgba(255, 243, 223, 0.24);
+  --rail-ctrl-text: var(--wood-ink);
+  --rail-ctrl-hover: rgba(255, 243, 223, 0.18);
+}
+
+.nav-btn {
+  border-radius: 10px;
+  font-weight: 600;
+  border: 2px solid transparent;
+}
+.nav-btn.active {
+  border-color: var(--leaf-dark);
+  box-shadow: 0 3px 0 var(--leaf-deep);
+  font-weight: 700;
+}
+/* Nudge the active pill up so its hard bottom edge doesn't shift the row. */
+.nav-btn.active { transform: translateY(-1px); }
+
+/* --- page headers ------------------------------------------------------- */
+
+.board-hero-title,
+.dash-title,
+.account-page > h2 {
+  display: inline-block;
+  background: var(--wood);
+  color: #FFFDF5;
+  border: 3px solid var(--wood-dark);
+  border-radius: 14px;
+  box-shadow: 0 5px 0 var(--wood-deep);
+  padding: 0.35rem 1.15rem;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+  backdrop-filter: none;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.dash-title,
+.account-page > h2 { margin-bottom: 1.1rem; }
+
+/* Teams has no page-level title — its h2s are per-column section headings
+   nested inside .teams-list-col, so they deliberately stay plain. */
+
+html[data-theme="dark"] .board-hero-title {
+  background: var(--wood);
+  color: #FFF3DF;
+  border: 3px solid var(--wood-dark);
+  box-shadow: 0 5px 0 var(--wood-deep);
+  backdrop-filter: none;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* --- buttons ------------------------------------------------------------ */
+
+.btn-primary {
+  background: var(--leaf);
+  color: var(--leaf-ink);
+  border: 2px solid var(--leaf-dark);
+  box-shadow: 0 3px 0 var(--leaf-deep);
+  border-radius: var(--r-pill);
+  font-weight: 700;
+  transition: transform 90ms, box-shadow 90ms, background 120ms;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--leaf);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 0 var(--leaf-deep);
+}
+.btn-primary:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--leaf-deep);
+}
+.btn-primary:disabled { opacity: 0.5; box-shadow: 0 3px 0 var(--leaf-deep); }
+
+.btn-ghost {
+  background: var(--chrome-btn-bg);
+  color: var(--chrome-btn-ink);
+  border: 2px solid var(--chrome-btn-border);
+  box-shadow: 0 3px 0 var(--chrome-btn-edge);
+  border-radius: var(--r-pill);
+  font-weight: 600;
+  transition: transform 90ms, box-shadow 90ms;
+}
+.btn-ghost:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 0 var(--chrome-btn-edge);
+}
+.btn-ghost:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--chrome-btn-edge);
+}
+
+/* The board hero button is absolutely positioned; the lift would fight it. */
+.board-hero .btn-ghost:hover:not(:disabled),
+.board-hero .btn-ghost:active:not(:disabled) { transform: none; }
+
+/* --- zone labels -------------------------------------------------------- */
+
+.zone-label {
+  background: var(--wood);
+  color: #FFFDF5;
+  border: 2px solid var(--wood-dark);
+  border-radius: var(--r-pill);
+  padding: 0.1rem 0.7rem;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary, .btn-ghost { transition: none; }
+  .btn-primary:hover, .btn-ghost:hover,
+  .btn-primary:active, .btn-ghost:active { transform: none; }
+}
