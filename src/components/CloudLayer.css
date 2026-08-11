@@ -10,22 +10,52 @@
 /* Dim the page only while a cloud is actually on screen. */
 .cloud-layer.active {
   pointer-events: auto;
-  background: radial-gradient(ellipse at 50% 42%, rgba(10, 20, 30, 0.32) 0%, rgba(10, 20, 30, 0.62) 100%);
-  backdrop-filter: blur(2px);
+  /* Deep enough that the pale low-tier labels still read against it, whatever
+     the page underneath happens to be. */
+  background: radial-gradient(ellipse at 50% 42%, rgba(8, 16, 24, 0.62) 0%, rgba(8, 16, 24, 0.86) 100%);
+  backdrop-filter: blur(3px);
   animation: layer-in 220ms ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
 }
 
 @keyframes layer-in { from { opacity: 0; } to { opacity: 1; } }
 
+/* Centred by the flex parent rather than a transform: a transformed ancestor
+   becomes the containing block for position:fixed children, which would trap
+   the full-viewport backdrop sheen below inside this box. */
 .cloud-stage {
-  position: absolute;
-  left: 50%;
-  top: 44%;
-  transform: translate(-50%, -50%);
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.1rem;
+  gap: 1.2rem;
+}
+
+/* The same slow glint that crosses the cloud, spread across the whole screen
+   and tinted to the current tier, so the backdrop breathes with it. */
+.cloud-stage::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(115deg, transparent 36%, rgba(255, 255, 255, 0.06) 48%, transparent 60%),
+    radial-gradient(ellipse 46% 40% at 50% 46%, var(--tier-glow) 0%, transparent 70%);
+  background-size: 300% 100%, 100% 100%;
+  background-repeat: no-repeat;
+  animation: bg-sheen 7s ease-in-out infinite;
+}
+
+/* Kept deliberately faint: at full strength the tier tint flooded the whole
+   viewport and flattened the dark vignette the cloud needs to read against. */
+@keyframes bg-sheen {
+  0%   { background-position: 210% 0, 0 0; opacity: 0.16; }
+  50%  { opacity: 0.30; }
+  100% { background-position: -130% 0, 0 0; opacity: 0.16; }
 }
 
 /* --- the cloud button --------------------------------------------------- */
@@ -56,15 +86,15 @@
 .cloud-art {
   position: relative;
   display: block;
-  width: 150px;
-  height: 92px;
+  width: 240px;
+  height: 147px;
   transition: width 260ms cubic-bezier(0.34, 1.56, 0.64, 1), height 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
-  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 26px var(--tier-glow));
+  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.38)) drop-shadow(0 0 38px var(--tier-glow));
 }
-[data-tier="2"] .cloud-art { width: 176px; height: 108px; }
-[data-tier="3"] .cloud-art { width: 204px; height: 125px; }
-[data-tier="4"] .cloud-art { width: 234px; height: 143px; }
-[data-tier="5"] .cloud-art { width: 268px; height: 164px; }
+[data-tier="2"] .cloud-art { width: 282px; height: 173px; }
+[data-tier="3"] .cloud-art { width: 326px; height: 200px; }
+[data-tier="4"] .cloud-art { width: 374px; height: 229px; }
+[data-tier="5"] .cloud-art { width: 430px; height: 263px; }
 
 .cloud-art[data-anim="grow"]   { animation: pop-grow 420ms cubic-bezier(0.34, 1.6, 0.64, 1); }
 .cloud-art[data-anim="wobble"] { animation: fizzle 340ms ease-out; }
@@ -93,10 +123,24 @@
   100% { transform: translateX(0) scale(1); }
 }
 
-/* Puffs: overlapping circles plus a flat base make a chunky cartoon cloud. */
+/* Puffs: overlapping circles plus a flat base make a chunky cartoon cloud.
+   The fill is held in --puff-fill so per-tier overrides can restyle the cloud
+   without dropping the glint layer stacked on top of it. */
 .puff, .cloud-base {
   position: absolute;
-  background: linear-gradient(165deg, #ffffff 0%, var(--tier-color) 130%);
+  --puff-fill: linear-gradient(165deg, #ffffff 0%, var(--tier-color) 130%);
+  background-image:
+    linear-gradient(115deg, rgba(255, 255, 255, 0) 42%, rgba(255, 255, 255, 0.85) 50%, rgba(255, 255, 255, 0) 58%),
+    var(--puff-fill);
+  background-size: 280% 100%, 100% 100%;
+  background-repeat: no-repeat;
+  animation: glint 7s ease-in-out infinite;
+}
+
+/* Light sweeping across the cloud, on the same 7s cadence as the backdrop. */
+@keyframes glint {
+  0%   { background-position: 210% 0, 0 0; }
+  100% { background-position: -130% 0, 0 0; }
 }
 .puff { border-radius: 50%; }
 .puff-a { left: 4%;  bottom: 22%; width: 44%; height: 62%; }
@@ -114,11 +158,11 @@
 [data-tier="3"] .cloud-base,
 [data-tier="4"] .cloud-base,
 [data-tier="5"] .cloud-base {
-  background: linear-gradient(180deg, #ffffff 0%, var(--tier-color) 115%);
+  --puff-fill: linear-gradient(180deg, #ffffff 0%, var(--tier-color) 115%);
 }
-[data-tier="4"] .puff, [data-tier="4"] .cloud-base { background: linear-gradient(165deg, #fff6ec 0%, var(--tier-color) 118%); }
+[data-tier="4"] .puff, [data-tier="4"] .cloud-base { --puff-fill: linear-gradient(165deg, #fff6ec 0%, var(--tier-color) 118%); }
 [data-tier="5"] .puff, [data-tier="5"] .cloud-base {
-  background: linear-gradient(165deg, #fffdf2 0%, #ffe9a3 55%, var(--tier-color) 120%);
+  --puff-fill: linear-gradient(165deg, #fffdf2 0%, #ffe9a3 55%, var(--tier-color) 120%);
 }
 /* The Legendary pulse lives on its own element rather than on .cloud-art —
    the art's `animation` slot is owned by the per-tap grow/leap/fizzle
@@ -136,6 +180,53 @@
 @keyframes legendary-glow {
   0%, 100% { opacity: 0.55; transform: scale(0.94); }
   50%      { opacity: 1;    transform: scale(1.06); }
+}
+
+/* --- tap affordance ------------------------------------------------------ */
+
+.cloud-ring-set { position: absolute; inset: 0; pointer-events: none; }
+.cloud-ring {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: 62%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  border-radius: 50%;
+  opacity: 0;
+  animation: ring-pulse 2.4s ease-out infinite;
+}
+.cloud-ring-2 { animation-delay: 1.2s; }
+
+@keyframes ring-pulse {
+  0%   { opacity: 0;    transform: translate(-50%, -50%) scale(0.55); }
+  25%  { opacity: 0.65; }
+  100% { opacity: 0;    transform: translate(-50%, -50%) scale(1.55); }
+}
+
+/* --- low-tier wisps ------------------------------------------------------- */
+
+.cloud-wisps { position: absolute; inset: 0; pointer-events: none; }
+.wisp {
+  position: absolute;
+  left: -18%;
+  top: calc(30% + var(--i) * 22%);
+  width: 26%;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.5);
+  opacity: 0;
+  animation: wisp-drift 9s linear infinite;
+  animation-delay: calc(var(--i) * 3s);
+}
+
+/* A slow sideways drift past the cloud, so even a Common has something moving. */
+@keyframes wisp-drift {
+  0%   { opacity: 0;    transform: translateX(0) scaleX(0.6); }
+  18%  { opacity: 0.55; }
+  70%  { opacity: 0.4; }
+  100% { opacity: 0;    transform: translateX(340%) scaleX(1.25); }
 }
 
 /* --- rain ---------------------------------------------------------------- */
@@ -166,9 +257,9 @@
 .cloud-bolt {
   position: absolute;
   left: 50%;
-  top: 74%;
+  top: 82%;
   transform: translateX(-50%);
-  font-size: 1.9rem;
+  font-size: 2.8rem;
   line-height: 1;
   filter: drop-shadow(0 0 8px rgba(255, 220, 120, 0.9));
   animation: flash 1.6s ease-in-out infinite;
@@ -319,13 +410,18 @@
 }
 
 @media (max-width: 560px) {
-  .cloud-art { width: 124px; height: 76px; }
-  [data-tier="2"] .cloud-art { width: 146px; height: 90px; }
-  [data-tier="3"] .cloud-art { width: 168px; height: 103px; }
-  [data-tier="4"] .cloud-art { width: 192px; height: 118px; }
-  [data-tier="5"] .cloud-art { width: 216px; height: 132px; }
+  .cloud-art { width: 176px; height: 108px; }
+  [data-tier="2"] .cloud-art { width: 206px; height: 126px; }
+  [data-tier="3"] .cloud-art { width: 238px; height: 146px; }
+  [data-tier="4"] .cloud-art { width: 272px; height: 167px; }
+  [data-tier="5"] .cloud-art { width: 304px; height: 186px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cloud-drop, .cloud-art, .drop, .cloud-bolt, .spark { animation: none; }
+  .cloud-drop, .cloud-art, .drop, .cloud-bolt, .spark,
+  .puff, .cloud-base, .cloud-stage::before, .cloud-ring, .wisp, .cloud-aura {
+    animation: none;
+  }
+  /* Without the sweep animation the glint layer would freeze mid-cloud. */
+  .puff, .cloud-base { background-image: var(--puff-fill); }
 }

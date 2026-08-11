@@ -77,22 +77,41 @@ function Cloud({ onPop }) {
   }
 
   return (
-    <div className="cloud-stage">
+    // The tier vars and data-tier live on the stage, not the button, so the
+    // full-viewport backdrop sheen (.cloud-stage::before) can be tinted to
+    // match whatever the cloud has grown into.
+    <div
+      className="cloud-stage"
+      data-tier={tier}
+      style={{ '--tier-color': info.color, '--tier-glow': info.glow }}
+    >
       <button
         className={`cloud-drop${bursting ? ' bursting' : ''}`}
-        data-tier={tier}
-        style={{ '--tier-color': info.color, '--tier-glow': info.glow }}
         onClick={handleTap}
         aria-label={`${info.name} rain cloud — tap to grow it, ${tapsLeft} taps left`}
       >
+        {/* Tap affordance: stops once the interaction is clearly understood. */}
+        {taps === 0 && (
+          <span className="cloud-ring-set" aria-hidden="true">
+            <span className="cloud-ring" />
+            <span className="cloud-ring cloud-ring-2" />
+          </span>
+        )}
         <span className="cloud-art" key={anim.n} data-anim={anim.type || undefined}>
           <span className="puff puff-a" />
           <span className="puff puff-b" />
           <span className="puff puff-c" />
           <span className="cloud-base" />
+          {/* The humble tiers get drifting wisps so they aren't lifeless, then
+              hand off to rain and lightning as the ladder climbs. */}
+          {tier <= 2 && (
+            <span className="cloud-wisps">
+              {Array.from({ length: 3 }, (_, i) => <span key={i} className="wisp" style={{ '--i': i }} />)}
+            </span>
+          )}
           {tier >= 2 && (
             <span className="cloud-rain">
-              {Array.from({ length: tier >= 4 ? 7 : 4 }, (_, i) => <span key={i} className="drop" style={{ '--i': i }} />)}
+              {Array.from({ length: tier >= 4 ? 7 : 5 }, (_, i) => <span key={i} className="drop" style={{ '--i': i }} />)}
             </span>
           )}
           {tier >= 4 && <span className="cloud-bolt">⚡</span>}
@@ -108,7 +127,7 @@ function Cloud({ onPop }) {
       </button>
 
       <div className="cloud-meta">
-        <span className="cloud-rarity" style={{ '--tier-color': info.color }}>{info.name}</span>
+        <span className="cloud-rarity">{info.name}</span>
         <span className="cloud-reward">−{info.shaveMinutes} min grow time</span>
         <div className="cloud-taps">
           {Array.from({ length: CLOUD_MAX_TAPS }, (_, i) => (
