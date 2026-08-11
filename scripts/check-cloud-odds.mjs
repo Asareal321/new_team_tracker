@@ -1,7 +1,9 @@
 // Simulates the cloud tap-walk against the real constants in src/lib/garden.js
-// and checks the two invariants the game balance depends on:
-//   1. the chance of finishing at a tier decreases as rarity rises
-//   2. every payout is a round multiple of five
+// and checks the three invariants the game balance depends on:
+//   1. Uncommon is the most likely result — Common is the floor you land on
+//      when the rolls go badly, not the expected outcome
+//   2. from Uncommon upward, each tier is rarer than the one below it
+//   3. every payout is a round multiple of five
 //
 // Run with:  node scripts/check-cloud-odds.mjs
 //
@@ -42,10 +44,13 @@ console.log('\nper tap:', Object.entries(leaps)
   .map(([gain, n]) => `+${gain} ${((n / totalTaps) * 100).toFixed(1)}%`)
   .join('   '))
 
-const decreasing = odds.every((v, i) => i === 0 || v < odds[i - 1])
+// odds[1] is Uncommon: the intended peak of the curve.
+const peaksAtUncommon = odds[1] === Math.max(...odds)
+const fallsAfterPeak = odds.every((v, i) => i <= 1 || v < odds[i - 1])
 const rounded = CLOUD_TIERS.every(t => t.shaveMinutes % 5 === 0 && t.coins % 5 === 0)
 
-console.log(`\ndecreasing with rarity: ${decreasing ? 'yes' : 'NO'}`)
-console.log(`payouts round to five:  ${rounded ? 'yes' : 'NO'}`)
+console.log(`\npeaks at Uncommon:     ${peaksAtUncommon ? 'yes' : 'NO'}`)
+console.log(`falls after the peak:  ${fallsAfterPeak ? 'yes' : 'NO'}`)
+console.log(`payouts round to five: ${rounded ? 'yes' : 'NO'}`)
 
-if (!decreasing || !rounded) process.exit(1)
+if (!peaksAtUncommon || !fallsAfterPeak || !rounded) process.exit(1)

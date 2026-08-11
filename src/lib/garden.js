@@ -25,18 +25,19 @@ export function seedByKey(key) {
 // probability that tapping a cloud at this tier bumps it to the next one, so a
 // Legendary takes real luck. `shaveMinutes` is what the tier pays out.
 //
-// What matters is the chance of *finishing* at each tier, which must fall as
-// rarity rises. Over CLOUD_MAX_TAPS taps these odds land roughly:
-//   Common 33%  Uncommon 25%  Rare 21%  Epic 14%  Legendary 6%
-// Note the per-tap chances are NOT themselves monotonic — the first hop is
-// deliberately the hardest, because a cloud that clears it still has taps left
-// to keep climbing. Retuning by eye doesn't work here; re-simulate the whole
-// tap walk (see the check in scripts/) and confirm the curve still decreases.
+// What matters is the chance of *finishing* at each tier. The curve peaks at
+// Uncommon and falls from there — Common is the floor you land on when the
+// rolls don't go your way, not the most likely result. Over CLOUD_MAX_TAPS
+// taps these odds land roughly:
+//   Common 19%  Uncommon 35%  Rare 30%  Epic 12%  Legendary 5%
+// Note the per-tap chances are NOT a readable proxy for that curve — the walk
+// compounds them. Retuning by eye doesn't work; run scripts/check-cloud-odds.mjs
+// after any change here.
 export const CLOUD_TIERS = [
-  { tier: 1, name: 'Common',    color: '#b9c6cf', glow: 'rgba(185,198,207,0.5)', shaveMinutes: 5,  coins: 5,  growChance: 0.24 },
-  { tier: 2, name: 'Uncommon',  color: '#5aa9d6', glow: 'rgba(90,169,214,0.55)', shaveMinutes: 10, coins: 10, growChance: 0.38 },
-  { tier: 3, name: 'Rare',      color: '#a97fd6', glow: 'rgba(169,127,214,0.6)', shaveMinutes: 20, coins: 15, growChance: 0.36 },
-  { tier: 4, name: 'Epic',      color: '#e08a4f', glow: 'rgba(224,138,79,0.65)', shaveMinutes: 35, coins: 25, growChance: 0.16 },
+  { tier: 1, name: 'Common',    color: '#b9c6cf', glow: 'rgba(185,198,207,0.5)', shaveMinutes: 5,  coins: 5,  growChance: 0.34 },
+  { tier: 2, name: 'Uncommon',  color: '#5aa9d6', glow: 'rgba(90,169,214,0.55)', shaveMinutes: 10, coins: 10, growChance: 0.32 },
+  { tier: 3, name: 'Rare',      color: '#a97fd6', glow: 'rgba(169,127,214,0.6)', shaveMinutes: 20, coins: 15, growChance: 0.24 },
+  { tier: 4, name: 'Epic',      color: '#e08a4f', glow: 'rgba(224,138,79,0.65)', shaveMinutes: 35, coins: 25, growChance: 0.24 },
   { tier: 5, name: 'Legendary', color: '#e0b93f', glow: 'rgba(224,185,63,0.75)', shaveMinutes: 60, coins: 40, growChance: 0 },
 ]
 
@@ -44,7 +45,7 @@ export const CLOUD_MAX_TAPS = 4
 
 // Chance that a tap which already grew the cloud keeps going and leaps another
 // tier. Applied repeatedly, so a single very lucky tap can jump more than one.
-export const CLOUD_SKIP_CHANCE = 0.20
+export const CLOUD_SKIP_CHANCE = 0.14
 
 export function cloudTier(tier) {
   return CLOUD_TIERS[Math.min(Math.max(tier, 1), CLOUD_TIERS.length) - 1]
