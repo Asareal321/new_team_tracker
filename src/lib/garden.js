@@ -25,15 +25,19 @@ export function seedByKey(key) {
 // probability that tapping a cloud at this tier bumps it to the next one, so a
 // Legendary takes real luck. `shaveMinutes` is what the tier pays out.
 //
-// Over CLOUD_MAX_TAPS taps these odds land roughly: Rare 52%, Epic 32%,
-// Uncommon 13%, Legendary 3%, Common <1%. Rare is the everyday result and a
-// Legendary is a genuine event; retune here if the loop feels off.
+// What matters is the chance of *finishing* at each tier, which must fall as
+// rarity rises. Over CLOUD_MAX_TAPS taps these odds land roughly:
+//   Common 30%  Uncommon 26%  Rare 25%  Epic 14%  Legendary 4%
+// Note the per-tap chances are NOT themselves monotonic — the first hop is
+// deliberately the hardest, because a cloud that clears it still has five taps
+// to keep climbing. Retuning by eye doesn't work here; re-simulate the whole
+// six-tap walk and check the finishing curve still decreases.
 export const CLOUD_TIERS = [
-  { tier: 1, name: 'Common',    color: '#b9c6cf', glow: 'rgba(185,198,207,0.5)', shaveMinutes: 5,  coins: 2,  growChance: 0.60 },
-  { tier: 2, name: 'Uncommon',  color: '#5aa9d6', glow: 'rgba(90,169,214,0.55)', shaveMinutes: 11, coins: 5,  growChance: 0.40 },
-  { tier: 3, name: 'Rare',      color: '#a97fd6', glow: 'rgba(169,127,214,0.6)', shaveMinutes: 19, coins: 9,  growChance: 0.20 },
-  { tier: 4, name: 'Epic',      color: '#e08a4f', glow: 'rgba(224,138,79,0.65)', shaveMinutes: 30, coins: 14, growChance: 0.08 },
-  { tier: 5, name: 'Legendary', color: '#e0b93f', glow: 'rgba(224,185,63,0.75)', shaveMinutes: 45, coins: 20, growChance: 0 },
+  { tier: 1, name: 'Common',    color: '#b9c6cf', glow: 'rgba(185,198,207,0.5)', shaveMinutes: 5,  coins: 5,  growChance: 0.18 },
+  { tier: 2, name: 'Uncommon',  color: '#5aa9d6', glow: 'rgba(90,169,214,0.55)', shaveMinutes: 10, coins: 10, growChance: 0.32 },
+  { tier: 3, name: 'Rare',      color: '#a97fd6', glow: 'rgba(169,127,214,0.6)', shaveMinutes: 20, coins: 15, growChance: 0.30 },
+  { tier: 4, name: 'Epic',      color: '#e08a4f', glow: 'rgba(224,138,79,0.65)', shaveMinutes: 35, coins: 25, growChance: 0.26 },
+  { tier: 5, name: 'Legendary', color: '#e0b93f', glow: 'rgba(224,185,63,0.75)', shaveMinutes: 60, coins: 40, growChance: 0 },
 ]
 
 export const CLOUD_MAX_TAPS    = 6
