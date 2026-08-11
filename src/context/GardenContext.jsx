@@ -5,7 +5,9 @@ import {
   SEEDS, seedByKey, cloudShaveSeconds, cloudIdleCoins,
   nextExpansion, STARTING_PLOTS,
 } from '../lib/garden'
+import { isDevUser } from '../lib/devMode'
 import CloudLayer from '../components/CloudLayer'
+import DevPanel from '../components/DevPanel'
 
 export const GardenContext = createContext(null)
 
@@ -27,6 +29,12 @@ export function GardenProvider({ children }) {
   const [flowers, setFlowers] = useState([])
   const [clouds, setClouds] = useState([])
   const [ready, setReady] = useState(false)
+  const isDev = isDevUser(user?.email)
+  const [devOpen, setDevOpen] = useState(false)
+  // Signals the on-screen cloud to replay an animation, and records what each
+  // tap rolled so the dev panel can show the randomness instead of hiding it.
+  const [devSignal, setDevSignal] = useState({ n: 0, type: null })
+  const [devLog, setDevLog] = useState([])
   // Every cloud a user pops posts a reward. Keeping the latest state in a ref
   // lets those writes read fresh values without re-creating the callbacks.
   const stateRef = useRef(null)
@@ -66,9 +74,11 @@ export function GardenProvider({ children }) {
 
   // Called once the task-completion modal is dismissed. The cloud holds the
   // centre of the screen until it's tapped out or collected — no timer.
-  const spawnCloud = useCallback(() => {
+  // `startTier` and `preview` are for the dev panel: a preview cloud looks and
+  // behaves identically but banks nothing, so testing can't inflate the garden.
+  const spawnCloud = useCallback(({ startTier = 1, preview = false } = {}) => {
     if (!user) return
-    setClouds(prev => [...prev, { id: crypto.randomUUID() }])
+    setClouds(prev => [...prev, { id: crypto.randomUUID(), startTier, preview }])
   }, [user])
 
   const dismissCloud = useCallback(id => {
@@ -79,9 +89,16 @@ export function GardenProvider({ children }) {
   // tier it reached. With nothing planted the effort still counts — it
   // converts to coins instead.
   const popCloud = useCallback(async (id, tier) => {
+    const cloud = clouds.find(c => c.id === id)
     dismissCloud(id)
     const current = stateRef.current
     if (!current) return null
+    // Preview clouds report what they *would* have paid, but write nothing.
+    if (cloud?.preview) {
+      return current.growing_seed
+        ? { type: 'shave', amount: cloudShaveSeconds(tier), preview: true }
+        : { type: 'coins', amount: cloudIdleCoins(tier), preview: true }
+    }
     if (current.growing_seed) {
       const shaved = cloudShaveSeconds(tier)
       await save({ shaved_seconds: (current.shaved_seconds || 0) + shaved })
@@ -90,7 +107,51 @@ export function GardenProvider({ children }) {
     const coins = cloudIdleCoins(tier)
     await save({ coins: (current.coins || 0) + coins })
     return { type: 'coins', amount: coins }
-  }, [save, dismissCloud])
+  }, [save, dismissCloud, clouds])
+
+  // --- developer tools ----------------------------------------------------
+
+  const devReplay = useCallback(type => setDevSignal(sig => ({ n: sig.n + 1, type })), [])
+
+  const pushDevLog = useCallback(entry => {
+    setDevLog(prev => [{ ...entry, at: Date.now() }, ...prev].slice(0, 12))
+  }, [])
+
+  const devAddCoins = useCallback(
+    amount => save({ coins: Math.max(0, (stateRef.current?.coins || 0) + amount) }),
+    [save],
+  )
+
+  const devUnlockAll = useCallback(() => save({ unlocked_rarity: SEEDS.length }), [save])
+
+  // Shave the whole remaining grow time so the harvest UI can be reached at
+  // once, instead of waiting out a 24-hour Legendary.
+  const devFinishGrowth = useCallback(() => {
+    const current = stateRef.current
+    if (!current?.growing_seed) throw new Error('Nothing is growing')
+    return save({ shaved_seconds: current.growing_grow_seconds ?? 0 })
+  }, [save])
+
+  const devResetGarden = useCallback(async () => {
+    if (!user) return
+    const { error } = await supabase.from('garden_flowers').delete().eq('user_id', user.id)
+    if (error) throw error
+    setFlowers([])
+    await save({ ...DEFAULT_STATE })
+  }, [user, save])
+
+  // Ctrl/Cmd + Shift + D toggles the panel from anywhere in the app.
+  useEffect(() => {
+    if (!isDev) return
+    function onKey(e) {
+      if (e.key?.toLowerCase() === 'd' && e.shiftKey && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        setDevOpen(open => !open)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isDev])
 
   // --- garden actions -----------------------------------------------------
 
@@ -176,12 +237,33 @@ export function GardenProvider({ children }) {
   const value = {
     state, flowers, ready, seeds: SEEDS,
     spawnCloud, plantSeed, placeFlower, sellGrown, sellPlanted, unlockSeed, expandGarden,
+    isDev, devOpen, openDevPanel: () => setDevOpen(true),
   }
 
   return (
     <GardenContext.Provider value={value}>
       {children}
-      <CloudLayer clouds={clouds} onPop={popCloud} />
+      <CloudLayer
+        clouds={clouds}
+        onPop={popCloud}
+        devSignal={isDev ? devSignal : null}
+        onRoll={isDev ? pushDevLog : null}
+      />
+      {isDev && devOpen && (
+        <DevPanel
+          state={state}
+          cloud={clouds[0]}
+          log={devLog}
+          onClose={() => setDevOpen(false)}
+          onSpawn={startTier => spawnCloud({ startTier, preview: true })}
+          onReplay={devReplay}
+          onAddCoins={devAddCoins}
+          onUnlockAll={devUnlockAll}
+          onFinishGrowth={devFinishGrowth}
+          onReset={devResetGarden}
+          onClearLog={() => setDevLog([])}
+        />
+      )}
     </GardenContext.Provider>
   )
 }

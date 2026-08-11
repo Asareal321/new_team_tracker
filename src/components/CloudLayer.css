@@ -392,6 +392,16 @@
   pointer-events: none;
 }
 
+/* Dev-panel clouds report what they would have paid without banking it. */
+.cloud-toast.preview { opacity: 0.9; border-style: dashed; }
+.toast-tag {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-4);
+  margin-right: 0.4rem;
+}
+
 .cloud-toast {
   background: var(--bg-surface);
   color: var(--text-1);

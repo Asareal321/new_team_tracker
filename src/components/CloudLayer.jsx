@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CLOUD_MAX_TAPS, cloudTier, rollCloudGrowth, formatDuration } from '../lib/garden'
 import './CloudLayer.css'
 
@@ -7,7 +7,7 @@ import './CloudLayer.css'
 // than one tier — and the tier it ends on is what gets shaved off your growing
 // flower. There's no timer: it waits as long as you like. Only one is shown at
 // a time; extras queue behind it so each gets the centre of the screen.
-export default function CloudLayer({ clouds, onPop }) {
+export default function CloudLayer({ clouds, onPop, devSignal = null, onRoll = null }) {
   const [toasts, setToasts] = useState([])
   const cloud = clouds[0]
 
@@ -18,6 +18,7 @@ export default function CloudLayer({ clouds, onPop }) {
       text: reward.type === 'shave'
         ? `−${formatDuration(reward.amount)} grow time`
         : `+${reward.amount} coins`,
+      preview: !!reward.preview,
     }
     setToasts(prev => [...prev, toast])
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== toast.id)), 2600)
@@ -30,18 +31,26 @@ export default function CloudLayer({ clouds, onPop }) {
       {cloud && (
         <Cloud
           key={cloud.id}
+          startTier={cloud.startTier || 1}
+          devSignal={devSignal}
+          onRoll={onRoll}
           onPop={async tier => showToast(await onPop(cloud.id, tier))}
         />
       )}
       <div className="cloud-toasts">
-        {toasts.map(t => <div key={t.id} className="cloud-toast">{t.text}</div>)}
+        {toasts.map(t => (
+          <div key={t.id} className={`cloud-toast${t.preview ? ' preview' : ''}`}>
+            {t.preview && <span className="toast-tag">preview</span>}
+            {t.text}
+          </div>
+        ))}
       </div>
     </div>
   )
 }
 
-function Cloud({ onPop }) {
-  const [tier, setTier] = useState(1)
+function Cloud({ onPop, startTier = 1, devSignal = null, onRoll = null }) {
+  const [tier, setTier] = useState(startTier)
   const [taps, setTaps] = useState(0)
   const [bursting, setBursting] = useState(false)
   // `n` bumps on every tap so remounting restarts the CSS animation; `type`
@@ -49,7 +58,7 @@ function Cloud({ onPop }) {
   const [anim, setAnim] = useState({ n: 0, type: null, gain: 0 })
   // Taps and tier are mirrored in refs: fast tapping fires several handlers
   // before React re-renders, and reading the state values there would be stale.
-  const tierRef = useRef(1)
+  const tierRef = useRef(startTier)
   const tapsRef = useRef(0)
   const settled = useRef(false)
 
@@ -68,6 +77,7 @@ function Cloud({ onPop }) {
     const nextTaps = tapsRef.current + 1
     const nextTier = rollCloudGrowth(tierRef.current)
     const gain = nextTier - tierRef.current
+    onRoll?.({ tap: nextTaps, from: tierRef.current, to: nextTier, gain })
     tapsRef.current = nextTaps
     tierRef.current = nextTier
     setTaps(nextTaps)
@@ -75,6 +85,17 @@ function Cloud({ onPop }) {
     setAnim({ n: nextTaps, type: gain >= 2 ? 'leap' : gain === 1 ? 'grow' : 'wobble', gain })
     if (nextTaps >= CLOUD_MAX_TAPS) settle(nextTier)
   }
+
+  // Dev panel replay. Skips the first render so merely opening the panel
+  // doesn't fire an animation.
+  const seenSignal = useRef(devSignal?.n ?? 0)
+  useEffect(() => {
+    if (!devSignal || devSignal.n === seenSignal.current) return
+    seenSignal.current = devSignal.n
+    if (settled.current) return
+    if (devSignal.type === 'burst') settle(tierRef.current)
+    else setAnim({ n: `dev-${devSignal.n}`, type: devSignal.type, gain: devSignal.type === 'leap' ? 2 : 0 })
+  }, [devSignal])
 
   return (
     // The tier vars and data-tier live on the stage, not the button, so the

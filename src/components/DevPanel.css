@@ -1,0 +1,130 @@
+/* Deliberately utilitarian and dark — it should never be mistaken for part of
+   the product UI, and it has to stay readable over the cloud layer's dimmed
+   backdrop, so it sits above that. */
+
+.devpanel {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1400;
+  width: 300px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: #14181b;
+  border: 1px solid #2e353a;
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem 0.6rem;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
+  color: #dfe4e6;
+  font-size: 0.78rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.dev-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+.dev-title { font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; font-size: 0.7rem; color: #8fd45f; }
+.dev-x {
+  background: none;
+  border: none;
+  color: #7d878c;
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0.1rem 0.25rem;
+}
+.dev-x:hover { color: #fff; }
+
+.dev-error {
+  background: #3a1b1b;
+  color: #efaeae;
+  border-radius: 6px;
+  padding: 0.4rem 0.55rem;
+  margin-bottom: 0.6rem;
+  word-break: break-word;
+}
+
+.dev-section { border-top: 1px solid #232a2e; padding-top: 0.6rem; margin-top: 0.6rem; }
+.dev-section:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+.dev-section h4 {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #9aa4a9;
+  margin-bottom: 0.45rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.dev-note { font-size: 0.6rem; font-weight: 600; letter-spacing: 0; text-transform: none; color: #6f797e; }
+.dev-note.warn { color: #e0b93f; }
+
+.dev-hint { color: #6f797e; font-size: 0.7rem; margin-bottom: 0.35rem; }
+.dev-state { color: #b6c0c4; font-size: 0.7rem; margin-bottom: 0.45rem; line-height: 1.45; }
+
+.dev-row { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.dev-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.3rem; }
+
+.dev-btn {
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #dfe4e6;
+  background: #1e2529;
+  border: 1px solid #333c41;
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms;
+}
+.dev-btn:hover:not(:disabled) { background: #2a3338; border-color: #47535a; }
+.dev-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.dev-btn.tier {
+  border-left: 3px solid var(--tier-color);
+  text-align: left;
+}
+.dev-btn.subtle { background: none; border-color: #2b3439; color: #8b959a; margin-top: 0.35rem; }
+.dev-btn.danger { color: #efaeae; border-color: #5c2626; width: 100%; margin-top: 0.35rem; }
+.dev-btn.danger:hover:not(:disabled) { background: #3a1b1b; border-color: #7a3232; }
+
+.dev-log {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+.dev-log li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.18rem 0.35rem;
+  border-radius: 4px;
+  background: #1a2023;
+  font-size: 0.67rem;
+  white-space: nowrap;
+}
+.dev-log li.hit  { color: #a9e07d; }
+.dev-log li.miss { color: #7d878c; }
+.dev-log-tap { color: #616b70; flex-shrink: 0; }
+.dev-log-gain { margin-left: auto; flex-shrink: 0; }
+
+.dev-foot {
+  border-top: 1px solid #232a2e;
+  margin-top: 0.6rem;
+  padding-top: 0.45rem;
+  color: #5d666b;
+  font-size: 0.63rem;
+  text-align: center;
+}
+
+@media (max-width: 560px) {
+  .devpanel { left: 12px; right: 12px; width: auto; bottom: 12px; }
+}

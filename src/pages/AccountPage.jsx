@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../auth/AuthContext'
+import { useGarden } from '../context/GardenContext'
 import './AccountPage.css'
 
 export default function AccountPage() {
   const { user, profile, signOut, refreshProfile } = useAuth()
+  const { isDev, openDevPanel } = useGarden()
   const [displayName, setDisplayName] = useState(profile?.display_name || '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -39,6 +41,19 @@ export default function AccountPage() {
           </button>
         </div>
       </form>
+
+      {isDev && (
+        <div className="account-card dev-card">
+          <div>
+            <strong>Developer tools</strong>
+            <p className="dev-card-hint">
+              Preview cloud animations at any rarity and jump the garden to any state.
+              Also opens with Ctrl/Cmd + Shift + D.
+            </p>
+          </div>
+          <button className="btn-ghost btn-sm" onClick={openDevPanel}>Open</button>
+        </div>
+      )}
 
       <button className="btn-ghost" onClick={signOut}>Sign out</button>
     </div>
