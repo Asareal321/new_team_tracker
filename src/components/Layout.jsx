@@ -40,6 +40,8 @@ export default function Layout() {
           <NavLink to="/teams" className={navClass}>Teams</NavLink>
           {isAdmin && <NavLink to="/dashboard" className={navClass}>Dashboard</NavLink>}
           <NavLink to="/summary" className={navClass}>Daily Summary</NavLink>
+          {/* Personal-only: the garden belongs to you, not to a team. */}
+          {!currentTeamId && <NavLink to="/garden" className={navClass}>🌱 Grow a Garden</NavLink>}
           <NavLink to="/account" className={navClass}>Account</NavLink>
         </nav>
         <div className="sidebar-foot">

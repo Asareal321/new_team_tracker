@@ -1,0 +1,160 @@
+.garden-page { max-width: 900px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+.garden-loading { color: var(--text-4); font-size: 0.9rem; }
+
+.garden-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.garden-title { font-size: 1.5rem; font-weight: 800; color: var(--text-1); }
+.garden-sub { font-size: 0.85rem; color: var(--text-3); margin-top: 0.2rem; }
+.garden-coins {
+  background: var(--bg-accent);
+  color: var(--accent-text);
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.garden-error, .garden-notice {
+  padding: 0.55rem 0.8rem;
+  border-radius: var(--r-sm);
+  font-size: 0.83rem;
+  margin-bottom: 0.9rem;
+}
+.garden-error  { background: var(--red-bg);   color: var(--red-text); }
+.garden-notice { background: var(--green-bg); color: var(--green-text); }
+
+.garden-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: 1.1rem 1.2rem;
+  margin-bottom: 1.1rem;
+  box-shadow: var(--shadow-card);
+}
+.garden-card-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.garden-h2 {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  margin-bottom: 0.75rem;
+}
+.garden-card-head .garden-h2 { margin-bottom: 0; }
+.garden-empty { font-size: 0.85rem; color: var(--text-4); margin-bottom: 0.9rem; }
+.garden-maxed { font-size: 0.75rem; color: var(--text-4); }
+
+/* --- seed picker --- */
+.seed-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.6rem; }
+.seed-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.85rem 0.6rem;
+  background: var(--bg-subtle);
+  border: 1px solid var(--rarity, var(--border));
+  border-radius: var(--r-md, 10px);
+  text-align: center;
+}
+.seed-card.locked { opacity: 0.72; }
+.seed-emoji { font-size: 1.9rem; line-height: 1; }
+.seed-name { font-size: 0.9rem; font-weight: 700; color: var(--text-1); }
+.seed-rarity { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--rarity); }
+.seed-meta { font-size: 0.7rem; color: var(--text-4); margin-bottom: 0.4rem; }
+.seed-card button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* --- growing --- */
+.growing-box { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.growing-emoji {
+  font-size: 2.6rem;
+  line-height: 1;
+  width: 68px;
+  height: 68px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--bg-subtle);
+  border: 2px solid var(--rarity, var(--border));
+  flex-shrink: 0;
+}
+.growing-info { flex: 1; min-width: 200px; }
+.growing-name { font-size: 1rem; font-weight: 700; color: var(--text-1); margin-bottom: 0.4rem; }
+.growing-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg-muted);
+  overflow: hidden;
+}
+.growing-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 1s linear;
+}
+.growing-time { font-size: 0.78rem; color: var(--text-3); margin-top: 0.35rem; }
+.growing-actions { display: flex; gap: 0.45rem; flex-shrink: 0; }
+.growing-actions button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* --- plots --- */
+.plot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.85rem;
+  max-width: 420px;
+}
+.plot {
+  aspect-ratio: 1;
+  border-radius: var(--r-md, 10px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.4rem;
+}
+.plot.empty {
+  background: var(--bg-subtle);
+  border: 2px dashed var(--border);
+  color: var(--text-4);
+  font-size: 0.75rem;
+  cursor: default;
+}
+.plot.empty.selectable {
+  border-color: var(--accent);
+  color: var(--accent-text);
+  cursor: pointer;
+}
+.plot.empty.selectable:hover { background: var(--bg-accent); }
+.plot.filled {
+  background: var(--bg-subtle);
+  border: 2px solid var(--rarity, var(--border));
+}
+.plot-emoji { font-size: 2.1rem; line-height: 1; }
+.plot-name { font-size: 0.75rem; font-weight: 600; color: var(--text-2); }
+.plot-sell {
+  background: none;
+  border: none;
+  color: var(--text-4);
+  font-size: 0.68rem;
+  cursor: pointer;
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.plot.filled:hover .plot-sell, .plot-sell:focus-visible { opacity: 1; }
+.plot-sell:hover { color: var(--text-1); background: var(--bg-muted); }
+
+@media (max-width: 560px) {
+  .plot-grid { grid-template-columns: repeat(2, 1fr); }
+  .plot-sell { opacity: 1; }
+}

@@ -3,6 +3,7 @@ import { isConfigured } from './supabase'
 import { AuthProvider } from './auth/AuthContext'
 import AuthGate from './auth/AuthGate'
 import { TeamProvider } from './context/TeamContext'
+import { GardenProvider } from './context/GardenContext'
 import Layout from './components/Layout'
 import BoardPage from './pages/BoardPage'
 import DeadlinesPage from './pages/DeadlinesPage'
@@ -11,6 +12,7 @@ import DashboardPage from './pages/DashboardPage'
 import SummaryPage from './pages/SummaryPage'
 import AccountPage from './pages/AccountPage'
 import ProjectPage from './pages/ProjectPage'
+import GardenPage from './pages/GardenPage'
 import './App.css'
 
 export default function App() {
@@ -36,17 +38,20 @@ export default function App() {
     <AuthProvider>
       <AuthGate>
         <TeamProvider>
-          <Routes>
-            <Route element={<Layout />}>
-              <Route index element={<BoardPage />} />
-              <Route path="deadlines" element={<DeadlinesPage />} />
-              <Route path="teams" element={<TeamsPage />} />
-              <Route path="dashboard" element={<DashboardPage />} />
-              <Route path="summary" element={<SummaryPage />} />
-              <Route path="account" element={<AccountPage />} />
-              <Route path="projects/:projectId" element={<ProjectPage />} />
-            </Route>
-          </Routes>
+          <GardenProvider>
+            <Routes>
+              <Route element={<Layout />}>
+                <Route index element={<BoardPage />} />
+                <Route path="deadlines" element={<DeadlinesPage />} />
+                <Route path="teams" element={<TeamsPage />} />
+                <Route path="dashboard" element={<DashboardPage />} />
+                <Route path="summary" element={<SummaryPage />} />
+                <Route path="account" element={<AccountPage />} />
+                <Route path="garden" element={<GardenPage />} />
+                <Route path="projects/:projectId" element={<ProjectPage />} />
+              </Route>
+            </Routes>
+          </GardenProvider>
         </TeamProvider>
       </AuthGate>
     </AuthProvider>

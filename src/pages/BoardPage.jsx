@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../auth/AuthContext'
 import { useTeam } from '../context/TeamContext'
+import { useGarden } from '../context/GardenContext'
 import TaskBoard from '../components/TaskBoard'
 import PersonalProjectsModal from '../components/PersonalProjectsModal'
 
@@ -106,6 +107,7 @@ function DoneTaskModal({ task, tasks = [], projects, onAdd, onUpdateProject, onP
 export default function BoardPage() {
   const { user } = useAuth()
   const { currentTeamId, teams } = useTeam()
+  const { spawnCloud } = useGarden()
   const [tasks, setTasks] = useState([])
   const [teamMembers, setTeamMembers] = useState([])
   const [projects, setProjects] = useState([])
@@ -243,7 +245,16 @@ export default function BoardPage() {
     return data?.id
   }
 
+  // Landing a task in Done drops a rain cloud for the garden. Guarded on the
+  // previous status so re-saving an already-done task doesn't farm clouds.
+  function maybeSpawnCloud(id, newStatus) {
+    if (newStatus !== 'done') return
+    if (tasks.find(t => t.id === id)?.status === 'done') return
+    spawnCloud()
+  }
+
   async function updateTask(id, updates) {
+    if ('status' in updates) maybeSpawnCloud(id, updates.status)
     await supabase.from('tasks').update(updates).eq('id', id)
   }
 
@@ -254,6 +265,7 @@ export default function BoardPage() {
   async function addUpdate(taskId, body, newStatus) {
     await supabase.from('task_updates').insert([{ task_id: taskId, user_id: user.id, body }])
     if (newStatus) {
+      maybeSpawnCloud(taskId, newStatus)
       await supabase.from('tasks').update({ status: newStatus }).eq('id', taskId)
     }
   }
