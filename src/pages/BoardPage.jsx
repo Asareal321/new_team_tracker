@@ -245,9 +245,11 @@ export default function BoardPage() {
     return data?.id
   }
 
-  // Landing a task in Done drops a rain cloud for the garden. Guarded on the
+  // Landing a task in Done drops a rain cloud for the garden. Personal board
+  // only — clouds shouldn't float over a shared team board. Guarded on the
   // previous status so re-saving an already-done task doesn't farm clouds.
   function maybeSpawnCloud(id, newStatus) {
+    if (currentTeamId) return
     if (newStatus !== 'done') return
     if (tasks.find(t => t.id === id)?.status === 'done') return
     spawnCloud()
