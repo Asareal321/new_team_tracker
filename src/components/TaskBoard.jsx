@@ -17,13 +17,20 @@ const FORM_STATUSES = ['todo', 'in_progress', 'done']
 const PRIORITIES    = ['high', 'medium', 'low']
 const PRIORITY_LABELS = { high: 'High', medium: 'Medium', low: 'Low' }
 
-// The High-priority zone on the To Do tab is a focus list — keep it to the top
-// few things so it stays meaningful. Completing one frees a slot (see the
-// completion prompt).
-const MAX_HIGH_TODO = 3
+// Kanban columns. Work moves left to right; Done cards leave for the garden.
+const COLUMNS = [
+  { key: 'todo',        label: 'To do' },
+  { key: 'in_progress', label: 'Doing' },
+  { key: 'done',        label: 'Done' },
+]
 
-function highTodoCount(tasks, exceptId) {
-  return tasks.filter(t => t.priority === 'high' && t.status === 'todo' && t.id !== exceptId).length
+// Work-in-progress limit. This is the old High-priority cap carried over onto
+// the Doing column — the point was always "only a few things at once", which
+// maps onto WIP rather than onto priority now the board is status-based.
+const MAX_DOING = 3
+
+function doingCount(tasks, exceptId) {
+  return tasks.filter(t => t.status === 'in_progress' && t.id !== exceptId).length
 }
 
 function initials(name) {
@@ -81,7 +88,7 @@ export default function TaskBoard({
   const [showForm, setShowForm]   = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm]           = useState(defaultForm())
-  const [activeTab, setActiveTab] = useState('todo')
+  const [activeTab, setActiveTab] = useState('board')
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [formNotice, setFormNotice] = useState('')
 
@@ -105,10 +112,9 @@ export default function TaskBoard({
     if (!form.title.trim()) return
     const { assigneeIds, ...rest } = form
     const payload = { ...rest, priority: rest.priority || 'medium', due_date: rest.due_date || null, project_id: rest.project_id || null }
-    // Enforce the High/To-Do cap on create and edit.
-    if (payload.priority === 'high' && payload.status === 'todo'
-        && highTodoCount(tasks, editingId) >= MAX_HIGH_TODO) {
-      setFormNotice(`Your High priority to-do list is full (${MAX_HIGH_TODO}). Complete or lower one first.`)
+    // Enforce the work-in-progress limit on create and edit.
+    if (payload.status === 'in_progress' && doingCount(tasks, editingId) >= MAX_DOING) {
+      setFormNotice(`Doing is full (${MAX_DOING}). Finish or move something back first.`)
       return
     }
     if (editingId) {
@@ -396,10 +402,15 @@ function PriorityBoard({
     return () => clearTimeout(t)
   }, [zoneNotice])
 
-  function getZoneTasks(priority) {
+  // Within a column, High floats to the top — priority stops being the board's
+  // structure but still decides order inside a lane.
+  const PRIORITY_RANK = { high: 0, medium: 1, low: 2 }
+  function getColumnTasks(status) {
     return tasks
-      .filter(t => t.priority === priority && t.status === activeTab)
+      .filter(t => t.status === status)
       .sort((a, b) => {
+        const ra = PRIORITY_RANK[a.priority] ?? 1, rb = PRIORITY_RANK[b.priority] ?? 1
+        if (ra !== rb) return ra - rb
         const pa = a.position ?? 0, pb = b.position ?? 0
         if (pa !== pb) return pa - pb
         return new Date(a.created_at) - new Date(b.created_at)
@@ -418,33 +429,38 @@ function PriorityBoard({
     if (!srcTask) return
 
     const overId = String(over.id)
-    const tgtPriority = overId.startsWith('zone-')
-      ? overId.replace('zone-', '')
-      : (tasks.find(t => t.id === over.id)?.priority ?? srcTask.priority)
+    const tgtStatus = overId.startsWith('col-')
+      ? overId.replace('col-', '')
+      : (tasks.find(t => t.id === over.id)?.status ?? srcTask.status)
 
-    const zoneTasks = getZoneTasks(tgtPriority).filter(t => t.id !== active.id)
+    const colTasks = getColumnTasks(tgtStatus).filter(t => t.id !== active.id)
 
-    // Enforce the High/To-Do cap: don't let a drag overfill the top slot.
-    if (activeTab === 'todo' && tgtPriority === 'high' && zoneTasks.length >= MAX_HIGH_TODO) {
-      setZoneNotice(`Your High priority list holds ${MAX_HIGH_TODO}. Complete one to free a slot.`)
+    // The WIP limit has to hold on drop as well as on the form, or the drag
+    // becomes the way around it.
+    if (tgtStatus === 'in_progress' && srcTask.status !== 'in_progress'
+        && colTasks.length >= MAX_DOING) {
+      setZoneNotice(`Doing holds ${MAX_DOING}. Finish one to free a slot.`)
       return
     }
 
-    let insertIdx = zoneTasks.length
-    if (!overId.startsWith('zone-')) {
-      const idx = zoneTasks.findIndex(t => t.id === over.id)
+    let insertIdx = colTasks.length
+    if (!overId.startsWith('col-')) {
+      const idx = colTasks.findIndex(t => t.id === over.id)
       if (idx !== -1) insertIdx = idx
     }
 
-    const prev = zoneTasks[insertIdx - 1]
-    const next = zoneTasks[insertIdx]
+    const prev = colTasks[insertIdx - 1]
+    const next = colTasks[insertIdx]
     let newPosition
     if (!prev && !next)   newPosition = 1000
     else if (!prev)       newPosition = (next.position ?? 0) - 1
     else if (!next)       newPosition = (prev.position ?? 0) + 1
     else                  newPosition = ((prev.position ?? 0) + (next.position ?? 0)) / 2
 
-    onUpdate(active.id, { priority: tgtPriority, position: newPosition })
+    onUpdate(active.id, { status: tgtStatus, position: newPosition })
+    // Dropping into Done is a completion like any other — it should bank the
+    // reward and fire the cloud, not just move the card.
+    if (tgtStatus === 'done' && srcTask.status !== 'done') onTaskDone?.(srcTask)
   }
 
   const activeTask = activeId ? tasks.find(t => t.id === activeId) : null
@@ -505,16 +521,14 @@ function PriorityBoard({
                 <div className="tab-divider" />
               </>
             )}
-            {FORM_STATUSES.map(status => (
-              <button key={status}
-                className={`tab ${activeTab === status ? 'active' : ''}`}
-                onClick={() => setActiveTab(status)}
-              >
-                <span className={`status-dot ${status}`} />
-                {STATUS_LABELS[status]}
-                <span className="tab-count">{byStatus(status).length}</span>
-              </button>
-            ))}
+            <button
+              className={`tab ${activeTab === 'board' ? 'active' : ''}`}
+              onClick={() => setActiveTab('board')}
+            >
+              <span className="status-dot todo" />
+              Board
+              <span className="tab-count">{byStatus('todo').length + byStatus('in_progress').length}</span>
+            </button>
             <div className="tab-divider" />
             <button
               className={`tab tab-archived ${activeTab === 'archived' ? 'active' : ''}`}
@@ -526,7 +540,7 @@ function PriorityBoard({
             </button>
           </div>
           <div className="tabs-actions">
-            {activeTab === 'done' && byStatus('done').length > 0 && (
+            {activeTab === 'board' && byStatus('done').length > 0 && (
               <button className="btn-ghost btn-sm" onClick={() => {
                 if (window.confirm(`Archive all ${byStatus('done').length} completed task(s)?`)) onArchiveAll()
               }}>
@@ -557,11 +571,11 @@ function PriorityBoard({
         ) : (
           <>
             {zoneNotice && <div className="zone-notice">{zoneNotice}</div>}
-            <div className="priority-zones">
-              {PRIORITIES.map(priority => (
-                <PriorityZone key={priority} priority={priority}
-                  tasks={getZoneTasks(priority)}
-                  limit={activeTab === 'todo' && priority === 'high' ? MAX_HIGH_TODO : null}
+            <div className="kanban">
+              {COLUMNS.map(col => (
+                <KanbanColumn key={col.key} status={col.key} label={col.label}
+                  tasks={getColumnTasks(col.key)}
+                  limit={col.key === 'in_progress' ? MAX_DOING : null}
                   resolveAssignees={resolveAssignees}
                   projectName={projectName}
                   updatesForTask={updatesForTask}
@@ -807,23 +821,21 @@ function groupTasksBySprint(tasks, projectName) {
   }))
 }
 
-function PriorityZone({ priority, tasks, limit, resolveAssignees, projectName, updatesForTask, teamMembers, onEdit, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, onUpdateAssignees, draftUpdates, setDraft, onTaskDone }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `zone-${priority}` })
+function KanbanColumn({ status, label, tasks, limit, resolveAssignees, projectName, updatesForTask, teamMembers, onEdit, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, onUpdateAssignees, draftUpdates, setDraft, onTaskDone }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `col-${status}` })
   const atLimit = limit != null && tasks.length >= limit
 
-  // Medium and Low zones cluster their tasks by sprint; High stays a flat
-  // ranked list.
-  const groups = (priority === 'medium' || priority === 'low')
-    ? groupTasksBySprint(tasks, projectName)
-    : null
+  // To do is the long lane, so it keeps the sprint clustering. Doing is capped
+  // and Done is transient — grouping either would be noise.
+  const groups = status === 'todo' ? groupTasksBySprint(tasks, projectName) : null
 
   // SortableContext needs the flat id list in rendered (grouped) order.
   const orderedTasks = groups ? groups.flatMap(g => g.tasks) : tasks
   const items = orderedTasks.map(t => t.id)
 
-  const renderRow = (task, rank, showProject = true) => (
+  const renderRow = (task, showProject = true) => (
     <SortableTaskRow key={task.id} task={task}
-      rank={rank}
+      rank={null}
       assignees={resolveAssignees(task)}
       projectName={showProject ? projectName(task.project_id) : null}
       updates={updatesForTask(task.id)}
@@ -832,10 +844,8 @@ function PriorityZone({ priority, tasks, limit, resolveAssignees, projectName, u
       onDelete={() => onDelete(task.id)}
       onStatusChange={s => {
         onUpdate(task.id, { status: s })
-        // Completing a top-slot (High + To Do) task frees a slot — prompt
-        // the user to fill it. The update-form completion path already
-        // calls onTaskDone; this covers the action-menu "→ Done".
-        if (s === 'done' && task.status === 'todo' && task.priority === 'high') onTaskDone?.(task)
+        // Any route into Done banks the reward, not just the drag.
+        if (s === 'done' && task.status !== 'done') onTaskDone?.(task)
       }}
       onAddUpdate={(body, status) => onAddUpdate(task.id, body, status)}
       onDeleteUpdate={onDeleteUpdate}
@@ -848,13 +858,13 @@ function PriorityZone({ priority, tasks, limit, resolveAssignees, projectName, u
   )
 
   return (
-    <div className={`priority-zone zone-${priority}${isOver ? ' zone-over' : ''}${atLimit ? ' zone-full' : ''}`}>
-      <div className="zone-header">
-        <span className="zone-label">{PRIORITY_LABELS[priority]}</span>
+    <section className={`kanban-col col-${status}${isOver ? ' col-over' : ''}${atLimit ? ' col-full' : ''}`}>
+      <header className="zone-header">
+        <span className="zone-label">{label}</span>
         <span className="zone-count">{tasks.length}{limit != null ? `/${limit}` : ''}</span>
-      </div>
+      </header>
       <SortableContext items={items} strategy={verticalListSortingStrategy}>
-        <div ref={setNodeRef} className="zone-body">
+        <div ref={setNodeRef} className="zone-body kanban-body">
           {groups
             ? groups.map(g => (
                 <div key={g.key} className="sprint-group">
@@ -863,16 +873,18 @@ function PriorityZone({ priority, tasks, limit, resolveAssignees, projectName, u
                     <span className="sprint-group-name">{g.name}</span>
                     <span className="sprint-group-count">{g.tasks.length}</span>
                   </div>
-                  {g.tasks.map(task => renderRow(task, null, false))}
+                  {g.tasks.map(task => renderRow(task, false))}
                 </div>
               ))
-            : tasks.map((task, i) => renderRow(task, limit != null ? i + 1 : null))}
+            : tasks.map(task => renderRow(task))}
           {tasks.length === 0 && (
-            <div className="zone-empty">Drop tasks here</div>
+            <div className="zone-empty">
+              {status === 'done' ? 'Empty on purpose — finished cards leave for the garden.' : 'Drop tasks here'}
+            </div>
           )}
         </div>
       </SortableContext>
-    </div>
+    </section>
   )
 }
 

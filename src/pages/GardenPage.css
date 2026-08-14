@@ -524,3 +524,49 @@ html[data-theme="dark"] .plot-sell { background: rgba(38, 42, 44, 0.95); border-
 @media (prefers-reduced-motion: reduce) {
   .sky-cloud, .growing-sprout, .plot-flower, .plot.empty.selectable { animation: none; }
 }
+
+/* --- purse: seeds + coins ------------------------------------------------ */
+
+.garden-purse { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
+
+.seed-tray {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: linear-gradient(180deg, #E8F5D8, #CFE9AE);
+  border: 3px solid #8FC356;
+  border-radius: 999px;
+  padding: 0.35rem 0.95rem 0.35rem 0.7rem;
+  box-shadow: 0 4px 0 #6FA83F, 0 8px 16px rgba(0, 0, 0, 0.16);
+  white-space: nowrap;
+}
+.seed-tray .coin-count { color: #2F5A11; font-weight: 900; font-size: 1.05rem; }
+
+html[data-theme="dark"] .seed-tray {
+  background: linear-gradient(180deg, #2C3A22, #24301B);
+  border-color: #4E7233;
+  box-shadow: 0 4px 0 #355023, 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+html[data-theme="dark"] .seed-tray .coin-count { color: #A9E07D; }
+
+/* --- shop ---------------------------------------------------------------- */
+
+.shop-card { position: relative; }
+/* Unbought species stay legible: the price is the whole point of the card. */
+.shop-card.locked { filter: saturate(0.5); opacity: 0.9; }
+.shop-card.owned .seed-emoji { filter: none; }
+
+.shop-price {
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: var(--ink);
+  margin: 0.15rem 0 0.35rem;
+}
+.shop-owned {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--rarity);
+  margin-top: 0.5rem;
+}

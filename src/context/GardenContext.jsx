@@ -3,7 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../auth/AuthContext'
 import {
   SEEDS, seedByKey, cloudShaveSeconds, cloudIdleCoins,
-  nextExpansion, STARTING_PLOTS,
+  nextExpansion, STARTING_PLOTS, TASK_REWARD,
 } from '../lib/garden'
 import { isDevUser } from '../lib/devMode'
 import CloudLayer from '../components/CloudLayer'
@@ -15,6 +15,7 @@ export const useGarden = () => useContext(GardenContext)
 
 const DEFAULT_STATE = {
   coins: 0,
+  seeds: 0,
   plot_count: STARTING_PLOTS,
   unlocked_rarity: 1,
   growing_seed: null,
@@ -155,12 +156,21 @@ export function GardenProvider({ children }) {
 
   // --- garden actions -----------------------------------------------------
 
+  // Called when a task lands in Done. Seeds are what you spend to plant;
+  // coins are what the shop takes. Both come from finishing work.
+  const bankTaskReward = useCallback(() => save({
+    seeds: (stateRef.current?.seeds || 0) + TASK_REWARD.seeds,
+    coins: (stateRef.current?.coins || 0) + TASK_REWARD.coins,
+  }), [save])
+
   const plantSeed = useCallback(async seedKey => {
     const seed = seedByKey(seedKey)
     if (!seed) throw new Error('Unknown seed')
     if (seed.rarity > (stateRef.current?.unlocked_rarity ?? 1)) throw new Error('Seed not unlocked yet')
     if (stateRef.current?.growing_seed) throw new Error('Something is already growing')
+    if ((stateRef.current?.seeds || 0) < 1) throw new Error('No seeds in the tray — finish a task to bank one')
     await save({
+      seeds: stateRef.current.seeds - 1,
       growing_seed: seed.key,
       growing_started_at: new Date().toISOString(),
       growing_grow_seconds: seed.growSeconds,
@@ -236,7 +246,7 @@ export function GardenProvider({ children }) {
 
   const value = {
     state, flowers, ready, seeds: SEEDS,
-    spawnCloud, plantSeed, placeFlower, sellGrown, sellPlanted, unlockSeed, expandGarden,
+    spawnCloud, bankTaskReward, plantSeed, placeFlower, sellGrown, sellPlanted, unlockSeed, expandGarden,
     isDev, devOpen, openDevPanel: () => setDevOpen(true),
   }
 

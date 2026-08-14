@@ -107,7 +107,7 @@ function DoneTaskModal({ task, tasks = [], projects, onAdd, onUpdateProject, onP
 export default function BoardPage() {
   const { user } = useAuth()
   const { currentTeamId, teams } = useTeam()
-  const { spawnCloud } = useGarden()
+  const { spawnCloud, bankTaskReward } = useGarden()
   const [tasks, setTasks] = useState([])
   const [teamMembers, setTeamMembers] = useState([])
   const [projects, setProjects] = useState([])

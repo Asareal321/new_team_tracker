@@ -17,6 +17,11 @@ export const RARITY_COLORS = {
   5: '#e0b93f',
 }
 
+// What a completed task banks. The wireframes put this on the card as it
+// leaves — "+1 seed · 12 coins" — so the numbers are deliberately small and
+// legible rather than tuned.
+export const TASK_REWARD = { seeds: 1, coins: 12 }
+
 export function seedByKey(key) {
   return SEEDS.find(s => s.key === key) || null
 }

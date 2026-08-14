@@ -314,18 +314,54 @@
 /* Task list */
 .task-list { display: flex; flex-direction: column; gap: 0.35rem; }
 
-/* Priority zones */
-.priority-zones { display: flex; flex-direction: column; gap: 0.5rem; }
-
-.priority-zone {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  transition: border-color 0.15s;
+/* Kanban lanes. Work moves left to right; priority survives as the row accent
+   and as sort order inside a lane, not as the board's structure. */
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  align-items: start;
 }
-.zone-high   { background: rgba(239,68,68,0.06);  }
-.zone-medium { background: rgba(245,158,11,0.06); }
-.zone-low    { background: rgba(100,116,139,0.07);}
-.zone-over   { border-color: var(--brand-lime) !important; }
+
+.kanban-col {
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background: var(--bg-subtle);
+  transition: border-color 0.15s, background 0.15s;
+  min-width: 0;
+}
+.col-todo        { background: rgba(100,116,139,0.07); }
+.col-in_progress { background: rgba(245,158,11,0.07); }
+.col-done        { background: rgba(34,197,94,0.07); }
+.col-over        { border-color: var(--brand-lime) !important; }
+/* At the WIP limit the lane says so before you try to drop into it. */
+.col-full .zone-count { background: var(--red-bg); color: var(--red-text); }
+
+.kanban-body {
+  min-height: 120px;
+  max-height: min(62vh, 760px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Phone: one lane at a time, swiped horizontally — the columns become a
+   scroll-snapped filmstrip rather than three unreadable slivers. */
+@media (max-width: 820px) {
+  .kanban {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 0.75rem;
+    padding-bottom: 0.4rem;
+    scrollbar-width: none;
+  }
+  .kanban::-webkit-scrollbar { display: none; }
+  .kanban-col {
+    flex: 0 0 88%;
+    scroll-snap-align: center;
+  }
+  .kanban-body { max-height: none; }
+}
 
 .zone-header {
   display: flex;

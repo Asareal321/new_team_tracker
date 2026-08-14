@@ -49,6 +49,7 @@ export default function GardenPage() {
   }
 
   const coins = state?.coins ?? 0
+  const seedCount = state?.seeds ?? 0
   const plotCount = state?.plot_count ?? 12
   const unlocked = state?.unlocked_rarity ?? 1
   const growing = seedByKey(state?.growing_seed)
@@ -83,9 +84,15 @@ export default function GardenPage() {
             </div>
             <span className="garden-sign-post" />
           </div>
-          <div className="coin-pouch" title="Coins">
-            <span className="coin-icon">🪙</span>
-            <span className="coin-count">{coins.toLocaleString()}</span>
+          <div className="garden-purse">
+            <div className="seed-tray" title="Seeds banked from finished tasks">
+              <span className="coin-icon">🌱</span>
+              <span className="coin-count">{seedCount}</span>
+            </div>
+            <div className="coin-pouch" title="Coins">
+              <span className="coin-icon">🪙</span>
+              <span className="coin-count">{coins.toLocaleString()}</span>
+            </div>
           </div>
         </header>
 
@@ -98,12 +105,16 @@ export default function GardenPage() {
 
           {!growing && (
             <>
-              <p className="garden-empty">The bed is empty. Choose a seed to plant.</p>
+              <p className="garden-empty">
+                {seedCount > 0
+                  ? `The bed is empty. You have ${seedCount} seed${seedCount === 1 ? '' : 's'} banked — pick what to grow.`
+                  : 'The bed is empty, and so is your seed tray. Finish a task to bank a seed.'}
+              </p>
               <div className="seed-row">
-                {SEEDS.map(seed => {
-                  const locked = seed.rarity > unlocked
+                {SEEDS.filter(seed => seed.rarity <= unlocked).map(seed => {
+                  const locked = false
                   const affordable = coins >= seed.unlockCost
-                  const canUnlock = locked && seed.rarity === unlocked + 1
+                  const canUnlock = false
                   return (
                     <div key={seed.key} className={`seed-packet${locked ? ' locked' : ''}`} style={{ '--rarity': RARITY_COLORS[seed.rarity] }}>
                       <span className="packet-top" />
@@ -112,18 +123,14 @@ export default function GardenPage() {
                       <span className="seed-rarity">{seed.rarityName}</span>
                       <span className="seed-meta">{formatDuration(seed.growSeconds)}</span>
                       <span className="seed-meta">sells for {seed.sellValue} 🪙</span>
-                      {locked ? (
-                        <button
-                          className="garden-btn"
-                          disabled={!canUnlock || !affordable}
-                          title={!canUnlock ? 'Unlock the previous rarity first' : affordable ? '' : 'Not enough coins'}
-                          onClick={() => run(() => unlockSeed(seed.key), `${seed.name} seeds unlocked!`)}
-                        >
-                          Unlock · {seed.unlockCost} 🪙
-                        </button>
-                      ) : (
-                        <button className="garden-btn primary" onClick={() => run(() => plantSeed(seed.key))}>Plant</button>
-                      )}
+                      <button
+                        className="garden-btn primary"
+                        disabled={seedCount < 1}
+                        title={seedCount < 1 ? 'No seeds in the tray' : ''}
+                        onClick={() => run(() => plantSeed(seed.key))}
+                      >
+                        Plant · 1 🌱
+                      </button>
                     </div>
                   )
                 })}
@@ -217,6 +224,53 @@ export default function GardenPage() {
                 )
               })}
             </div>
+          </div>
+        </section>
+
+        {/* --- shop: species you don't own yet --- */}
+        <section className="garden-panel shop-panel">
+          <span className="panel-label">Shop</span>
+          <p className="garden-empty">
+            Cheap sprouts are always in reach; the rare specimens are a save. Buying a species
+            unlocks it for good — planting still costs a seed.
+          </p>
+          <div className="seed-row">
+            {SEEDS.map(seed => {
+              const owned = seed.rarity <= unlocked
+              const isNext = seed.rarity === unlocked + 1
+              const affordable = coins >= seed.unlockCost
+              const short = seed.unlockCost - coins
+              return (
+                <div
+                  key={seed.key}
+                  className={`seed-packet shop-card${owned ? ' owned' : ''}${!owned && !isNext ? ' locked' : ''}`}
+                  style={{ '--rarity': RARITY_COLORS[seed.rarity] }}
+                >
+                  <span className="packet-top" />
+                  <span className="seed-emoji">{seed.emoji}</span>
+                  <span className="seed-name">{seed.name}</span>
+                  <span className="seed-rarity">{seed.rarityName}</span>
+                  <span className="seed-meta">{formatDuration(seed.growSeconds)} to grow</span>
+                  {owned ? (
+                    <span className="shop-owned">Owned</span>
+                  ) : (
+                    <>
+                      {/* Locked cards keep showing the price — the save target
+                          is the motivation, so it must never be hidden. */}
+                      <span className="shop-price">{seed.unlockCost.toLocaleString()} 🪙</span>
+                      <button
+                        className="garden-btn primary"
+                        disabled={!isNext || !affordable}
+                        title={!isNext ? 'Buy the previous species first' : affordable ? '' : `${short.toLocaleString()} coins short`}
+                        onClick={() => run(() => unlockSeed(seed.key), `${seed.name} added to your seed catalogue.`)}
+                      >
+                        {affordable && isNext ? 'Buy' : `${short.toLocaleString()} to go`}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </section>
       </div>
