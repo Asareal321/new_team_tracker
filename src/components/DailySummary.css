@@ -190,3 +190,10 @@
   resize: vertical;
 }
 .draft-text:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+/* The one long-form screen in the app. Prose is capped near 68 characters so
+   it reads like a page rather than stretching across a wide monitor. */
+.summary { max-width: 760px; margin: 0 auto; }
+.summary-body,
+.summary-text,
+.summary p { max-width: 68ch; }

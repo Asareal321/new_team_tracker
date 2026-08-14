@@ -16,6 +16,7 @@ export const useGarden = () => useContext(GardenContext)
 const DEFAULT_STATE = {
   coins: 0,
   seeds: 0,
+  quiet_mode: false,
   plot_count: STARTING_PLOTS,
   unlocked_rarity: 1,
   growing_seed: null,
@@ -79,6 +80,9 @@ export function GardenProvider({ children }) {
   // behaves identically but banks nothing, so testing can't inflate the garden.
   const spawnCloud = useCallback(({ startTier = 1, preview = false } = {}) => {
     if (!user) return
+    // Quiet mode keeps the rewards but drops the interruption. Dev previews
+    // still show, or the panel would appear broken to whoever set it.
+    if (stateRef.current?.quiet_mode && !preview) return
     setClouds(prev => [...prev, { id: crypto.randomUUID(), startTier, preview }])
   }, [user])
 
@@ -122,6 +126,8 @@ export function GardenProvider({ children }) {
     amount => save({ coins: Math.max(0, (stateRef.current?.coins || 0) + amount) }),
     [save],
   )
+
+  const setQuietMode = useCallback(on => save({ quiet_mode: !!on }), [save])
 
   const devUnlockAll = useCallback(() => save({ unlocked_rarity: SEEDS.length }), [save])
 
@@ -246,7 +252,7 @@ export function GardenProvider({ children }) {
 
   const value = {
     state, flowers, ready, seeds: SEEDS,
-    spawnCloud, bankTaskReward, plantSeed, placeFlower, sellGrown, sellPlanted, unlockSeed, expandGarden,
+    spawnCloud, bankTaskReward, setQuietMode, plantSeed, placeFlower, sellGrown, sellPlanted, unlockSeed, expandGarden,
     isDev, devOpen, openDevPanel: () => setDevOpen(true),
   }
 

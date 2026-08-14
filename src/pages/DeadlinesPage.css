@@ -179,6 +179,10 @@ html[data-theme="dark"] .dl-day.today .dl-daynum { background: var(--brand-lime)
   display: inline-flex; align-items: center; gap: 0.3rem;
   font-size: 0.68rem; font-weight: 500;
   padding: 0.1rem 0.45rem; border-radius: var(--r-pill);
+  /* Tint comes from the .pc-N properties in index.css so the chip follows the
+     theme. Fallback covers a task with no project. */
+  background: var(--pj-bg, var(--bg-muted));
+  color: var(--pj-text, var(--text-2));
 }
 .dl-row-pjdot { width: 6px; height: 6px; border-radius: 50%; }
 .dl-row-av {
@@ -243,4 +247,90 @@ html[data-theme="dark"] .dl-day.today .dl-daynum { background: var(--brand-lime)
 @media (max-width: 640px) {
   .dl-day { min-height: 70px; }
   .dl-chip, .dl-milestone { font-size: 0.6rem; }
+}
+
+/* --- seven-day strip ------------------------------------------------------ */
+
+.dl-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.dl-wcol {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  min-height: 130px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* Weekends sit visibly darker so the shape of the week reads at a glance. */
+.dl-wcol.wknd { background: var(--bg-muted); }
+.dl-wcol.today { border-color: var(--accent); border-width: 2px; }
+
+.dl-whead {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0.4rem 0.55rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.dl-wdow { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-4); }
+.dl-wnum { font-size: 0.95rem; font-weight: 700; color: var(--text-1); }
+.dl-wcount {
+  margin-left: auto;
+  font-size: 0.62rem;
+  font-weight: 700;
+  background: var(--bg-accent);
+  color: var(--accent-text);
+  border-radius: 999px;
+  padding: 0 0.35rem;
+}
+
+.dl-wbody { padding: 0.35rem; display: flex; flex-direction: column; gap: 0.25rem; }
+.dl-wtask {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--bg-subtle);
+  border-radius: 5px;
+  padding: 0.2rem 0.35rem;
+  min-width: 0;
+}
+.dl-wtitle {
+  font-size: 0.7rem;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dl-wempty { font-size: 0.7rem; color: var(--text-4); padding: 0.2rem 0.35rem; }
+
+.dl-viewtoggle { display: inline-flex; gap: 2px; margin-left: 0.5rem; }
+.dl-viewtoggle button {
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-3);
+  cursor: pointer;
+  border-radius: var(--r-pill);
+}
+.dl-viewtoggle button.active { background: var(--bg-accent); color: var(--accent-text); border-color: var(--accent); }
+
+/* Phone: the week scrolls horizontally rather than shrinking to slivers. */
+@media (max-width: 820px) {
+  .dl-week {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+  .dl-week::-webkit-scrollbar { display: none; }
+  .dl-wcol { flex: 0 0 42%; scroll-snap-align: start; }
 }

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../auth/AuthContext'
 import { useTeam } from '../context/TeamContext'
-import { projectDotColor, projectTint } from '../lib/projectColors'
+import { projectDotColor, projectTintClass } from '../lib/projectColors'
 import './DeadlinesPage.css'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -91,6 +91,7 @@ export function DeadlinesCalendar({ tasks, projects, members, currentUserId, sho
   const [cursor, setCursor] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1) })
   const [overdueOpen, setOverdueOpen] = useState(false)
   const [selectedDay, setSelectedDay] = useState(null)
+  const [view, setView] = useState('week')
   const [everyone, setEveryone] = useState(false)
   const [selectedMembers, setSelectedMembers] = useState(() => new Set(currentUserId ? [currentUserId] : []))
 
@@ -154,6 +155,16 @@ export function DeadlinesCalendar({ tasks, projects, members, currentUserId, sho
   const upcomingByDate = upcoming.reduce((acc, e) => { (acc[e.date] ||= []).push(e); return acc }, {})
   const upcomingDates = Object.keys(upcomingByDate).sort()
 
+  // The wireframes lead with a seven-day strip rather than a month grid; the
+  // month calendar stays available behind a toggle since it's the only way to
+  // look further ahead than a week.
+  const weekStart = (() => {
+    const base = new Date()
+    const dow = (base.getDay() + 6) % 7 // Monday-start
+    return addDays(base, -dow)
+  })()
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+
   const selTasks = selectedDay ? tasksOn(selectedDay) : []
   const selProjects = selectedDay ? projectsOn(selectedDay) : []
 
@@ -193,6 +204,10 @@ export function DeadlinesCalendar({ tasks, projects, members, currentUserId, sho
           <span className="dl-month">{MONTHS[month]} {year}</span>
           <button className="dl-navbtn" aria-label="Next month" onClick={() => { setCursor(new Date(year, month + 1, 1)); setSelectedDay(null) }}>›</button>
           <button className="dl-today-btn" onClick={goToday}>Today</button>
+          <div className="dl-viewtoggle" role="group" aria-label="View">
+            <button className={view === 'week' ? 'active' : ''} onClick={() => setView('week')}>Week</button>
+            <button className={view === 'month' ? 'active' : ''} onClick={() => setView('month')}>Month</button>
+          </div>
         </div>
         {overdue.length > 0 && (
           <button className={`dl-overdue-pill${overdueOpen ? ' open' : ''}`} onClick={() => setOverdueOpen(o => !o)}>
@@ -216,6 +231,36 @@ export function DeadlinesCalendar({ tasks, projects, members, currentUserId, sho
         </div>
       )}
 
+      {view === 'week' && (
+        <div className="dl-week">
+          {weekDays.map(d => {
+            const dStr = ymd(d)
+            const isWknd = d.getDay() === 0 || d.getDay() === 6
+            const isToday = dStr === today
+            const dayTasks = tasksOn(dStr)
+            return (
+              <section key={dStr} className={`dl-wcol${isWknd ? ' wknd' : ''}${isToday ? ' today' : ''}`}>
+                <header className="dl-whead">
+                  <span className="dl-wdow">{WEEKDAYS[d.getDay()]}</span>
+                  <span className="dl-wnum">{d.getDate()}</span>
+                  {dayTasks.length > 0 && <span className="dl-wcount">{dayTasks.length}</span>}
+                </header>
+                <div className="dl-wbody">
+                  {dayTasks.map(t => (
+                    <div key={t.id} className="dl-wtask" title={t.title}>
+                      <span className="dl-od-dot" style={{ background: priorityColor(t.priority) }} />
+                      <span className="dl-wtitle">{t.title}</span>
+                    </div>
+                  ))}
+                  {dayTasks.length === 0 && <span className="dl-wempty">—</span>}
+                </div>
+              </section>
+            )
+          })}
+        </div>
+      )}
+
+      {view === 'month' && (
       <div className="dl-cal">
         <div className="dl-dow">
           {WEEKDAYS.map((d, i) => (
@@ -253,6 +298,7 @@ export function DeadlinesCalendar({ tasks, projects, members, currentUserId, sho
           })}
         </div>
       </div>
+      )}
 
       {selectedDay && (selTasks.length > 0 || selProjects.length > 0) && (
         <div className="dl-day-detail">
@@ -296,13 +342,14 @@ export function DeadlinesCalendar({ tasks, projects, members, currentUserId, sho
 }
 
 function TaskRow({ task, assignees }) {
-  const tint = task.project_id ? projectTint(task.project_id) : { bg: 'var(--bg-muted)', text: 'var(--text-2)' }
   return (
     <div className="dl-row">
       <span className="dl-row-pdot" style={{ background: priorityColor(task.priority) }} title={`${task.priority} priority`} />
       <span className="dl-row-title">{task.title}</span>
       {task.project_id && (
-        <span className="dl-row-project" style={{ background: tint.bg, color: tint.text }}>
+        // Tint comes from the .pc-N custom properties in index.css rather than an
+        // inline style, so the chip follows the theme instead of staying pale on dark.
+        <span className={`dl-row-project ${projectTintClass(task.project_id)}`}>
           <span className="dl-row-pjdot" style={{ background: projectDotColor(task.project_id) }} />
           Project
         </span>

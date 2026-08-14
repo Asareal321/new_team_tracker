@@ -97,6 +97,14 @@ export default function TaskBoard({
   const [peopleEveryone, setPeopleEveryone] = useState(false)
   const [selectedMembers, setSelectedMembers] = useState(() => new Set(currentUserId ? [currentUserId] : []))
 
+  // With no scrim, Escape is the keyboard route out of the drawer.
+  useEffect(() => {
+    if (!showForm) return
+    function onKey(e) { if (e.key === 'Escape') cancelForm() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showForm])
+
   // Reset the filter to "just me" whenever the team (or user) changes.
   useEffect(() => {
     setSelectedMembers(new Set(currentUserId ? [currentUserId] : []))
@@ -236,9 +244,15 @@ export default function TaskBoard({
   return (
     <div className="board">
       {showForm && (
-        <div className="modal-overlay" onClick={cancelForm}>
-          <form className="task-form" onSubmit={handleSubmit} onClick={e => e.stopPropagation()}>
-            <h2>{editingId ? 'Edit Task' : 'New Task'}</h2>
+        // A drawer, not a modal: no scrim, so the board behind stays live and
+        // you can keep dragging cards while a task is open. That's the whole
+        // point of the side-drawer direction — it's built for triage runs.
+        <div className="task-drawer-wrap">
+          <form className="task-form task-drawer" onSubmit={handleSubmit}>
+            <div className="drawer-head">
+              <h2>{editingId ? 'Edit Task' : 'New Task'}</h2>
+              <button type="button" className="drawer-close" aria-label="Close" onClick={cancelForm}>✕</button>
+            </div>
             <label>Title
               <input autoFocus value={form.title}
                 onChange={e => setForm(f => ({ ...f, title: e.target.value }))}

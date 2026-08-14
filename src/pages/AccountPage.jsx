@@ -6,7 +6,7 @@ import './AccountPage.css'
 
 export default function AccountPage() {
   const { user, profile, signOut, refreshProfile } = useAuth()
-  const { isDev, openDevPanel } = useGarden()
+  const { isDev, openDevPanel, state: garden, setQuietMode } = useGarden()
   const [displayName, setDisplayName] = useState(profile?.display_name || '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -41,6 +41,24 @@ export default function AccountPage() {
           </button>
         </div>
       </form>
+
+      <div className="account-card settings-card">
+        <div>
+          <strong>Quiet mode</strong>
+          <p className="dev-card-hint">
+            Turns the game layer down. Finished tasks still bank seeds and coins —
+            the reward cloud just stops taking over the screen.
+          </p>
+        </div>
+        <label className="switch">
+          <input
+            type="checkbox"
+            checked={!!garden?.quiet_mode}
+            onChange={e => setQuietMode(e.target.checked)}
+          />
+          <span className="switch-track"><span className="switch-knob" /></span>
+        </label>
+      </div>
 
       {isDev && (
         <div className="account-card dev-card">
