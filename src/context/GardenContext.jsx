@@ -17,6 +17,7 @@ const DEFAULT_STATE = {
   coins: 0,
   seeds: 0,
   quiet_mode: false,
+  onboarded: false,
   plot_count: STARTING_PLOTS,
   unlocked_rarity: 1,
   growing_seed: null,
@@ -128,6 +129,22 @@ export function GardenProvider({ children }) {
   )
 
   const setQuietMode = useCallback(on => save({ quiet_mode: !!on }), [save])
+
+  // Onboarding plants the chosen seed directly — it deliberately bypasses the
+  // seed-tray cost, because the whole point is that you own a plant before you
+  // have finished (or even written) a single task.
+  const completeOnboarding = useCallback(async seedKey => {
+    const seed = seedByKey(seedKey)
+    await save({
+      onboarded: true,
+      ...(seed ? {
+        growing_seed: seed.key,
+        growing_started_at: new Date().toISOString(),
+        growing_grow_seconds: seed.growSeconds,
+        shaved_seconds: 0,
+      } : {}),
+    })
+  }, [save])
 
   const devUnlockAll = useCallback(() => save({ unlocked_rarity: SEEDS.length }), [save])
 
@@ -252,7 +269,7 @@ export function GardenProvider({ children }) {
 
   const value = {
     state, flowers, ready, seeds: SEEDS,
-    spawnCloud, bankTaskReward, setQuietMode, plantSeed, placeFlower, sellGrown, sellPlanted, unlockSeed, expandGarden,
+    spawnCloud, bankTaskReward, setQuietMode, completeOnboarding, plantSeed, placeFlower, sellGrown, sellPlanted, unlockSeed, expandGarden,
     isDev, devOpen, openDevPanel: () => setDevOpen(true),
   }
 

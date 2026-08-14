@@ -13,6 +13,7 @@ import SummaryPage from './pages/SummaryPage'
 import AccountPage from './pages/AccountPage'
 import ProjectPage from './pages/ProjectPage'
 import GardenPage from './pages/GardenPage'
+import VisitGardenPage from './pages/VisitGardenPage'
 import './App.css'
 
 export default function App() {
@@ -48,6 +49,7 @@ export default function App() {
                 <Route path="summary" element={<SummaryPage />} />
                 <Route path="account" element={<AccountPage />} />
                 <Route path="garden" element={<GardenPage />} />
+                <Route path="garden/:userId" element={<VisitGardenPage />} />
                 <Route path="projects/:projectId" element={<ProjectPage />} />
               </Route>
             </Routes>

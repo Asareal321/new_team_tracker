@@ -1,0 +1,71 @@
+.onb-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  background: rgba(8, 16, 24, 0.72);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+}
+
+.onb-card {
+  background: var(--bg-surface);
+  border: 4px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--shadow-pop);
+  width: 100%;
+  max-width: 440px;
+  padding: 1.5rem 1.5rem 1.25rem;
+  text-align: center;
+}
+
+.onb-steps { display: flex; gap: 6px; justify-content: center; margin-bottom: 1.1rem; }
+.onb-pip { width: 22px; height: 5px; border-radius: 999px; background: var(--border); }
+.onb-pip.on { background: var(--accent); }
+
+.onb-title { font-size: 1.3rem; font-weight: 800; color: var(--text-1); margin-bottom: 0.45rem; }
+.onb-body { font-size: 0.9rem; color: var(--text-3); line-height: 1.55; max-width: 40ch; margin: 0 auto 1.1rem; }
+
+.onb-hero { font-size: 3.4rem; line-height: 1; margin-bottom: 0.6rem; }
+
+.onb-seeds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-bottom: 1.2rem; }
+.onb-seed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.9rem 0.4rem;
+  background: var(--bg-subtle);
+  border: 3px solid var(--border);
+  border-radius: 14px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.onb-seed:hover { border-color: var(--rarity); }
+.onb-seed.picked { border-color: var(--rarity); background: var(--bg-accent); }
+.onb-seed-emoji { font-size: 2rem; line-height: 1; }
+.onb-seed-name { font-size: 0.8rem; font-weight: 700; color: var(--text-1); }
+
+.onb-input {
+  width: 100%;
+  font-size: 0.95rem;
+  color: var(--text-1);
+  background: var(--bg-subtle);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 0.9rem;
+}
+
+.onb-error {
+  background: var(--red-bg);
+  color: var(--red-text);
+  border-radius: 10px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.8rem;
+  margin-bottom: 0.8rem;
+}
+
+.onb-actions { display: flex; gap: 0.5rem; justify-content: center; }

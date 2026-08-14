@@ -117,3 +117,5 @@
 .switch input:checked + .switch-track { background: var(--accent); border-color: var(--accent); }
 .switch input:checked + .switch-track .switch-knob { transform: translateX(18px); }
 .switch input:focus-visible + .switch-track { box-shadow: 0 0 0 3px var(--accent-bg); }
+
+.settings-controls { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }

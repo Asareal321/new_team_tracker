@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import {
   DndContext, DragOverlay, PointerSensor,
   useSensor, useSensors, closestCenter,
@@ -91,6 +91,7 @@ export default function TaskBoard({
   const [activeTab, setActiveTab] = useState('board')
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [formNotice, setFormNotice] = useState('')
+  const titleRef = useRef(null)
 
   // People filter: which teammates' tasks to show. Default = only me (tasks
   // I'm assigned to). "Everyone" shows the whole team board.
@@ -115,7 +116,10 @@ export default function TaskBoard({
     return { title: '', notes: '', status: 'todo', priority: '', due_date: '', project_id: null, assigneeIds: [] }
   }
 
-  async function handleSubmit(e) {
+  // Quick capture: keeping the drawer open after an add lets you type the next
+  // task straight away. The chips (priority, sprint, due date) deliberately
+  // survive — a capture run is usually several tasks of the same shape.
+  async function handleSubmit(e, keepGoing = false) {
     e.preventDefault()
     if (!form.title.trim()) return
     const { assigneeIds, ...rest } = form
@@ -132,6 +136,13 @@ export default function TaskBoard({
     } else {
       const newId = await onAdd({ ...payload, assigneeIds })
       // newId returned by BoardPage
+    }
+    if (keepGoing && !editingId) {
+      setForm(f => ({ ...defaultForm(), priority: f.priority, status: f.status, project_id: f.project_id }))
+      setDatePickerOpen(false)
+      setFormNotice('Added — keep typing.')
+      titleRef.current?.focus()
+      return
     }
     setForm(defaultForm())
     setDatePickerOpen(false)
@@ -254,10 +265,14 @@ export default function TaskBoard({
               <button type="button" className="drawer-close" aria-label="Close" onClick={cancelForm}>✕</button>
             </div>
             <label>Title
-              <input autoFocus value={form.title}
+              <input autoFocus ref={titleRef} value={form.title}
                 onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !editingId) { e.preventDefault(); handleSubmit(e, true) }
+                }}
                 placeholder="What needs to be done?" />
             </label>
+            {!editingId && <p className="capture-hint">⏎ add &amp; keep going</p>}
             <label>Notes
               <textarea rows={2} value={form.notes}
                 onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}

@@ -2,11 +2,23 @@ import { useState } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../auth/AuthContext'
 import { useGarden } from '../context/GardenContext'
+import { useTeam } from '../context/TeamContext'
 import './AccountPage.css'
 
 export default function AccountPage() {
   const { user, profile, signOut, refreshProfile } = useAuth()
   const { isDev, openDevPanel, state: garden, setQuietMode } = useGarden()
+  const { teams, currentTeamId, setCurrentTeam } = useTeam()
+  const [theme, setTheme] = useState(() => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'))
+
+  // The mobile tab bar has no room for the sidebar footer, so the workspace
+  // switcher and theme toggle live here too — not only in the rail.
+  function toggleTheme() {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    localStorage.setItem('theme', next)
+    document.documentElement.setAttribute('data-theme', next === 'dark' ? 'dark' : '')
+  }
   const [displayName, setDisplayName] = useState(profile?.display_name || '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -41,6 +53,26 @@ export default function AccountPage() {
           </button>
         </div>
       </form>
+
+      <div className="account-card settings-card">
+        <div>
+          <strong>Workspace</strong>
+          <p className="dev-card-hint">Which board you're looking at, and how the app looks.</p>
+        </div>
+        <div className="settings-controls">
+          <select
+            className="team-switcher"
+            value={currentTeamId || ''}
+            onChange={e => setCurrentTeam(e.target.value || null)}
+          >
+            <option value="">Personal</option>
+            {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+          <button className="btn-ghost btn-sm" onClick={toggleTheme}>
+            {theme === 'dark' ? '☀ Light' : '☾ Dark'}
+          </button>
+        </div>
+      </div>
 
       <div className="account-card settings-card">
         <div>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { useAuth } from '../auth/AuthContext'
 import { useTeam } from '../context/TeamContext'
@@ -324,6 +324,12 @@ export default function TeamsPage() {
                   <div key={m.id} className="member-row">
                     <span>{m.display_name}{m.id === user.id ? ' (you)' : ''}</span>
                     <div className="member-role-actions">
+                      {/* Visiting is the only social mechanic — no leaderboard. */}
+                      {m.id !== user.id && (
+                        <Link className="visit-garden-btn" to={`/garden/${m.id}`} title={`Visit ${m.display_name}'s garden`}>
+                          🌱
+                        </Link>
+                      )}
                       {m.role !== 'member' && <span className="role-tag">{m.role}</span>}
                       {isOwner && m.role !== 'owner' && m.id !== user.id && (
                         <button

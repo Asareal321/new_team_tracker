@@ -5,6 +5,7 @@ import { useTeam } from '../context/TeamContext'
 import { useGarden } from '../context/GardenContext'
 import TaskBoard from '../components/TaskBoard'
 import PersonalProjectsModal from '../components/PersonalProjectsModal'
+import Onboarding from '../components/Onboarding'
 
 function DoneTaskModal({ task, tasks = [], projects, onAdd, onUpdateProject, onPromote, onDismiss }) {
   const [nextTitle, setNextTitle] = useState('')
@@ -107,7 +108,7 @@ function DoneTaskModal({ task, tasks = [], projects, onAdd, onUpdateProject, onP
 export default function BoardPage() {
   const { user } = useAuth()
   const { currentTeamId, teams } = useTeam()
-  const { spawnCloud, bankTaskReward } = useGarden()
+  const { spawnCloud, bankTaskReward, state: garden, ready: gardenReady, completeOnboarding } = useGarden()
   const [tasks, setTasks] = useState([])
   const [teamMembers, setTeamMembers] = useState([])
   const [projects, setProjects] = useState([])
@@ -420,6 +421,20 @@ export default function BoardPage() {
           onDismiss={dismissDoneTask}
         />
       )}
+      {/* First run, personal board only — a team board isn't yours to seed. */}
+      {gardenReady && garden && !garden.onboarded && !currentTeamId && (
+        <Onboarding
+          displayName={user?.user_metadata?.display_name}
+          onFinish={async ({ seedKey, firstTask }) => {
+            if (firstTask) {
+              await addTask({ title: firstTask, notes: '', status: 'todo', priority: 'high', due_date: null, project_id: null, assigneeIds: [user.id] })
+            }
+            await completeOnboarding(seedKey)
+            await fetchTasks()
+          }}
+        />
+      )}
+
       {showProjectsManager && (
         <PersonalProjectsModal
           projects={projects}
