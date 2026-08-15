@@ -125,3 +125,29 @@ body {
 
 button { cursor: pointer; font-family: inherit; }
 textarea, input, select { font-family: inherit; }
+
+/* ── Project tints ──────────────────────────────────────────────────────
+   One source of truth for the nine project colors, exposed as custom
+   properties so anything carrying a project identity (Teams tiles, deadline
+   chips) themes itself through the cascade instead of an inline style.
+   Generated on the Beech & Baize curve — see src/lib/projectColors.js for
+   the hue-reservation rule and the measured contrast. */
+.pc-0 { --pj-bg: #EFE9C5; --pj-text: #554800; }  /* olive */
+.pc-1 { --pj-bg: #CEF2DC; --pj-text: #005732; }  /* green */
+.pc-2 { --pj-bg: #C4F3EF; --pj-text: #005854; }  /* teal */
+.pc-3 { --pj-bg: #C5F0FE; --pj-text: #00536C; }  /* sky */
+.pc-4 { --pj-bg: #D1EBFF; --pj-text: #17497B; }  /* blue */
+.pc-5 { --pj-bg: #E6E4FF; --pj-text: #463D7A; }  /* violet */
+.pc-6 { --pj-bg: #F6DEFD; --pj-text: #5E346A; }  /* magenta */
+.pc-7 { --pj-bg: #FFDCED; --pj-text: #6D2E51; }  /* rose */
+.pc-8 { --pj-bg: #EBE7E1; --pj-text: #4D4740; }  /* slate */
+
+html[data-theme="dark"] .pc-0 { --pj-bg: #312C08; --pj-text: #C7B967; }
+html[data-theme="dark"] .pc-1 { --pj-bg: #113321; --pj-text: #7ACC9E; }
+html[data-theme="dark"] .pc-2 { --pj-bg: #003331; --pj-text: #59CDC6; }
+html[data-theme="dark"] .pc-3 { --pj-bg: #01313D; --pj-text: #5FC7E6; }
+html[data-theme="dark"] .pc-4 { --pj-bg: #172D44; --pj-text: #85BCF9; }
+html[data-theme="dark"] .pc-5 { --pj-bg: #2A2744; --pj-text: #B4ADF7; }
+html[data-theme="dark"] .pc-6 { --pj-bg: #36233C; --pj-text: #D4A2E3; }
+html[data-theme="dark"] .pc-7 { --pj-bg: #3E2030; --pj-text: #EA9CC3; }
+html[data-theme="dark"] .pc-8 { --pj-bg: #2F2A25; --pj-text: #BBB7AF; }
