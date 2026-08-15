@@ -6,6 +6,7 @@ import {
 } from '../lib/garden'
 import PlotCluster from '../components/PlotCluster'
 import PacketOpener from '../components/PacketOpener'
+import PacketArt from '../components/PacketArt'
 import './GardenPage.css'
 
 export default function GardenPage() {
@@ -195,7 +196,7 @@ export default function GardenPage() {
                 if (flower && seed) {
                   return (
                     <div key={i} className="plot filled" style={{ '--rarity': RARITY_COLORS[seed.rarity] }}>
-                      <PlotCluster seed={seed} seedId={flower.id} />
+                      <PlotCluster seed={seed} />
                       <span className="plot-name">{seed.name}</span>
                       <button
                         className="plot-sell"
@@ -251,21 +252,29 @@ export default function GardenPage() {
               const unit = packet.currency === 'seeds' ? '🌱' : '🪙'
               return (
                 <div key={packet.key} className="seed-packet shop-card" style={{ '--rarity': RARITY_COLORS[packet.rarity] }}>
-                  <span className="packet-top" />
-                  <span className="seed-emoji">{packet.emoji}</span>
+                  <PacketArt packet={packet} />
                   <span className="seed-name">{packet.name}</span>
-                  {/* Odds are shown rather than hidden — a packet whose chances
-                      you can't see reads as a trick. */}
-                  <ul className="packet-odds">
-                    {[5, 4, 3, 2, 1].map(r => packet.odds[r] > 0 && (
-                      <li key={r} style={{ '--r': RARITY_COLORS[r] }}>
-                        <span className="odds-dot" />
-                        {RARITY_NAMES[r]}
-                        <span className="odds-pct">{packet.odds[r]}%</span>
-                      </li>
-                    ))}
-                  </ul>
                   <span className="shop-price">{packet.cost.toLocaleString()} {unit}</span>
+                  {/* Odds stay one hover away rather than on the card: five
+                      cards of five rows turned the shop into a spreadsheet. */}
+                  {/* A real button, not a hover-only span: on touch there is no
+                      hover, and :focus-visible doesn't fire on tap — the odds
+                      would have been unreachable on a phone. */}
+                  <button type="button" className="odds-trigger" aria-label={`${packet.name} drop odds`}>
+                    odds
+                    <span className="odds-pop">
+                      <span className="odds-pop-title">{packet.name}</span>
+                      <ul className="packet-odds">
+                        {[5, 4, 3, 2, 1].map(r => packet.odds[r] > 0 && (
+                          <li key={r} style={{ '--r': RARITY_COLORS[r] }}>
+                            <span className="odds-dot" />
+                            {RARITY_NAMES[r]}
+                            <span className="odds-pct">{packet.odds[r]}%</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </span>
+                  </button>
                   <button
                     className="garden-btn primary"
                     disabled={!affordable}
@@ -275,7 +284,7 @@ export default function GardenPage() {
                       setOpening({ packet, seed: won })
                     })}
                   >
-                    {affordable ? 'Open' : `${short.toLocaleString()} to go`}
+                    {affordable ? 'Open' : `Need ${short.toLocaleString()}`}
                   </button>
                 </div>
               )

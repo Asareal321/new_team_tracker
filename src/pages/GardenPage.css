@@ -635,3 +635,75 @@ html[data-theme="dark"] .seed-tray .coin-count { color: #A9E07D; }
 @media (prefers-reduced-motion: reduce) {
   .packet-result { animation: none; }
 }
+
+
+/* --- shop cards ------------------------------------------------------------ */
+
+/* Equal heights: "Conservatory packet" wraps to two lines and used to shove
+   its own card's content out of alignment with the rest of the row. */
+.shop-card {
+  justify-content: flex-start;
+  gap: 0.4rem;
+  min-height: 250px;
+}
+.shop-card .seed-name { min-height: 2.4em; display: flex; align-items: center; text-align: center; }
+.shop-card .shop-price { font-size: 1rem; font-weight: 900; color: var(--ink); }
+.shop-card .garden-btn { margin-top: auto; width: 100%; }
+
+/* Odds on hover — the trigger is small on purpose. */
+.odds-trigger {
+  position: relative;
+  font-family: inherit;
+  background: none;
+  border: none;
+  padding: 0 0 1px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-soft);
+  border-bottom: 1px dotted var(--ink-soft);
+  cursor: help;
+  margin-bottom: 0.5rem;
+}
+.odds-pop {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  width: 168px;
+  background: var(--panel);
+  border: 3px solid var(--rarity);
+  border-radius: 12px;
+  padding: 0.5rem 0.6rem;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 130ms, transform 130ms, visibility 130ms;
+  z-index: 30;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.odds-trigger:hover .odds-pop,
+.odds-trigger:focus .odds-pop,
+.odds-trigger:focus-within .odds-pop {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+.odds-pop-title {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--ink);
+  margin-bottom: 0.3rem;
+}
+
+/* The name sits on a dark strip at the foot of the bed so the front row of
+   blooms can overlap it without the text becoming unreadable. */
+.plot.filled .plot-name {
+  background: rgba(0, 0, 0, 0.42);
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  backdrop-filter: blur(2px);
+}

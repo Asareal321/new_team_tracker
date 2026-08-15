@@ -1,0 +1,79 @@
+.pa { display: inline-block; }
+.pa-md { width: 76px; height: 100px; }
+.pa-lg { width: 210px; height: 280px; }
+
+.pa-paper {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  border: 2px solid var(--rarity);
+  overflow: hidden;
+  /* Laid paper: faint vertical fibres over a warm stock. */
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.03) 0 1px, transparent 1px 5px),
+    linear-gradient(170deg, #fffdf5 0%, #f6ecd8 100%);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.1), inset 0 -8px 14px rgba(0, 0, 0, 0.06);
+}
+.pa-lg .pa-paper { border-radius: 14px; border-width: 4px; }
+
+/* Rarity band across the head of the packet. */
+.pa-band {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 22%;
+  background: var(--rarity);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.16);
+}
+
+/* The glued seam just under the band. */
+.pa-seam {
+  position: absolute;
+  top: 22%;
+  left: 0; right: 0;
+  height: 3px;
+  background: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.16) 0 4px, transparent 4px 8px);
+}
+
+/* Die-cut window showing what's inside. */
+.pa-window {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  transform: translate(-50%, -50%);
+  width: 58%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, #ffffff, #ece0c6);
+  border: 2px solid rgba(0, 0, 0, 0.14);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.18);
+}
+.pa-lg .pa-window { border-width: 3px; }
+
+/* A silhouette, not a portrait — the packet hints, it doesn't promise. */
+.pa-hint {
+  font-size: 1.5rem;
+  line-height: 1;
+  filter: grayscale(0.45) brightness(0.94);
+  opacity: 0.85;
+}
+.pa-lg .pa-hint { font-size: 4.2rem; }
+
+/* Printed copy lines at the foot, as texture rather than readable text. */
+.pa-lines {
+  position: absolute;
+  bottom: 8%;
+  left: 16%;
+  right: 16%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.pa-lines span { height: 2px; border-radius: 999px; background: rgba(0, 0, 0, 0.13); }
+.pa-lines span:nth-child(2) { width: 78%; }
+.pa-lines span:nth-child(3) { width: 52%; }
+.pa-lg .pa-lines span { height: 4px; gap: 6px; }
