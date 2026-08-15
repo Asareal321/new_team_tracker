@@ -5,6 +5,7 @@ import {
   nextExpansion, remainingSeconds, formatDuration, MAX_PLOTS,
 } from '../lib/garden'
 import PlotCluster from '../components/PlotCluster'
+import PacketOpener from '../components/PacketOpener'
 import './GardenPage.css'
 
 export default function GardenPage() {
@@ -12,6 +13,8 @@ export default function GardenPage() {
     state, flowers, ready,
     plantSeed, placeFlower, sellGrown, sellPlanted, buyPacket, expandGarden,
   } = useGarden()
+  // The packet being torn open, and its already-decided contents.
+  const [opening, setOpening] = useState(null)
   const [opened, setOpened] = useState(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -267,7 +270,10 @@ export default function GardenPage() {
                     className="garden-btn primary"
                     disabled={!affordable}
                     title={affordable ? '' : `${short.toLocaleString()} short`}
-                    onClick={() => run(async () => setOpened(await buyPacket(packet.key)))}
+                    onClick={() => run(async () => {
+                      const won = await buyPacket(packet.key)
+                      setOpening({ packet, seed: won })
+                    })}
                   >
                     {affordable ? 'Open' : `${short.toLocaleString()} to go`}
                   </button>
@@ -277,6 +283,14 @@ export default function GardenPage() {
           </div>
         </section>
       </div>
+
+      {opening && (
+        <PacketOpener
+          packet={opening.packet}
+          seed={opening.seed}
+          onDone={() => { setOpened(opening.seed); setOpening(null) }}
+        />
+      )}
     </div>
   )
 }

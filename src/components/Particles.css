@@ -1,0 +1,33 @@
+.particles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.mote {
+  position: absolute;
+  bottom: -6%;
+  border-radius: 50%;
+  filter: blur(0.3px);
+  animation-name: mote-rise;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+/* Rising rather than falling: the reward is arriving, not settling. */
+@keyframes mote-rise {
+  0%   { transform: translate3d(0, 0, 0) scale(0.7); }
+  50%  { transform: translate3d(calc(var(--drift) * 0.5), -52vh, 0) scale(1); }
+  100% { transform: translate3d(var(--drift), -104vh, 0) scale(0.6); }
+}
+
+/* The top tiers also glow, which is what makes 46 motes read as "special"
+   rather than merely "more". */
+.particles[data-tier="4"] .mote { box-shadow: 0 0 6px currentColor; }
+.particles[data-tier="5"] .mote { box-shadow: 0 0 10px 2px rgba(255, 233, 163, 0.55); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mote { animation: none; opacity: 0.18 !important; }
+}

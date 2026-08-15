@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { CLOUD_MAX_TAPS, cloudTier, rollCloudGrowth, formatDuration } from '../lib/garden'
+import Particles from './Particles'
 import './CloudLayer.css'
 
 // The rain cloud you get for finishing a task. It arrives front and centre;
@@ -9,6 +10,9 @@ import './CloudLayer.css'
 // a time; extras queue behind it so each gets the centre of the screen.
 export default function CloudLayer({ clouds, onPop, devSignal = null, onRoll = null }) {
   const [toasts, setToasts] = useState([])
+  // The cloud's tier climbs as it's tapped, and the particles have to follow —
+  // reading cloud.startTier here would freeze them at the spawn tier.
+  const [liveTier, setLiveTier] = useState(1)
   const cloud = clouds[0]
 
   function showToast(reward) {
@@ -28,12 +32,16 @@ export default function CloudLayer({ clouds, onPop, devSignal = null, onRoll = n
 
   return (
     <div className={`cloud-layer${cloud ? ' active' : ''}`}>
+      {/* Ambient motes behind the cloud, intensifying with its tier — the same
+          component the packet opener uses, so both rewards read as one system. */}
+      {cloud && <Particles tier={liveTier} />}
       {cloud && (
         <Cloud
           key={cloud.id}
           startTier={cloud.startTier || 1}
           devSignal={devSignal}
           onRoll={onRoll}
+          onTierChange={setLiveTier}
           onPop={async tier => showToast(await onPop(cloud.id, tier))}
         />
       )}
@@ -49,7 +57,7 @@ export default function CloudLayer({ clouds, onPop, devSignal = null, onRoll = n
   )
 }
 
-function Cloud({ onPop, startTier = 1, devSignal = null, onRoll = null }) {
+function Cloud({ onPop, startTier = 1, devSignal = null, onRoll = null, onTierChange = null }) {
   const [tier, setTier] = useState(startTier)
   const [taps, setTaps] = useState(0)
   const [bursting, setBursting] = useState(false)
@@ -85,6 +93,8 @@ function Cloud({ onPop, startTier = 1, devSignal = null, onRoll = null }) {
     setAnim({ n: nextTaps, type: gain >= 2 ? 'leap' : gain === 1 ? 'grow' : 'wobble', gain })
     if (nextTaps >= CLOUD_MAX_TAPS) settle(nextTier)
   }
+
+  useEffect(() => { onTierChange?.(tier) }, [tier, onTierChange])
 
   // Dev panel replay. Skips the first render so merely opening the panel
   // doesn't fire an animation.
