@@ -1,13 +1,92 @@
 // Grow a Garden — game balance lives here so the numbers are tunable in one
 // place. Times are in seconds, prices/values in coins.
 
+// Flower species. Rarity drives grow time, sell value and how likely a packet
+// is to drop it. Emoji are deliberately distinct at a glance — a plot shows a
+// cluster of these, so near-identical glyphs would read as one smudge.
 export const SEEDS = [
-  { key: 'daisy',    name: 'Daisy',    emoji: '🌼', rarity: 1, rarityName: 'Common',    growSeconds: 4 * 3600,  unlockCost: 0,    sellValue: 10 },
-  { key: 'tulip',    name: 'Tulip',    emoji: '🌷', rarity: 2, rarityName: 'Uncommon',  growSeconds: 8 * 3600,  unlockCost: 60,   sellValue: 35 },
-  { key: 'orchid',   name: 'Orchid',   emoji: '🪷', rarity: 3, rarityName: 'Rare',      growSeconds: 12 * 3600, unlockCost: 250,  sellValue: 110 },
-  { key: 'hibiscus', name: 'Hibiscus', emoji: '🌺', rarity: 4, rarityName: 'Epic',      growSeconds: 18 * 3600, unlockCost: 700,  sellValue: 300 },
-  { key: 'rose',     name: 'Rose',     emoji: '🌹', rarity: 5, rarityName: 'Legendary', growSeconds: 24 * 3600, unlockCost: 1800, sellValue: 800 },
+  // Common
+  { key: 'daisy',      name: 'Daisy',      emoji: '🌼', rarity: 1, growSeconds: 3 * 3600,  sellValue: 10 },
+  { key: 'clover',     name: 'Clover',     emoji: '🍀', rarity: 1, growSeconds: 3 * 3600,  sellValue: 12 },
+  { key: 'buttercup',  name: 'Buttercup',  emoji: '🌾', rarity: 1, growSeconds: 4 * 3600,  sellValue: 14 },
+  { key: 'sprig',      name: 'Sprig',      emoji: '🌿', rarity: 1, growSeconds: 3 * 3600,  sellValue: 10 },
+  // Uncommon
+  { key: 'tulip',      name: 'Tulip',      emoji: '🌷', rarity: 2, growSeconds: 6 * 3600,  sellValue: 30 },
+  { key: 'hyacinth',   name: 'Hyacinth',   emoji: '💐', rarity: 2, growSeconds: 7 * 3600,  sellValue: 35 },
+  { key: 'blossom',    name: 'Blossom',    emoji: '🌸', rarity: 2, growSeconds: 6 * 3600,  sellValue: 32 },
+  { key: 'marigold',   name: 'Marigold',   emoji: '🏵️', rarity: 2, growSeconds: 8 * 3600,  sellValue: 40 },
+  // Rare
+  { key: 'orchid',     name: 'Orchid',     emoji: '🪷', rarity: 3, growSeconds: 10 * 3600, sellValue: 95 },
+  { key: 'cactusbloom',name: 'Cactus bloom', emoji: '🌵', rarity: 3, growSeconds: 12 * 3600, sellValue: 110 },
+  { key: 'lavender',   name: 'Lavender',   emoji: '🪻', rarity: 3, growSeconds: 11 * 3600, sellValue: 105 },
+  { key: 'sunflower',  name: 'Sunflower',  emoji: '🌻', rarity: 3, growSeconds: 12 * 3600, sellValue: 120 },
+  // Epic
+  { key: 'hibiscus',   name: 'Hibiscus',   emoji: '🌺', rarity: 4, growSeconds: 16 * 3600, sellValue: 280 },
+  { key: 'maple',      name: 'Maple',      emoji: '🍁', rarity: 4, growSeconds: 18 * 3600, sellValue: 300 },
+  { key: 'bonsai',     name: 'Bonsai',     emoji: '🎍', rarity: 4, growSeconds: 20 * 3600, sellValue: 330 },
+  // Legendary
+  { key: 'rose',       name: 'Rose',       emoji: '🌹', rarity: 5, growSeconds: 24 * 3600, sellValue: 800 },
+  { key: 'sakura',     name: 'Sakura',     emoji: '🌳', rarity: 5, growSeconds: 28 * 3600, sellValue: 900 },
+  { key: 'moonflower', name: 'Moonflower', emoji: '🌙', rarity: 5, growSeconds: 30 * 3600, sellValue: 1000 },
 ]
+
+export const RARITY_NAMES = { 1: 'Common', 2: 'Uncommon', 3: 'Rare', 4: 'Epic', 5: 'Legendary' }
+
+// Seed packets. You buy a packet, not a species — what's inside is a roll
+// against `odds` (weights over rarity tiers, normalised). Every packet can drop
+// anything; the better packets just shift the mass upward. Showing the odds is
+// deliberate: a packet whose chances are hidden feels like a trick.
+export const PACKETS = [
+  {
+    key: 'common', name: 'Garden packet', emoji: '🟫', rarity: 1,
+    cost: 3, currency: 'seeds',
+    odds: { 1: 78, 2: 18, 3: 3.5, 4: 0.4, 5: 0.1 },
+  },
+  {
+    key: 'uncommon', name: 'Nursery packet', emoji: '🟦', rarity: 2,
+    cost: 120, currency: 'coins',
+    odds: { 1: 45, 2: 38, 3: 14, 4: 2.5, 5: 0.5 },
+  },
+  {
+    key: 'rare', name: 'Collector packet', emoji: '🟪', rarity: 3,
+    cost: 420, currency: 'coins',
+    odds: { 1: 18, 2: 32, 3: 38, 4: 10, 5: 2 },
+  },
+  {
+    key: 'epic', name: 'Conservatory packet', emoji: '🟧', rarity: 4,
+    cost: 1100, currency: 'coins',
+    odds: { 1: 4, 2: 16, 3: 40, 4: 33, 5: 7 },
+  },
+  {
+    key: 'legendary', name: 'Heirloom packet', emoji: '🟨', rarity: 5,
+    cost: 2600, currency: 'coins',
+    odds: { 1: 0, 2: 5, 3: 27, 4: 48, 5: 20 },
+  },
+]
+
+export function packetByKey(key) {
+  return PACKETS.find(p => p.key === key) || null
+}
+
+export function seedsOfRarity(rarity) {
+  return SEEDS.filter(s => s.rarity === rarity)
+}
+
+// Roll a packet: pick a rarity by weight, then a uniform species within it.
+export function rollPacket(packetKey, rand = Math.random) {
+  const packet = packetByKey(packetKey)
+  if (!packet) throw new Error('Unknown packet')
+  const entries = Object.entries(packet.odds).filter(([, w]) => w > 0)
+  const total = entries.reduce((sum, [, w]) => sum + w, 0)
+  let roll = rand() * total
+  let rarity = Number(entries[entries.length - 1][0])
+  for (const [r, w] of entries) {
+    if (roll < w) { rarity = Number(r); break }
+    roll -= w
+  }
+  const pool = seedsOfRarity(rarity)
+  return pool[Math.floor(rand() * pool.length)].key
+}
 
 export const RARITY_COLORS = {
   1: '#8aa38f',

@@ -1,0 +1,31 @@
+.cluster {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+
+.cluster-bloom {
+  position: absolute;
+  font-size: 1.5rem;
+  line-height: 1;
+  transform: translate(-50%, -50%) scale(var(--s, 1)) rotate(var(--rot, 0deg));
+  transform-origin: center bottom;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.32));
+  animation: cluster-sway 5.5s ease-in-out infinite;
+}
+
+/* Each bloom sways on its own offset so the clump moves like planting, not
+   like one sprite. */
+@keyframes cluster-sway {
+  0%, 100% { transform: translate(-50%, -50%) scale(var(--s, 1)) rotate(calc(var(--rot, 0deg) - 4deg)); }
+  50%      { transform: translate(-50%, -50%) scale(var(--s, 1)) rotate(calc(var(--rot, 0deg) + 4deg)); }
+}
+
+@media (max-width: 560px) {
+  .cluster-bloom { font-size: 1.25rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cluster-bloom { animation: none; }
+}

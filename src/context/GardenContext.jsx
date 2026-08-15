@@ -3,7 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../auth/AuthContext'
 import {
   SEEDS, seedByKey, cloudShaveSeconds, cloudIdleCoins,
-  nextExpansion, STARTING_PLOTS, TASK_REWARD,
+  nextExpansion, STARTING_PLOTS, TASK_REWARD, packetByKey, rollPacket,
 } from '../lib/garden'
 import { isDevUser } from '../lib/devMode'
 import CloudLayer from '../components/CloudLayer'
@@ -18,6 +18,7 @@ const DEFAULT_STATE = {
   seeds: 0,
   quiet_mode: false,
   onboarded: false,
+  seed_inventory: {},
   plot_count: STARTING_PLOTS,
   unlocked_rarity: 1,
   growing_seed: null,
@@ -146,7 +147,11 @@ export function GardenProvider({ children }) {
     })
   }, [save])
 
-  const devUnlockAll = useCallback(() => save({ unlocked_rarity: SEEDS.length }), [save])
+  // Dev: one of everything in the tray, rather than a rarity gate that no
+  // longer exists.
+  const devUnlockAll = useCallback(() => save({
+    seed_inventory: Object.fromEntries(SEEDS.map(s => [s.key, 3])),
+  }), [save])
 
   // Shave the whole remaining grow time so the harvest UI can be reached at
   // once, instead of waiting out a 24-hour Legendary.
@@ -186,14 +191,41 @@ export function GardenProvider({ children }) {
     coins: (stateRef.current?.coins || 0) + TASK_REWARD.coins,
   }), [save])
 
+  // Buy a packet and roll it. The roll happens client-side, which is fine for
+  // a single-player cosmetic economy — nothing here is competitive and the row
+  // is already writable only by its owner.
+  const buyPacket = useCallback(async packetKey => {
+    const packet = packetByKey(packetKey)
+    const current = stateRef.current
+    if (!packet || !current) throw new Error('Unknown packet')
+    const balance = packet.currency === 'seeds' ? (current.seeds || 0) : (current.coins || 0)
+    if (balance < packet.cost) {
+      throw new Error(packet.currency === 'seeds'
+        ? `Not enough seeds — finish ${packet.cost - balance} more task(s).`
+        : 'Not enough coins.')
+    }
+    const wonKey = rollPacket(packetKey)
+    const inv = { ...(current.seed_inventory || {}) }
+    inv[wonKey] = (inv[wonKey] || 0) + 1
+    await save({
+      seed_inventory: inv,
+      ...(packet.currency === 'seeds'
+        ? { seeds: current.seeds - packet.cost }
+        : { coins: current.coins - packet.cost }),
+    })
+    return seedByKey(wonKey)
+  }, [save])
+
   const plantSeed = useCallback(async seedKey => {
     const seed = seedByKey(seedKey)
     if (!seed) throw new Error('Unknown seed')
-    if (seed.rarity > (stateRef.current?.unlocked_rarity ?? 1)) throw new Error('Seed not unlocked yet')
     if (stateRef.current?.growing_seed) throw new Error('Something is already growing')
-    if ((stateRef.current?.seeds || 0) < 1) throw new Error('No seeds in the tray — finish a task to bank one')
+    const inv = { ...(stateRef.current?.seed_inventory || {}) }
+    if (!inv[seed.key]) throw new Error(`No ${seed.name} seeds — open a packet to find one`)
+    inv[seed.key] -= 1
+    if (inv[seed.key] <= 0) delete inv[seed.key]
     await save({
-      seeds: stateRef.current.seeds - 1,
+      seed_inventory: inv,
       growing_seed: seed.key,
       growing_started_at: new Date().toISOString(),
       growing_grow_seconds: seed.growSeconds,
@@ -269,7 +301,7 @@ export function GardenProvider({ children }) {
 
   const value = {
     state, flowers, ready, seeds: SEEDS,
-    spawnCloud, bankTaskReward, setQuietMode, completeOnboarding, plantSeed, placeFlower, sellGrown, sellPlanted, unlockSeed, expandGarden,
+    spawnCloud, bankTaskReward, setQuietMode, completeOnboarding, buyPacket, plantSeed, placeFlower, sellGrown, sellPlanted, unlockSeed, expandGarden,
     isDev, devOpen, openDevPanel: () => setDevOpen(true),
   }
 

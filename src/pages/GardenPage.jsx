@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useGarden } from '../context/GardenContext'
 import {
-  SEEDS, seedByKey, RARITY_COLORS, PLOTS_PER_ROW,
+  SEEDS, seedByKey, RARITY_COLORS, RARITY_NAMES, PLOTS_PER_ROW, PACKETS,
   nextExpansion, remainingSeconds, formatDuration, MAX_PLOTS,
 } from '../lib/garden'
+import PlotCluster from '../components/PlotCluster'
 import './GardenPage.css'
 
 export default function GardenPage() {
   const {
     state, flowers, ready,
-    plantSeed, placeFlower, sellGrown, sellPlanted, unlockSeed, expandGarden,
+    plantSeed, placeFlower, sellGrown, sellPlanted, buyPacket, expandGarden,
   } = useGarden()
+  const [opened, setOpened] = useState(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [placing, setPlacing] = useState(false)
@@ -51,7 +53,10 @@ export default function GardenPage() {
   const coins = state?.coins ?? 0
   const seedCount = state?.seeds ?? 0
   const plotCount = state?.plot_count ?? 12
-  const unlocked = state?.unlocked_rarity ?? 1
+  const inventory = state?.seed_inventory || {}
+  const ownedSeeds = SEEDS
+    .filter(seed => (inventory[seed.key] || 0) > 0)
+    .sort((a, b) => b.rarity - a.rarity || a.name.localeCompare(b.name))
   const growing = seedByKey(state?.growing_seed)
   const remaining = remainingSeconds(state)
   const isReady = growing && remaining === 0
@@ -105,35 +110,25 @@ export default function GardenPage() {
 
           {!growing && (
             <>
-              <p className="garden-empty">
-                {seedCount > 0
-                  ? `The bed is empty. You have ${seedCount} seed${seedCount === 1 ? '' : 's'} banked — pick what to grow.`
-                  : 'The bed is empty, and so is your seed tray. Finish a task to bank a seed.'}
-              </p>
+              <p className="garden-empty">The bed is empty. Plant something from your tray.</p>
               <div className="seed-row">
-                {SEEDS.filter(seed => seed.rarity <= unlocked).map(seed => {
-                  const locked = false
-                  const affordable = coins >= seed.unlockCost
-                  const canUnlock = false
-                  return (
-                    <div key={seed.key} className={`seed-packet${locked ? ' locked' : ''}`} style={{ '--rarity': RARITY_COLORS[seed.rarity] }}>
-                      <span className="packet-top" />
-                      <span className="seed-emoji">{locked ? '🔒' : seed.emoji}</span>
-                      <span className="seed-name">{seed.name}</span>
-                      <span className="seed-rarity">{seed.rarityName}</span>
-                      <span className="seed-meta">{formatDuration(seed.growSeconds)}</span>
-                      <span className="seed-meta">sells for {seed.sellValue} 🪙</span>
-                      <button
-                        className="garden-btn primary"
-                        disabled={seedCount < 1}
-                        title={seedCount < 1 ? 'No seeds in the tray' : ''}
-                        onClick={() => run(() => plantSeed(seed.key))}
-                      >
-                        Plant · 1 🌱
-                      </button>
-                    </div>
-                  )
-                })}
+                {ownedSeeds.map(seed => (
+                  <div key={seed.key} className="seed-packet" style={{ '--rarity': RARITY_COLORS[seed.rarity] }}>
+                    <span className="packet-top" />
+                    <span className="seed-count-badge">×{inventory[seed.key]}</span>
+                    <span className="seed-emoji">{seed.emoji}</span>
+                    <span className="seed-name">{seed.name}</span>
+                    <span className="seed-rarity">{RARITY_NAMES[seed.rarity]}</span>
+                    <span className="seed-meta">{formatDuration(seed.growSeconds)}</span>
+                    <span className="seed-meta">sells for {seed.sellValue} 🪙</span>
+                    <button className="garden-btn primary" onClick={() => run(() => plantSeed(seed.key))}>
+                      Plant
+                    </button>
+                  </div>
+                ))}
+                {ownedSeeds.length === 0 && (
+                  <p className="garden-empty">No seeds yet — open a packet in the shop below.</p>
+                )}
               </div>
             </>
           )}
@@ -197,8 +192,7 @@ export default function GardenPage() {
                 if (flower && seed) {
                   return (
                     <div key={i} className="plot filled" style={{ '--rarity': RARITY_COLORS[seed.rarity] }}>
-                      <span className="plot-flower">{seed.emoji}</span>
-                      <span className="plot-shadow" />
+                      <PlotCluster seed={seed} seedId={flower.id} />
                       <span className="plot-name">{seed.name}</span>
                       <button
                         className="plot-sell"
@@ -227,47 +221,56 @@ export default function GardenPage() {
           </div>
         </section>
 
-        {/* --- shop: species you don't own yet --- */}
+        {/* --- shop: packets, not species --- */}
         <section className="garden-panel shop-panel">
           <span className="panel-label">Shop</span>
           <p className="garden-empty">
-            Cheap sprouts are always in reach; the rare specimens are a save. Buying a species
-            unlocks it for good — planting still costs a seed.
+            You buy a packet, not a flower — what&rsquo;s inside is a roll. Better packets shift the
+            odds upward, but every packet can drop anything.
           </p>
+
+          {opened && (
+            <div className="packet-result" style={{ '--rarity': RARITY_COLORS[opened.rarity] }}>
+              <span className="packet-result-emoji">{opened.emoji}</span>
+              <div>
+                <p className="packet-result-name">{opened.name}</p>
+                <p className="packet-result-rarity">{RARITY_NAMES[opened.rarity]} · added to your tray</p>
+              </div>
+              <button className="garden-btn" onClick={() => setOpened(null)}>Nice</button>
+            </div>
+          )}
+
           <div className="seed-row">
-            {SEEDS.map(seed => {
-              const owned = seed.rarity <= unlocked
-              const isNext = seed.rarity === unlocked + 1
-              const affordable = coins >= seed.unlockCost
-              const short = seed.unlockCost - coins
+            {PACKETS.map(packet => {
+              const balance = packet.currency === 'seeds' ? seedCount : coins
+              const affordable = balance >= packet.cost
+              const short = packet.cost - balance
+              const unit = packet.currency === 'seeds' ? '🌱' : '🪙'
               return (
-                <div
-                  key={seed.key}
-                  className={`seed-packet shop-card${owned ? ' owned' : ''}${!owned && !isNext ? ' locked' : ''}`}
-                  style={{ '--rarity': RARITY_COLORS[seed.rarity] }}
-                >
+                <div key={packet.key} className="seed-packet shop-card" style={{ '--rarity': RARITY_COLORS[packet.rarity] }}>
                   <span className="packet-top" />
-                  <span className="seed-emoji">{seed.emoji}</span>
-                  <span className="seed-name">{seed.name}</span>
-                  <span className="seed-rarity">{seed.rarityName}</span>
-                  <span className="seed-meta">{formatDuration(seed.growSeconds)} to grow</span>
-                  {owned ? (
-                    <span className="shop-owned">Owned</span>
-                  ) : (
-                    <>
-                      {/* Locked cards keep showing the price — the save target
-                          is the motivation, so it must never be hidden. */}
-                      <span className="shop-price">{seed.unlockCost.toLocaleString()} 🪙</span>
-                      <button
-                        className="garden-btn primary"
-                        disabled={!isNext || !affordable}
-                        title={!isNext ? 'Buy the previous species first' : affordable ? '' : `${short.toLocaleString()} coins short`}
-                        onClick={() => run(() => unlockSeed(seed.key), `${seed.name} added to your seed catalogue.`)}
-                      >
-                        {affordable && isNext ? 'Buy' : `${short.toLocaleString()} to go`}
-                      </button>
-                    </>
-                  )}
+                  <span className="seed-emoji">{packet.emoji}</span>
+                  <span className="seed-name">{packet.name}</span>
+                  {/* Odds are shown rather than hidden — a packet whose chances
+                      you can't see reads as a trick. */}
+                  <ul className="packet-odds">
+                    {[5, 4, 3, 2, 1].map(r => packet.odds[r] > 0 && (
+                      <li key={r} style={{ '--r': RARITY_COLORS[r] }}>
+                        <span className="odds-dot" />
+                        {RARITY_NAMES[r]}
+                        <span className="odds-pct">{packet.odds[r]}%</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <span className="shop-price">{packet.cost.toLocaleString()} {unit}</span>
+                  <button
+                    className="garden-btn primary"
+                    disabled={!affordable}
+                    title={affordable ? '' : `${short.toLocaleString()} short`}
+                    onClick={() => run(async () => setOpened(await buyPacket(packet.key)))}
+                  >
+                    {affordable ? 'Open' : `${short.toLocaleString()} to go`}
+                  </button>
                 </div>
               )
             })}
