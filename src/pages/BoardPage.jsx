@@ -246,12 +246,15 @@ export default function BoardPage() {
     return data?.id
   }
 
-  // Finishing a task earns a rain cloud for the garden, but it waits until the
-  // completion modal is out of the way (follow-up task added, or skipped) so
-  // the cloud gets the centre of the screen to itself. Personal board only —
-  // clouds shouldn't interrupt work on a shared team board.
+  // Finishing a task banks its seed and coins, and on a personal board also
+  // earns a rain cloud. Both wait until the completion modal is out of the way
+  // (follow-up task added, or skipped) so the cloud gets the centre of the
+  // screen to itself. The reward is paid on every board — the garden belongs to
+  // the account, so work done on a team board still counts; only the cloud is
+  // personal-only, since it shouldn't interrupt a shared board.
   function dismissDoneTask() {
     setDoneTask(null)
+    bankTaskReward()
     if (!currentTeamId) spawnCloud()
   }
 
