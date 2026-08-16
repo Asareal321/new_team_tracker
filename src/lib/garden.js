@@ -111,18 +111,22 @@ export function seedByKey(key) {
 //
 // What matters is the chance of *finishing* at each tier. The curve peaks at
 // Uncommon and falls from there — Common is the floor you land on when the
-// rolls don't go your way, not the most likely result. Over CLOUD_MAX_TAPS
-// taps these odds land roughly:
-//   Common 19%  Uncommon 35%  Rare 30%  Epic 12%  Legendary 5%
-// Note the per-tap chances are NOT a readable proxy for that curve — the walk
-// compounds them. Retuning by eye doesn't work; run scripts/check-cloud-odds.mjs
-// after any change here.
+// rolls don't go your way, not the most likely result. Note the per-tap chances
+// are NOT a readable proxy for that curve — the walk compounds them. Retuning by
+// eye doesn't work; run scripts/check-cloud-odds.mjs after any change here.
+//
+// The payouts were originally token: a Legendary shaved an hour off a grow time
+// measured in days, so the best possible cloud barely moved the bar and the
+// interaction felt decorative. They're now scaled so a good cloud is worth
+// stopping for — a Legendary takes a meaningful bite out of even a 24-hour
+// flower, and the idle (nothing planted) payout is worth banking toward a
+// packet. The growth chances are up too, so the ladder is climbed more often.
 export const CLOUD_TIERS = [
-  { tier: 1, name: 'Common',    color: '#b9c6cf', glow: 'rgba(185,198,207,0.5)', shaveMinutes: 5,  coins: 5,  growChance: 0.34 },
-  { tier: 2, name: 'Uncommon',  color: '#5aa9d6', glow: 'rgba(90,169,214,0.55)', shaveMinutes: 10, coins: 10, growChance: 0.32 },
-  { tier: 3, name: 'Rare',      color: '#a97fd6', glow: 'rgba(169,127,214,0.6)', shaveMinutes: 20, coins: 15, growChance: 0.24 },
-  { tier: 4, name: 'Epic',      color: '#e08a4f', glow: 'rgba(224,138,79,0.65)', shaveMinutes: 35, coins: 25, growChance: 0.24 },
-  { tier: 5, name: 'Legendary', color: '#e0b93f', glow: 'rgba(224,185,63,0.75)', shaveMinutes: 60, coins: 40, growChance: 0 },
+  { tier: 1, name: 'Common',    color: '#b9c6cf', glow: 'rgba(185,198,207,0.5)', shaveMinutes: 20,  coins: 15,  growChance: 0.44 },
+  { tier: 2, name: 'Uncommon',  color: '#5aa9d6', glow: 'rgba(90,169,214,0.55)', shaveMinutes: 45,  coins: 30,  growChance: 0.30 },
+  { tier: 3, name: 'Rare',      color: '#a97fd6', glow: 'rgba(169,127,214,0.6)',  shaveMinutes: 100, coins: 60,  growChance: 0.26 },
+  { tier: 4, name: 'Epic',      color: '#e08a4f', glow: 'rgba(224,138,79,0.65)',  shaveMinutes: 200, coins: 120, growChance: 0.24 },
+  { tier: 5, name: 'Legendary', color: '#e0b93f', glow: 'rgba(224,185,63,0.75)',  shaveMinutes: 420, coins: 250, growChance: 0 },
 ]
 
 export const CLOUD_MAX_TAPS = 4

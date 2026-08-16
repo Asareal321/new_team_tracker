@@ -16,8 +16,11 @@ import './GardenPage.css'
 const TABS = [
   { key: 'greenhouse', label: 'Greenhouse' },
   { key: 'garden', label: 'Garden' },
+  { key: 'herbarium', label: 'Herbarium' },
   { key: 'shop', label: 'Shop' },
 ]
+
+const RARITY_ORDER = [1, 2, 3, 4, 5]
 
 export default function GardenPage() {
   const {
@@ -108,9 +111,16 @@ export default function GardenPage() {
 
   // The counts are what pull you between rooms, so each says the one thing
   // worth acting on there — not a total.
+  // The herbarium is the permanent record — species you've ever found, with how
+  // many of each. It's stored, not derived: selling your last Rose shouldn't
+  // remove it from the collection.
+  const discovered = state?.discovered || {}
+  const foundCount = SEEDS.filter(s => (discovered[s.key] || 0) > 0).length
+
   const counts = {
     greenhouse: packetCount ? `${packetCount} to open` : isReady ? 'ready' : null,
     garden: `${flowers.length}/${plotCount}`,
+    herbarium: `${foundCount}/${SEEDS.length}`,
     shop: affordablePackets ? `${affordablePackets} affordable` : null,
   }
 
@@ -159,6 +169,27 @@ export default function GardenPage() {
 
         {error && <p className="garden-error">{error}</p>}
         {notice && <p className="garden-notice">{notice}</p>}
+
+        {/* Sits above the tab panels, not inside one: packets are torn open in
+            the greenhouse, so a result rendered only in the shop was never seen. */}
+        {opened && (
+          <div className="packet-result" style={{ '--rarity': RARITY_COLORS[opened.rarity] }}>
+            <span className="packet-result-emoji">{opened.emoji}</span>
+            <div>
+              <p className="packet-result-name">
+                {opened.name}
+                {opened.isNew && <span className="packet-new">New species!</span>}
+              </p>
+              <p className="packet-result-rarity">{RARITY_NAMES[opened.rarity]} · added to your tray</p>
+            </div>
+            {opened.isNew && (
+              <button className="garden-btn" onClick={() => { setOpened(null); setTab('herbarium') }}>
+                See herbarium
+              </button>
+            )}
+            <button className="garden-btn" onClick={() => setOpened(null)}>Nice</button>
+          </div>
+        )}
 
         {/* --- greenhouse: the one grow slot, plus everything not yet planted --- */}
         {tab === 'greenhouse' && (
@@ -331,6 +362,64 @@ export default function GardenPage() {
         </section>
         )}
 
+        {/* --- herbarium: the permanent record of what you've found --- */}
+        {tab === 'herbarium' && (
+        <section className="garden-panel tabbed herbarium-panel">
+          <div className="herb-head">
+            <span className="panel-label">Collection · {foundCount} of {SEEDS.length} species</span>
+            <div className="herb-progress" role="img" aria-label={`${foundCount} of ${SEEDS.length} species found`}>
+              <span style={{ width: `${(foundCount / SEEDS.length) * 100}%` }} />
+            </div>
+          </div>
+          <p className="garden-empty">
+            Every species you&rsquo;ve ever found is pressed here for good — selling a flower
+            doesn&rsquo;t un-find it.
+          </p>
+
+          {RARITY_ORDER.map(rarity => {
+            const row = SEEDS.filter(s => s.rarity === rarity)
+            const got = row.filter(s => (discovered[s.key] || 0) > 0).length
+            return (
+              <div key={rarity} className="herb-tier">
+                <span className="herb-tier-label" style={{ '--rarity': RARITY_COLORS[rarity] }}>
+                  <span className="herb-tier-dot" />
+                  {RARITY_NAMES[rarity]}
+                  <span className="herb-tier-count">{got}/{row.length}</span>
+                </span>
+                <div className="seed-row">
+                  {row.map(seed => {
+                    const found = discovered[seed.key] || 0
+                    return (
+                      <div
+                        key={seed.key}
+                        className={`herb-card${found ? ' found' : ''}`}
+                        style={{ '--rarity': RARITY_COLORS[seed.rarity] }}
+                        title={found
+                          ? `${seed.name} — found ${found}×`
+                          : `Not found yet — open packets to discover it`}
+                      >
+                        <span className="herb-emoji" aria-hidden={!found}>
+                          {found ? seed.emoji : '❔'}
+                        </span>
+                        <span className="herb-name">{found ? seed.name : '???'}</span>
+                        {found ? (
+                          <>
+                            <span className="herb-found">found {found}×</span>
+                            <span className="seed-meta">{seed.sellValue} 🪙 · {formatDuration(seed.growSeconds)}</span>
+                          </>
+                        ) : (
+                          <span className="herb-found muted">undiscovered</span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </section>
+        )}
+
         {/* --- shop: packets, not species --- */}
         {tab === 'shop' && (
         <section className="garden-panel tabbed shop-panel">
@@ -339,17 +428,6 @@ export default function GardenPage() {
             You buy a packet, not a flower — what&rsquo;s inside is a roll. Packets stay sealed on the
             greenhouse shelf until you tear one open.
           </p>
-
-          {opened && (
-            <div className="packet-result" style={{ '--rarity': RARITY_COLORS[opened.rarity] }}>
-              <span className="packet-result-emoji">{opened.emoji}</span>
-              <div>
-                <p className="packet-result-name">{opened.name}</p>
-                <p className="packet-result-rarity">{RARITY_NAMES[opened.rarity]} · added to your tray</p>
-              </div>
-              <button className="garden-btn" onClick={() => setOpened(null)}>Nice</button>
-            </div>
-          )}
 
           <div className="seed-row">
             {PACKETS.map(packet => {

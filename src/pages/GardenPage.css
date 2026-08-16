@@ -161,20 +161,49 @@
   z-index: -1;
 }
 
+/* The purse reads as struck gold rather than as pale parchment: a metallic
+   band across the pouch, a burnished rim, and a number in the same metal with
+   a light catch along its top edge. */
 .coin-pouch {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  background: linear-gradient(180deg, #fff6d6, #ffe9a8);
-  border: 3px solid #d6a93f;
+  background: linear-gradient(180deg, #fff3bd 0%, #ffd964 46%, #f0b929 54%, #ffe28f 100%);
+  border: 3px solid #b8860b;
   border-radius: 999px;
   padding: 0.35rem 0.95rem 0.35rem 0.7rem;
-  box-shadow: 0 4px 0 #c1932f, 0 8px 16px rgba(0, 0, 0, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 4px 0 #96690a,
+    0 8px 16px rgba(122, 84, 6, 0.3);
   white-space: nowrap;
   flex-shrink: 0;
 }
-.coin-icon { font-size: 1.05rem; }
-.coin-count { font-weight: 900; font-size: 1.05rem; color: #8a6414; }
+.coin-icon {
+  font-size: 1.05rem;
+  filter: drop-shadow(0 1px 1px rgba(122, 84, 6, 0.45));
+}
+.coin-count {
+  font-weight: 900;
+  font-size: 1.05rem;
+  color: #6b4a05;
+  text-shadow: 0 1px 0 rgba(255, 249, 219, 0.9);
+}
+
+/* Dark mode keeps the metal but drops the paper-white highlights, which read
+   as glare against a dark bar. */
+html[data-theme="dark"] .coin-pouch {
+  background: linear-gradient(180deg, #d9ae3a 0%, #b8860b 46%, #96690a 54%, #c99a24 100%);
+  border-color: #7a5406;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 235, 170, 0.45),
+    0 4px 0 #5e4104,
+    0 8px 16px rgba(0, 0, 0, 0.4);
+}
+html[data-theme="dark"] .coin-count {
+  color: #fff3bd;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+}
 
 /* --- messages ----------------------------------------------------------- */
 
@@ -917,3 +946,113 @@ html[data-theme="dark"] .seed-tray .coin-count { color: #A9E07D; }
    right; with the button moved to the Shop tab its only child is the heading,
    which belongs on the left. */
 .garden-panel.tabbed .field-head { justify-content: space-between; }
+
+/* --- herbarium ----------------------------------------------------------- */
+
+.herb-head {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.2rem;
+}
+.herb-progress {
+  flex: 1;
+  min-width: 140px;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.09);
+  border: 2px solid var(--panel-line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.herb-progress span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #8fd45f, #63b739);
+  transition: width 260ms ease-out;
+}
+
+.herb-tier { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1.4rem; }
+
+/* Not .panel-label: that one is absolutely positioned to straddle a panel's
+   border, so five of them stacked on top of each other in the corner. This is a
+   plain flow heading, with the rarity carried by a dot rather than by the text
+   colour — several of the rarity colours are unreadable at this size. */
+.herb-tier-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+.herb-tier-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--rarity);
+  border: 2px solid rgba(0, 0, 0, 0.22);
+  flex-shrink: 0;
+}
+.herb-tier-count {
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+}
+
+/* Undiscovered species are still listed — the shape of the collection is the
+   point, so a blank card tells you what's left to find. They're pressed flat:
+   no colour, no shadow, until the species is actually found. */
+.herb-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.85rem 0.5rem 0.7rem;
+  border: 3px dashed var(--panel-line);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.03);
+  text-align: center;
+}
+.herb-card.found {
+  border-style: solid;
+  border-color: var(--rarity);
+  background: linear-gradient(180deg, #fffdf7 0%, #fdf4e4 100%);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.08);
+}
+
+.herb-emoji { font-size: 1.9rem; line-height: 1; }
+.herb-card:not(.found) .herb-emoji { opacity: 0.35; filter: grayscale(1); }
+.herb-card.found .herb-emoji { filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.16)); }
+
+.herb-name { font-size: 0.85rem; font-weight: 800; color: var(--ink); }
+.herb-card:not(.found) .herb-name { color: var(--ink-soft); letter-spacing: 0.12em; }
+.herb-found {
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--rarity);
+}
+.herb-found.muted { color: var(--ink-soft); opacity: 0.7; }
+
+/* First find of a species, called out on the packet result. */
+.packet-new {
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #8fd45f;
+  border: 2px solid #63b739;
+  color: #23500f;
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  vertical-align: middle;
+}
+
+html[data-theme="dark"] .herb-card { background: rgba(255, 255, 255, 0.04); }
+html[data-theme="dark"] .herb-progress { background: rgba(255, 255, 255, 0.12); }

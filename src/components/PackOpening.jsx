@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { RARITY_COLORS, RARITY_NAMES } from '../lib/garden'
+import { CUES, PACK_DURATION, MOTION, rnd } from '../lib/packTimeline'
 import './PackOpening.css'
+
+export { PACK_DURATION }
 
 // Flower pack opening — the reward cinematic from the Flower Pack Opening
 // design. One element tree rendered as a pure function of authored time T,
@@ -11,53 +14,6 @@ import './PackOpening.css'
 // tweaks panel. Only the timeline itself is needed at runtime, so it's
 // reimplemented here — the cue table, `animate`, and the three easings the
 // piece actually uses — rather than pulling in the editor.
-
-// Scene durations from the design's OM_SCENES, in order.
-const SCENES = [
-  ['Takeover', 1.6],
-  ['Shake', 1.8],
-  ['Tear', 1.3],
-  ['Bloom', 2.4],
-  ['Name', 2.6],
-  ['Return', 1.3],
-]
-
-const CUES = {}
-export const PACK_DURATION = SCENES.reduce((t, [name, dur]) => {
-  CUES[name] = t
-  return t + dur
-}, 0)
-
-const Easing = {
-  easeOutCubic: t => (--t) * t * t + 1,
-  easeInOutSine: t => -(Math.cos(Math.PI * t) - 1) / 2,
-  easeOutBack: t => {
-    const c1 = 1.70158, c3 = c1 + 1
-    return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2)
-  },
-}
-
-// animate({from,to,start,end,ease})(t) — holds `from` before start and `to`
-// after end, so every value is defined across the whole timeline.
-function animate({ from = 0, to = 1, start = 0, end = 1, ease = Easing.easeOutCubic }) {
-  return t => {
-    if (t <= start) return from
-    if (t >= end) return to
-    return from + (to - from) * ease((t - start) / (end - start))
-  }
-}
-
-const MOTION = {
-  enter: o => animate({ ease: Easing.easeOutCubic, ...o }),
-  pop: o => animate({ ease: Easing.easeOutBack, ...o }),
-  drift: o => animate({ ease: Easing.easeInOutSine, ...o }),
-}
-
-// Deterministic scatter for the petal shower, straight from the design.
-const rnd = (i, s) => {
-  const x = Math.sin(i * 127.1 + s * 311.7) * 43758.5453
-  return x - Math.floor(x)
-}
 
 const CO = {
   wood: '#89582C', woodEdge: '#653C1F', woodInk: '#FEFCF7',
@@ -356,6 +312,13 @@ export default function PackOpening({ packet, seed, onDone }) {
   const [T, setT] = useState(0)
   const done = useRef(false)
   const stage = useRef(null)
+  // The timeline effect must not depend on `onDone`. Callers pass an inline
+  // arrow, so its identity changes on every render — and this component
+  // re-renders every frame. Depending on it tore the effect down and restarted
+  // the clock each frame, pinning T near zero and freezing the cinematic on the
+  // first thing it draws. Held in a ref, the effect mounts once and runs.
+  const doneCb = useRef(onDone)
+  doneCb.current = onDone
   const [scale, setScale] = useState(1)
   const reduced = typeof matchMedia === 'function'
     && matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -381,20 +344,28 @@ export default function PackOpening({ packet, seed, onDone }) {
       const t = start + (now - t0) / 1000
       setT(t)
       if (t >= PACK_DURATION) {
-        if (!done.current) { done.current = true; onDone() }
+        if (!done.current) { done.current = true; doneCb.current() }
         return
       }
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [onDone, start])
+  }, [start])
 
   function finish() {
     if (done.current) return
     done.current = true
-    onDone()
+    doneCb.current()
   }
+
+  // Escape skips, matching every other dismissable surface in the app — an
+  // 11-second non-interactive cinematic with no keyboard exit is a trap.
+  useEffect(() => {
+    function onKey(e) { if (e.key === 'Escape') finish() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const C = CUES
   const cam = 1

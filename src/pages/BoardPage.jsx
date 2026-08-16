@@ -246,6 +246,52 @@ export default function BoardPage() {
     return data?.id
   }
 
+  // Finishing a recurring task mints its next occurrence. The new copy is
+  // created from the completed one rather than on a clock, so a weekly chore
+  // done three days late simply moves — you never come back to a stack of
+  // missed copies. The next due date is measured from the task's own due date
+  // when it had one (so a Monday task stays a Monday task), otherwise from
+  // today. Assignees carry over already accepted: they agreed to the recurring
+  // task, not to each individual instance.
+  const nextDueDate = useCallback((task) => {
+    if (!task.due_date) return null
+    const d = new Date(task.due_date + 'T00:00:00')
+    if (task.recurrence === 'daily') d.setDate(d.getDate() + 1)
+    else if (task.recurrence === 'weekly') d.setDate(d.getDate() + 7)
+    else if (task.recurrence === 'monthly') d.setMonth(d.getMonth() + 1)
+    else return null
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }, [])
+
+  const respawnRecurring = useCallback(async (task) => {
+    if (!task?.recurrence) return
+    const id = crypto.randomUUID()
+    const { error } = await supabase.from('tasks').insert({
+      id,
+      title: task.title,
+      notes: task.notes || '',
+      status: 'todo',
+      priority: task.priority,
+      due_date: nextDueDate(task),
+      project_id: task.project_id,
+      recurrence: task.recurrence,
+      user_id: task.user_id,
+      team_id: task.team_id,
+      position: task.position ?? null,
+    })
+    if (error) {
+      console.error('[trakkit] could not create the next occurrence — is migration-recurring-tasks.sql applied?', error.message)
+      return
+    }
+    const assigneeIds = (task.task_assignees || []).map(a => a.user_id)
+    if (assigneeIds.length) {
+      await supabase.from('task_assignees').insert(
+        assigneeIds.map(uid => ({ task_id: id, user_id: uid, response_status: 'accepted' }))
+      )
+    }
+    await fetchTasks()
+  }, [nextDueDate, fetchTasks])
+
   // Finishing a task banks its seed and coins, and on a personal board also
   // earns a rain cloud. Both wait until the completion modal is out of the way
   // (follow-up task added, or skipped) so the cloud gets the centre of the
@@ -410,7 +456,7 @@ export default function BoardPage() {
         onUpdateAssignees={updateAssignees}
         onRespondToAssignment={respondToAssignment}
         onResolveChangeRequest={resolveChangeRequest}
-        onTaskDone={task => setDoneTask(task)}
+        onTaskDone={task => { setDoneTask(task); respawnRecurring(task) }}
         onArchiveAll={archiveDoneTasks}
       />
       {doneTask && (

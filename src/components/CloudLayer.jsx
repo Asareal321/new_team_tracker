@@ -165,16 +165,11 @@ function Cloud({ onPop, startTier = 1, devSignal = null, onRoll = null, onTierCh
             <span key={i} className={`tap-pip${i < taps ? ' used' : ''}`} />
           ))}
         </div>
+        {/* Tapping it out is the only way through — there's deliberately no
+            early-collect escape, so the four rolls always get taken. */}
         <span className="cloud-hint">
           {taps === 0 ? 'Tap it — each tap might grow it' : tapsLeft > 0 ? `${tapsLeft} tap${tapsLeft === 1 ? '' : 's'} left` : 'Bursting!'}
         </span>
-        {/* With no timer the cloud would otherwise sit over the page forever,
-            so there's an explicit way out that still banks what you've got. */}
-        {tapsLeft > 0 && (
-          <button className="cloud-collect" onClick={() => settle(tierRef.current)}>
-            Collect now
-          </button>
-        )}
       </div>
     </div>
   )

@@ -17,6 +17,16 @@ const FORM_STATUSES = ['todo', 'in_progress', 'done']
 const PRIORITIES    = ['high', 'medium', 'low']
 const PRIORITY_LABELS = { high: 'High', medium: 'Medium', low: 'Low' }
 
+// Recurring tasks. A repeat isn't a schedule that fires on its own — finishing
+// the task is what mints the next one, so a weekly chore you did late moves
+// with you rather than piling up unfinished copies behind you.
+export const RECURRENCES = [
+  { key: 'daily',   label: 'Daily',   short: 'Daily' },
+  { key: 'weekly',  label: 'Weekly',  short: 'Weekly' },
+  { key: 'monthly', label: 'Monthly', short: 'Monthly' },
+]
+const RECURRENCE_LABELS = Object.fromEntries(RECURRENCES.map(r => [r.key, r.short]))
+
 // Kanban columns. Work moves left to right; Done cards leave for the garden.
 const COLUMNS = [
   { key: 'todo',        label: 'To do' },
@@ -113,16 +123,19 @@ export default function TaskBoard({
   }, [currentTeamId, currentUserId])
 
   function defaultForm() {
-    return { title: '', notes: '', status: 'todo', priority: '', due_date: '', project_id: null, assigneeIds: [] }
+    return { title: '', notes: '', status: 'todo', priority: '', due_date: '', project_id: null, recurrence: null, assigneeIds: [] }
   }
 
   // Quick capture: keeping the drawer open after an add lets you type the next
   // task straight away. The chips (priority, sprint, due date) deliberately
   // survive — a capture run is usually several tasks of the same shape.
-  async function handleSubmit(e, keepGoing = false) {
+  // `overrides` lets a control commit a value *and* submit in the same click —
+  // the sprint pills do exactly that, and reading `form` here would still see
+  // the pre-click state.
+  async function handleSubmit(e, keepGoing = false, overrides = {}) {
     e.preventDefault()
     if (!form.title.trim()) return
-    const { assigneeIds, ...rest } = form
+    const { assigneeIds, ...rest } = { ...form, ...overrides }
     const payload = { ...rest, priority: rest.priority || 'medium', due_date: rest.due_date || null, project_id: rest.project_id || null }
     // Enforce the work-in-progress limit on create and edit.
     if (payload.status === 'in_progress' && doingCount(tasks, editingId) >= MAX_DOING) {
@@ -138,7 +151,7 @@ export default function TaskBoard({
       // newId returned by BoardPage
     }
     if (keepGoing && !editingId) {
-      setForm(f => ({ ...defaultForm(), priority: f.priority, status: f.status, project_id: f.project_id }))
+      setForm(f => ({ ...defaultForm(), priority: f.priority, status: f.status, project_id: f.project_id, recurrence: f.recurrence }))
       setDatePickerOpen(false)
       setFormNotice('Added — keep typing.')
       titleRef.current?.focus()
@@ -157,6 +170,7 @@ export default function TaskBoard({
       priority:    task.priority,
       due_date:    task.due_date || '',
       project_id:  task.project_id,
+      recurrence:  task.recurrence || null,
       assigneeIds: (task.task_assignees || []).map(a => a.user_id),
     })
     setEditingId(task.id)
@@ -305,6 +319,20 @@ export default function TaskBoard({
                 <button type="button" className="qc-clear" aria-label="Clear due date"
                   onClick={() => { setForm(f => ({ ...f, due_date: '' })); setDatePickerOpen(false) }}>×</button>
               )}
+              <span className="qc-vr" />
+              {/* Repeat is off unless chosen — clicking the active one clears
+                  it, same as the priority dots. */}
+              <div className="qc-repeat" role="group" aria-label="Repeats">
+                <span className="qc-cal" aria-hidden="true">🔁</span>
+                {RECURRENCES.map(r => (
+                  <button
+                    key={r.key} type="button"
+                    className={`qc-rep${form.recurrence === r.key ? ' selected' : ''}`}
+                    aria-pressed={form.recurrence === r.key}
+                    onClick={() => setForm(f => ({ ...f, recurrence: f.recurrence === r.key ? null : r.key }))}
+                  >{r.short}</button>
+                ))}
+              </div>
               {currentTeamId && teamMembers.length > 0 && (
                 <>
                   <span className="qc-vr" />
@@ -328,34 +356,52 @@ export default function TaskBoard({
                 onChange={e => { setForm(f => ({ ...f, due_date: e.target.value })); setDatePickerOpen(false) }} />
             )}
 
-            {projects.length > 0 && (
-              <div className="qc-projects">
-                <span className="qc-plabel">Sprint</span>
-                <div className="qc-pills">
-                  {projects.map(p => (
-                    <button
-                      key={p.id} type="button"
-                      className={`qc-pj${form.project_id === p.id ? ' selected' : ''}`}
-                      aria-pressed={form.project_id === p.id}
-                      onClick={() => setForm(f => ({ ...f, project_id: f.project_id === p.id ? null : p.id }))}
-                    >
-                      <span className="qc-pjdot" style={{ background: projectDotColor(p.id) }} />
-                      {p.name}
-                    </button>
-                  ))}
+            {/* On a new task the sprint pills ARE the submit: picking where it
+                goes is the last decision, so it may as well be the one that
+                files the card. "No sprint" is always offered — including when
+                there are no sprints at all, which is otherwise a dead end.
+                While editing they stay a plain selector, because saving an
+                edit shouldn't be a side effect of retagging it. */}
+            <div className="qc-projects">
+              <span className="qc-plabel">{editingId ? 'Sprint' : 'Add to'}</span>
+              <div className="qc-pills">
+                {projects.map(p => (
                   <button
-                    type="button"
-                    className={`qc-pj qc-pj-none${!form.project_id ? ' selected' : ''}`}
-                    aria-pressed={!form.project_id}
-                    onClick={() => setForm(f => ({ ...f, project_id: null }))}
-                  >None</button>
-                </div>
+                    key={p.id} type="button"
+                    className={`qc-pj${form.project_id === p.id ? ' selected' : ''}${editingId ? '' : ' qc-pj-submit'}`}
+                    aria-pressed={editingId ? form.project_id === p.id : undefined}
+                    disabled={!editingId && !form.title.trim()}
+                    onClick={e => {
+                      if (editingId) {
+                        setForm(f => ({ ...f, project_id: f.project_id === p.id ? null : p.id }))
+                      } else {
+                        setForm(f => ({ ...f, project_id: p.id }))
+                        handleSubmit(e, false, { project_id: p.id })
+                      }
+                    }}
+                  >
+                    <span className="qc-pjdot" style={{ background: projectDotColor(p.id) }} />
+                    {p.name}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className={`qc-pj qc-pj-none${!form.project_id ? ' selected' : ''}${editingId ? '' : ' qc-pj-submit'}`}
+                  aria-pressed={editingId ? !form.project_id : undefined}
+                  disabled={!editingId && !form.title.trim()}
+                  onClick={e => {
+                    if (editingId) setForm(f => ({ ...f, project_id: null }))
+                    else handleSubmit(e, false, { project_id: null })
+                  }}
+                >No sprint</button>
               </div>
-            )}
+            </div>
             {formNotice && <p className="form-notice">{formNotice}</p>}
             <div className="form-actions">
               <button type="button" className="btn-ghost" onClick={cancelForm}>Cancel</button>
-              <button type="submit" className="btn-primary">{editingId ? 'Save' : 'Add Task'}</button>
+              {editingId
+                ? <button type="submit" className="btn-primary">Save</button>
+                : <span className="form-actions-hint">Pick a sprint above to add it</span>}
             </div>
           </form>
         </div>
@@ -993,6 +1039,11 @@ function TaskRow({
               <span className={`priority-badge ${task.priority}`}>{task.priority}</span>
             )}
             {isPending && <span className="pending-badge" title="Waiting on assignment acceptance">Pending</span>}
+            {task.recurrence && (
+              <span className="repeat-badge" title={`Repeats ${RECURRENCE_LABELS[task.recurrence]?.toLowerCase()} — finishing it creates the next one`}>
+                🔁 {RECURRENCE_LABELS[task.recurrence]}
+              </span>
+            )}
             <p className="task-title">{task.title}</p>
           </div>
           {task.notes && <p className="task-notes">{task.notes}</p>}
@@ -1010,8 +1061,10 @@ function TaskRow({
         </div>
         <button
           className={`menu-btn${showActions ? ' active' : ''}`}
-          onMouseEnter={() => setShowActions(true)}
-          onClick={() => setShowActions(false)}
+          /* Click-only: opening on hover meant the action bar sprang open
+             whenever the pointer crossed a card on its way somewhere else. */
+          onClick={() => setShowActions(open => !open)}
+          aria-expanded={showActions}
           aria-label="Actions"
         >•••</button>
       </div>

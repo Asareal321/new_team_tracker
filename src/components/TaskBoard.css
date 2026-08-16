@@ -191,12 +191,61 @@
 .qc-pj.selected { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
 .qc-pj-none { color: var(--text-4); }
 
+/* On a new task these pills are the submit control, so they carry the weight
+   of a primary action rather than of a filter chip. */
+.qc-pj-submit {
+  border-width: 2px;
+  padding: 0.4rem 0.9rem;
+  font-weight: 600;
+  color: var(--text-1);
+}
+.qc-pj-submit:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-on);
+}
+.qc-pj-submit:disabled { opacity: 0.45; cursor: not-allowed; }
+.qc-pj-submit:disabled:hover { border-color: var(--border); }
+
+/* Repeat selector — same chip language as priority and due date. */
+.qc-repeat { display: inline-flex; align-items: center; gap: 0.25rem; }
+.qc-rep {
+  padding: 0.28rem 0.6rem;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+  background: var(--bg-muted);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+.qc-rep:hover { border-color: var(--text-4); }
+.qc-rep.selected { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+
+.repeat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex-shrink: 0;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+  background: var(--bg-muted);
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
 .form-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 0.5rem;
   margin-top: 0.15rem;
 }
+.form-actions-hint { font-size: 0.76rem; color: var(--text-4); }
 
 /* People filter bar — pick whose tasks to view (team boards only) */
 .people-bar {

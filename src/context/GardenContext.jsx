@@ -20,6 +20,10 @@ const DEFAULT_STATE = {
   onboarded: false,
   seed_inventory: {},
   packet_inventory: {},
+  // Every species ever obtained, and how many times — the herbarium's record.
+  // Deliberately not derived from what you currently hold: selling a flower
+  // shouldn't un-discover it.
+  discovered: {},
   plot_count: STARTING_PLOTS,
   unlocked_rarity: 1,
   growing_seed: null,
@@ -55,6 +59,26 @@ async function rescueParked(rows) {
   return rows.filter(f => f.plot_index >= 0).concat(fixed)
 }
 
+// Gardens that predate the herbarium have no `discovered` record, and an empty
+// one would tell a long-time player they've found nothing. What they still hold
+// is a lower bound on what they've found, so it seeds the record: the tray, the
+// growing slot, and every planted bed. Returns null when there's nothing to add,
+// so a normal load doesn't write.
+function backfillDiscovered(row, flowerRows) {
+  const known = { ...(row?.discovered || {}) }
+  const floor = {}
+  const bump = key => { if (key) floor[key] = (floor[key] || 0) + 1 }
+  for (const [key, n] of Object.entries(row?.seed_inventory || {})) floor[key] = (floor[key] || 0) + n
+  bump(row?.growing_seed)
+  for (const f of flowerRows || []) bump(f.seed_key)
+
+  let changed = false
+  for (const [key, n] of Object.entries(floor)) {
+    if ((known[key] || 0) < n) { known[key] = n; changed = true }
+  }
+  return changed ? known : null
+}
+
 export function GardenProvider({ children }) {
   const { user } = useAuth()
   const [state, setState] = useState(null)
@@ -78,9 +102,18 @@ export function GardenProvider({ children }) {
       supabase.from('garden_state').select('*').eq('user_id', user.id).maybeSingle(),
       supabase.from('garden_flowers').select('*').eq('user_id', user.id),
     ])
-    setState(rows || { user_id: user.id, ...DEFAULT_STATE })
+    const base = rows || { user_id: user.id, ...DEFAULT_STATE }
+    const backfilled = backfillDiscovered(base, flowerRows)
+    setState(backfilled ? { ...base, discovered: backfilled } : base)
     setFlowers(await rescueParked(flowerRows || []))
     setReady(true)
+    // Persisted after the render so a first look at the herbarium isn't waiting
+    // on a write. A failure here only costs the backfill, which retries next load.
+    if (backfilled && rows) {
+      const { error } = await supabase.from('garden_state')
+        .update({ discovered: backfilled }).eq('user_id', user.id)
+      if (error) console.error('[trakkit] herbarium backfill failed', error.message)
+    }
   }, [user])
 
   useEffect(() => { load() }, [load])
@@ -164,8 +197,11 @@ export function GardenProvider({ children }) {
   // have finished (or even written) a single task.
   const completeOnboarding = useCallback(async seedKey => {
     const seed = seedByKey(seedKey)
+    const discovered = { ...(stateRef.current?.discovered || {}) }
+    if (seed) discovered[seed.key] = (discovered[seed.key] || 0) + 1
     await save({
       onboarded: true,
+      discovered,
       ...(seed ? {
         growing_seed: seed.key,
         growing_started_at: new Date().toISOString(),
@@ -179,6 +215,7 @@ export function GardenProvider({ children }) {
   // longer exists.
   const devUnlockAll = useCallback(() => save({
     seed_inventory: Object.fromEntries(SEEDS.map(s => [s.key, 3])),
+    discovered: Object.fromEntries(SEEDS.map(s => [s.key, 3])),
   }), [save])
 
   // Shave the whole remaining grow time so the harvest UI can be reached at
@@ -258,8 +295,12 @@ export function GardenProvider({ children }) {
     const wonKey = rollPacket(packetKey)
     const inv = { ...(current.seed_inventory || {}) }
     inv[wonKey] = (inv[wonKey] || 0) + 1
-    await save({ packet_inventory: packets, seed_inventory: inv })
-    return seedByKey(wonKey)
+    const discovered = { ...(current.discovered || {}) }
+    const isNew = !discovered[wonKey]
+    discovered[wonKey] = (discovered[wonKey] || 0) + 1
+    await save({ packet_inventory: packets, seed_inventory: inv, discovered })
+    // `isNew` is what the reveal uses to call out a first find.
+    return { ...seedByKey(wonKey), isNew }
   }, [save])
 
   const plantSeed = useCallback(async seedKey => {
