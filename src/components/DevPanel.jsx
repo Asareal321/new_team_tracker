@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { CLOUD_TIERS, SEEDS, seedByKey, remainingSeconds, formatDuration } from '../lib/garden'
+import Onboarding from './Onboarding'
 import './DevPanel.css'
 
 // Developer tools, gated to the accounts in VITE_DEV_EMAIL. Cloud controls are
@@ -10,9 +11,14 @@ export default function DevPanel({
   state, cloud, log,
   onClose, onSpawn, onReplay,
   onAddCoins, onUnlockAll, onFinishGrowth, onReset, onClearLog,
+  onResetOnboarding, onResetQuests, onCompleteQuests,
 }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  // 'setup' | 'replay' | null. A previewed tour writes nothing: its onFinish
+  // just closes it, so the steps and their copy can be read through without
+  // planting a seed or creating a sprint every time.
+  const [preview, setPreview] = useState(null)
 
   async function run(fn) {
     setError('')
@@ -109,6 +115,50 @@ export default function DevPanel({
           Reset garden
         </button>
       </section>
+
+      <section className="dev-section">
+        <h4>Onboarding <span className="dev-note">preview writes nothing</span></h4>
+        <p className="dev-hint">
+          Preview walks the steps without saving. Reset clears the onboarded flag and the
+          growing slot, so the real first run — seed, sprint, first task — happens again
+          the next time the board loads.
+        </p>
+        <div className="dev-row">
+          <button className="dev-btn" onClick={() => setPreview('setup')}>Preview first run</button>
+          <button className="dev-btn" onClick={() => setPreview('replay')}>Preview replay</button>
+        </div>
+        <button
+          className="dev-btn danger"
+          disabled={busy}
+          onClick={() => {
+            if (!window.confirm('Reset first run? Anything currently growing is cleared.')) return
+            run(async () => { await onResetOnboarding(); window.location.assign('/') })
+          }}
+        >
+          Reset first run <span className="dev-note warn">writes</span>
+        </button>
+      </section>
+
+      <section className="dev-section">
+        <h4>Quests <span className="dev-note warn">writes to your real garden</span></h4>
+        <p className="dev-hint">
+          Complete fills today's counters past every goal so the claim path can be
+          exercised; reset clears today's claims so the same three can be claimed again.
+        </p>
+        <div className="dev-row">
+          <button className="dev-btn" disabled={busy} onClick={() => run(() => onCompleteQuests())}>Complete today's</button>
+          <button className="dev-btn" disabled={busy} onClick={() => run(() => onResetQuests())}>Reset claims</button>
+        </div>
+      </section>
+
+      {preview && (
+        <Onboarding
+          mode={preview}
+          displayName="Dev"
+          onClose={() => setPreview(null)}
+          onFinish={async () => setPreview(null)}
+        />
+      )}
 
       <footer className="dev-foot">Ctrl/Cmd + Shift + D toggles this panel</footer>
     </div>

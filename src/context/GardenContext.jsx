@@ -8,6 +8,7 @@ import {
   localDay, todayBucket, advanceStreak,
 } from '../lib/garden'
 import { newlyUnlocked } from '../lib/achievements'
+import { questView } from '../lib/quests'
 import { isDevUser } from '../lib/devMode'
 import CloudLayer from '../components/CloudLayer'
 import DevPanel from '../components/DevPanel'
@@ -42,6 +43,9 @@ const DEFAULT_STATE = {
   streak: { current: 0, best: 0, lastDay: null },
   stats: {},
   achievements: {},
+  // Which of today's three quests have been claimed — see lib/quests.js. Which
+  // quests today offers isn't stored: it's a function of the date.
+  quests: { day: null, claimed: [] },
 }
 
 // A burst cloud's mark on the lifetime record. `bestCloudTier` is the highest
@@ -196,12 +200,59 @@ export function GardenProvider({ children }) {
     for (const a of fresh) notify(`${a.icon} ${a.name} — ${a.blurb}`, 'achievement')
   }, [save, notify])
 
+  // The day's bucket, with `patch` added to it. Same shape as bumpStats, but
+  // day-aware: a bucket left over from yesterday reads as zero, so the first
+  // write of a new day starts the counts again on its own.
+  //
+  // Three of these keys (seeds, coins, clouds) are what the daily caps meter.
+  // The rest are what quests read. Both are "how much of this happened today",
+  // which is why they share one bucket.
+  const bumpDaily = useCallback((patch = {}) => {
+    const cur = todayBucket(stateRef.current?.daily)
+    const next = { ...cur }
+    for (const [k, v] of Object.entries(patch)) next[k] = (next[k] || 0) + v
+    return next
+  }, [])
+
   const bumpStats = useCallback((patch = {}) => {
     const cur = stateRef.current?.stats || {}
     const next = { ...cur }
     for (const [k, v] of Object.entries(patch)) next[k] = (next[k] || 0) + v
     return next
   }, [])
+
+  // --- quests --------------------------------------------------------------
+
+  // Claiming is deliberate rather than automatic: the payout is the moment
+  // Trak hands you something, and an amount that lands silently while you're
+  // on another page isn't a reward, it's an accounting entry.
+  //
+  // Nothing here trusts the caller — the quest has to be one of today's, and
+  // it has to actually be finished and unclaimed, so a stale button can't pay
+  // twice.
+  const claimQuest = useCallback(async key => {
+    const cur = stateRef.current
+    if (!cur) return null
+    const day = localDay()
+    const quest = questView(cur, todayBucket(cur.daily)).find(q => q.key === key)
+    if (!quest) throw new Error('That quest isn’t one of today’s')
+    if (!quest.done) throw new Error('That quest isn’t finished yet')
+    if (quest.claimed) throw new Error('Already claimed')
+
+    const record = cur.quests?.day === day ? cur.quests : { day, claimed: [] }
+    await commit({
+      coins: (cur.coins || 0) + quest.reward.coins,
+      ...(quest.reward.seeds ? { seeds: (cur.seeds || 0) + quest.reward.seeds } : {}),
+      quests: { day, claimed: [...(record.claimed || []), key] },
+      stats: bumpStats({ questsDone: 1 }),
+    })
+    notify(
+      `${quest.icon} ${quest.name} — +${quest.reward.coins} 🪙`
+      + (quest.reward.seeds ? ` +${quest.reward.seeds} 🌱` : ''),
+      'achievement',
+    )
+    return quest.reward
+  }, [commit, bumpStats, notify])
 
   // --- clouds -------------------------------------------------------------
 
@@ -248,6 +299,7 @@ export function GardenProvider({ children }) {
         shaved_seconds: (current.shaved_seconds || 0) + applied,
         overflow_seconds: (current.overflow_seconds || 0) + over,
         stats: cloudStats(current, tier),
+        daily: bumpDaily({ popped: 1 }),
       })
       return { type: 'shave', amount: applied, overflow: over }
     }
@@ -255,9 +307,10 @@ export function GardenProvider({ children }) {
     await commit({
       coins: (current.coins || 0) + coins,
       stats: cloudStats(current, tier),
+      daily: bumpDaily({ popped: 1 }),
     })
     return { type: 'coins', amount: coins }
-  }, [commit, dismissCloud, clouds])
+  }, [commit, dismissCloud, clouds, bumpDaily])
 
   // --- developer tools ----------------------------------------------------
 
@@ -308,6 +361,29 @@ export function GardenProvider({ children }) {
     return save({ shaved_seconds: current.growing_grow_seconds ?? 0 })
   }, [save])
 
+  // Puts the account back to first-run so the real onboarding — the one that
+  // plants a seed, creates a sprint and writes a task — can be walked through
+  // again rather than only previewed. The growing slot is cleared with it,
+  // because onboarding plants into that slot and would otherwise refuse.
+  const devResetOnboarding = useCallback(() => save({
+    onboarded: false,
+    growing_seed: null,
+    growing_started_at: null,
+    growing_grow_seconds: null,
+    shaved_seconds: 0,
+  }), [save])
+
+  // Backdates today's quest record so the three quests can be finished and
+  // claimed again in one sitting.
+  const devResetQuests = useCallback(() => save({ quests: { day: null, claimed: [] } }), [save])
+
+  // Fills today's bucket past every quest goal, so the claim path can be
+  // exercised without doing a day's work first.
+  const devCompleteQuests = useCallback(() => save({
+    daily: { ...todayBucket(stateRef.current?.daily), done: 10, added: 10, clears: 3, popped: 10, packets: 3, grown: 2, planted: 3 },
+    quests: { day: localDay(), claimed: [] },
+  }), [save])
+
   const devResetGarden = useCallback(async () => {
     if (!user) return
     const { error } = await supabase.from('garden_flowers').delete().eq('user_id', user.id)
@@ -347,7 +423,7 @@ export function GardenProvider({ children }) {
     const gain = Math.min(ADD_TASK_REWARD.seeds, Math.max(0, room))
     await commit({
       ...(gain > 0 ? { seeds: (cur.seeds || 0) + gain } : {}),
-      daily: { ...daily, seeds: daily.seeds + gain },
+      daily: { ...daily, seeds: daily.seeds + gain, added: (daily.added || 0) + 1 },
       stats: bumpStats({ tasksAdded: 1 }),
     })
     if (gain > 0) notify(`+${gain} 🌱`)
@@ -365,7 +441,7 @@ export function GardenProvider({ children }) {
     const gain = Math.min(DOING_CLEAR_REWARD.coins, Math.max(0, room))
     await commit({
       ...(gain > 0 ? { coins: (cur.coins || 0) + gain } : {}),
-      daily: { ...daily, coins: daily.coins + gain },
+      daily: { ...daily, coins: daily.coins + gain, clears: (daily.clears || 0) + 1 },
       stats: bumpStats({ doingClears: 1 }),
     })
     if (gain > 0) notify(`🧹 Doing cleared — +${gain} 🪙`)
@@ -388,7 +464,7 @@ export function GardenProvider({ children }) {
 
     await commit({
       ...(paidQuiet ? { coins: (cur.coins || 0) + paidQuiet } : {}),
-      daily: { ...daily, clouds: daily.clouds + (underCap ? 1 : 0) },
+      daily: { ...daily, clouds: daily.clouds + (underCap ? 1 : 0), done: (daily.done || 0) + 1 },
       streak: advanceStreak(cur.streak, day),
       stats: bumpStats({ tasksDone: 1 }),
     })
@@ -447,6 +523,7 @@ export function GardenProvider({ children }) {
     await commit({
       packet_inventory: packets, seed_inventory: inv, discovered,
       stats: bumpStats({ packetsOpened: 1 }),
+      daily: bumpDaily({ packets: 1 }),
     })
     // `isNew` is what the reveal uses to call out a first find.
     return { ...seedByKey(wonKey), isNew }
@@ -465,8 +542,9 @@ export function GardenProvider({ children }) {
     // three-hour Daisy — whatever it can't absorb stays banked for the next one.
     const banked = stateRef.current?.overflow_seconds || 0
     const applied = Math.min(banked, seed.growSeconds)
-    await save({
+    await commit({
       seed_inventory: inv,
+      daily: bumpDaily({ planted: 1 }),
       growing_seed: seed.key,
       growing_started_at: new Date().toISOString(),
       growing_grow_seconds: seed.growSeconds,
@@ -474,7 +552,7 @@ export function GardenProvider({ children }) {
       overflow_seconds: banked - applied,
     })
     return { seed, applied, remainingOverflow: banked - applied }
-  }, [save])
+  }, [commit, bumpDaily])
 
   const clearGrowing = useCallback(
     extra => commit({
@@ -500,7 +578,7 @@ export function GardenProvider({ children }) {
       setFlowers(prev => prev.filter(f => f.id !== row.id))
       throw error
     }
-    await clearGrowing({ stats: bumpStats({ flowersGrown: 1 }) })
+    await clearGrowing({ stats: bumpStats({ flowersGrown: 1 }), daily: bumpDaily({ grown: 1 }) })
   }, [flowers, user, clearGrowing])
 
   // Rearranging the garden. Dropping onto an empty plot moves; dropping onto a
@@ -558,6 +636,7 @@ export function GardenProvider({ children }) {
     await clearGrowing({
       coins: (stateRef.current?.coins || 0) + seed.sellValue,
       stats: bumpStats({ flowersGrown: 1 }),
+      daily: bumpDaily({ grown: 1 }),
     })
     return seed.sellValue
   }, [clearGrowing])
@@ -596,6 +675,9 @@ export function GardenProvider({ children }) {
 
   const value = {
     state, flowers, ready, seeds: SEEDS,
+    quests: questView(state, todayBucket(state?.daily)),
+    claimQuest,
+    devResetOnboarding, devResetQuests, devCompleteQuests,
     spawnCloud, rewardTaskAdded, rewardTaskDone, rewardDoingCleared, notify, setQuietMode, completeOnboarding, buyPacket, openPacket, plantSeed, placeFlower, moveFlower, sellGrown, sellPlanted, unlockSeed, expandGarden,
     isDev, devOpen, openDevPanel: () => setDevOpen(true),
   }
@@ -622,6 +704,9 @@ export function GardenProvider({ children }) {
           onUnlockAll={devUnlockAll}
           onFinishGrowth={devFinishGrowth}
           onReset={devResetGarden}
+          onResetOnboarding={devResetOnboarding}
+          onResetQuests={devResetQuests}
+          onCompleteQuests={devCompleteQuests}
           onClearLog={() => setDevLog([])}
         />
       )}

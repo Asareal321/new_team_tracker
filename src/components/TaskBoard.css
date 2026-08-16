@@ -2039,3 +2039,15 @@
 }
 .tally-toggle.hide { grid-column: 1 / -1; margin-left: 0; text-align: left; }
 html[data-theme="dark"] .tally-toggle { color: var(--bb-accent); }
+
+/* Trak has something for you. The one chip in the row that's a button, so it
+   takes the accent the others deliberately don't. */
+.gh-chip.quest-ready {
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--accent-on);
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 700;
+}
+.gh-chip.quest-ready:hover { filter: brightness(1.06); }

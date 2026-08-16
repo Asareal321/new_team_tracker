@@ -1540,7 +1540,7 @@ function Braindump({ items, bands, laneCounts, projectName, onCapture, onSort, o
 // actually in the ground, its real stage, and the balances the board's own
 // rewards feed. The button goes to the garden instead of watering.
 function GreenhouseStrip({ doneToday }) {
-  const { state, ready } = useGarden()
+  const { state, ready, quests } = useGarden()
   const navigate = useNavigate()
   const [, setTick] = useState(0)
 
@@ -1563,6 +1563,9 @@ function GreenhouseStrip({ doneToday }) {
   const streak = liveStreak(state?.streak)
 
   const best = state?.streak?.best || 0
+  // Only shown when there's something to collect. A permanent quest counter
+  // would be one more number on a strip whose whole point is being short.
+  const claimable = (quests || []).filter(q => q.claimable).length
 
   // Two lines: what's growing, then what today has paid out. The strip sits
   // above the bands, and the bands are the page — anything taller than this
@@ -1616,6 +1619,16 @@ function GreenhouseStrip({ doneToday }) {
         </span>
         <span className="gh-chip-rule" aria-hidden="true" />
         <DailyCaps state={state} />
+        {claimable > 0 && (
+          <button
+            className="gh-chip quest-ready"
+            onClick={() => navigate('/garden')}
+            title="Trak has a finished quest waiting in the garden"
+          >
+            <span aria-hidden="true">🐇</span>
+            {claimable} {claimable === 1 ? 'quest' : 'quests'} to claim
+          </button>
+        )}
       </div>
     </section>
   )

@@ -41,6 +41,10 @@ export const ACHIEVEMENTS = [
   { key: 'cloud-epic', group: 'Clouds', icon: '⚡', name: 'Storm chaser',    goal: 4,   value: s => s.stats.bestCloudTier, blurb: 'Grow a cloud to Epic' },
   { key: 'cloud-legend', group: 'Clouds', icon: '🌩️', name: 'Once in a while', goal: 5, value: s => s.stats.bestCloudTier, blurb: 'Grow a cloud to Legendary' },
 
+  { key: 'quest-1',   group: 'Work',   icon: '🐇', name: 'Trak’s errand',   goal: 1,   value: s => s.stats.questsDone, blurb: 'Finish a quest for Trak' },
+  { key: 'quest-25',  group: 'Work',   icon: '🥕', name: 'On good terms',   goal: 25,  value: s => s.stats.questsDone, blurb: 'Finish 25 quests' },
+  { key: 'quest-100', group: 'Work',   icon: '🐰', name: 'Trak’s favourite', goal: 100, value: s => s.stats.questsDone, blurb: 'Finish 100 quests' },
+
   // — the garden —
   { key: 'packet-1',   group: 'Garden', icon: '📦', name: 'First packet',    goal: 1,  value: s => s.stats.packetsOpened, blurb: 'Tear open a seed packet' },
   { key: 'packet-25',  group: 'Garden', icon: '📦', name: 'Regular customer', goal: 25, value: s => s.stats.packetsOpened, blurb: 'Open 25 packets' },
@@ -65,7 +69,7 @@ export function progressView(state, flowerCount = 0) {
   return {
     stats: {
       tasksDone: 0, tasksAdded: 0, doingClears: 0, cloudsPopped: 0,
-      packetsOpened: 0, flowersGrown: 0, bestCloudTier: 0,
+      packetsOpened: 0, flowersGrown: 0, bestCloudTier: 0, questsDone: 0,
       ...(state?.stats || {}),
     },
     streak: { current: 0, best: 0, lastDay: null, ...(state?.streak || {}) },

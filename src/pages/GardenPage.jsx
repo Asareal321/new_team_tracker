@@ -14,12 +14,14 @@ import PlotCluster from '../components/PlotCluster'
 import PackOpening from '../components/PackOpening'
 import FlowerGrown from '../components/FlowerGrown'
 import PacketArt from '../components/PacketArt'
+import QuestBoard from '../components/QuestBoard'
 import './GardenPage.css'
 
 const TABS = [
   { key: 'greenhouse', label: 'Greenhouse' },
   { key: 'garden', label: 'Garden' },
   { key: 'herbarium', label: 'Herbarium' },
+  { key: 'quests', label: 'Quests' },
   { key: 'awards', label: 'Awards' },
   { key: 'shop', label: 'Shop' },
 ]
@@ -495,6 +497,12 @@ export default function GardenPage() {
         )}
 
         {/* --- awards shelf --- */}
+        {tab === 'quests' && (
+        <section className="garden-panel tabbed quests-panel">
+          <QuestBoard />
+        </section>
+        )}
+
         {tab === 'awards' && (
         <section className="garden-panel tabbed awards-panel">
           <span className="panel-label">Awards · {earnedCount} of {awards.length}</span>

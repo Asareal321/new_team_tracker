@@ -81,6 +81,7 @@ const maxed = {
   stats: {
     tasksDone: 99999, tasksAdded: 99999, doingClears: 99999,
     cloudsPopped: 99999, packetsOpened: 99999, flowersGrown: 99999, bestCloudTier: 5,
+    questsDone: 99999,
   },
   streak: { current: 999, best: 999, lastDay: today },
   discovered: Object.fromEntries(
