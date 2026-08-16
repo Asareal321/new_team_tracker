@@ -681,7 +681,6 @@ function PriorityBoard({
             >
               <span className="status-dot todo" />
               Board
-              <span className="tab-count">{byStatus('todo').length + byStatus('in_progress').length}</span>
             </button>
             <div className="tab-divider" />
             <button
@@ -690,7 +689,6 @@ function PriorityBoard({
             >
               <span className="status-dot pending" />
               Braindump
-              <span className="tab-count">{dumpTasks.length}</span>
             </button>
             <div className="tab-divider" />
             <button
@@ -699,7 +697,6 @@ function PriorityBoard({
             >
               <span className="status-dot archived" />
               Archived
-              <span className="tab-count">{byStatus('archived').length}</span>
             </button>
           </div>
           <div className="tabs-actions">
