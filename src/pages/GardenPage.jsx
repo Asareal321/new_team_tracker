@@ -37,7 +37,12 @@ export default function GardenPage() {
     state, flowers, ready,
     plantSeed, placeFlower, moveFlower, sellGrown, sellPlanted, buyPacket, openPacket, expandGarden,
   } = useGarden()
-  const [tab, setTab] = useState('garden')
+  // ?tab= lets the board link straight to a room — Trak's chip on the
+  // greenhouse strip points at his quests, not at the garden's front door.
+  const [tab, setTab] = useState(() => {
+    const want = new URLSearchParams(window.location.search).get('tab')
+    return TABS.some(t => t.key === want) ? want : 'garden'
+  })
   // Which flower is in hand, so the overlay can render it and the grid can
   // light up its drop targets.
   const [dragging, setDragging] = useState(null)

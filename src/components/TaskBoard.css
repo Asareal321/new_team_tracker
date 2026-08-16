@@ -1913,8 +1913,35 @@
   border-radius: var(--r-md);
   padding: 11px 12px;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  gap: 11px;
+}
+/* The two lines of the strip. Trak sits beside them, not above them, so he
+   costs width and no height. */
+.gh-stack { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+
+.gh-trak {
+  flex: 0 0 auto;
+  position: relative;
+  display: block;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  line-height: 0;
+}
+.gh-trak:hover { transform: translateY(-1px); }
+/* One dot, only when something of his is waiting — the same signal the chip
+   row deliberately doesn't spend a slot on. */
+.gh-trak-dot {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  background: var(--prio-high);
+  border: 2px solid var(--accent-bg);
 }
 
 /* Line one: what's growing. The plant is an inline glyph rather than a potted
@@ -1997,6 +2024,9 @@
   /* Narrow enough that the bar and the button would each get a line of their
      own; the button leads instead of trailing a wrapped row. */
   .gh-go { margin-left: 0; }
+  /* Trak keeps his place at the left — he's the strip's anchor, and stacking
+     him above it would give back the height this layout exists to save. */
+  .gh-trak { align-self: flex-start; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2040,14 +2070,3 @@
 .tally-toggle.hide { grid-column: 1 / -1; margin-left: 0; text-align: left; }
 html[data-theme="dark"] .tally-toggle { color: var(--bb-accent); }
 
-/* Trak has something for you. The one chip in the row that's a button, so it
-   takes the accent the others deliberately don't. */
-.gh-chip.quest-ready {
-  cursor: pointer;
-  font-family: inherit;
-  color: var(--accent-on);
-  background: var(--accent);
-  border-color: var(--accent);
-  font-weight: 700;
-}
-.gh-chip.quest-ready:hover { filter: brightness(1.06); }

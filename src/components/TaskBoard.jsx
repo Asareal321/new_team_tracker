@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom'
 import { projectDotColor } from '../lib/projectColors'
 import { useGarden } from '../context/GardenContext'
 import DailyCaps from './DailyCaps'
+import Trak from './Trak'
 import {
   seedByKey, remainingSeconds, formatDuration, growthStage, GROWTH_STAGES, liveStreak,
 } from '../lib/garden'
@@ -1570,8 +1571,29 @@ function GreenhouseStrip({ doneToday }) {
   // Two lines: what's growing, then what today has paid out. The strip sits
   // above the bands, and the bands are the page — anything taller than this
   // pushes the actual work below the fold.
+  // Trak stands at the left of the strip rather than in a tile of his own: it
+  // is the only place on the board with two lines of vertical room already
+  // spoken for, so he costs width and no height. What he says is whatever is
+  // most actionable right now, and he's the way through to his quests.
+  const say = claimable
+    ? `${claimable === 1 ? 'A quest is' : `${claimable} quests are`} finished — come and claim`
+    : isReady ? `Your ${growing.name.toLowerCase()} is done — keep it or sell it`
+    : !growing ? 'Nothing growing. Plant a seed and I’ll watch it'
+    : streak > 0 ? `${streak}-day streak. Finish one today to keep it`
+    : 'Finish a task today and I’ll start your streak'
+
   return (
     <section className="greenhouse-strip">
+      <button
+        className={`gh-trak${claimable ? ' has-quest' : ''}`}
+        onClick={() => navigate('/garden?tab=quests')}
+        title={`${say} — open Trak’s quests`}
+      >
+        <Trak mood={claimable ? 'happy' : isReady ? 'point' : growing ? 'idle' : 'think'} size={46} />
+        {claimable > 0 && <span className="gh-trak-dot" aria-hidden="true" />}
+      </button>
+
+      <div className="gh-stack">
       <div className="gh-line">
         <span className="gh-emoji" aria-hidden="true">{growing ? stage.emoji : '🪴'}</span>
         <span className="gh-name">{growing ? growing.name : 'Greenhouse'}</span>
@@ -1619,16 +1641,7 @@ function GreenhouseStrip({ doneToday }) {
         </span>
         <span className="gh-chip-rule" aria-hidden="true" />
         <DailyCaps state={state} />
-        {claimable > 0 && (
-          <button
-            className="gh-chip quest-ready"
-            onClick={() => navigate('/garden')}
-            title="Trak has a finished quest waiting in the garden"
-          >
-            <span aria-hidden="true">🐇</span>
-            {claimable} {claimable === 1 ? 'quest' : 'quests'} to claim
-          </button>
-        )}
+      </div>
       </div>
     </section>
   )
