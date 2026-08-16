@@ -8,7 +8,12 @@ import {
 } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
+import { useNavigate } from 'react-router-dom'
 import { projectDotColor } from '../lib/projectColors'
+import { useGarden } from '../context/GardenContext'
+import {
+  seedByKey, remainingSeconds, formatDuration, growthStage, GROWTH_STAGES, liveStreak,
+} from '../lib/garden'
 import './TaskBoard.css'
 
 const STATUSES     = ['todo', 'in_progress', 'done', 'archived']
@@ -27,12 +32,22 @@ export const RECURRENCES = [
 ]
 const RECURRENCE_LABELS = Object.fromEntries(RECURRENCES.map(r => [r.key, r.short]))
 
-// Kanban columns. Work moves left to right; Done cards leave for the garden.
-const COLUMNS = [
-  { key: 'todo',        label: 'To do' },
+// The board is laid out as full-width horizontal bands, one per status, with
+// each band's tasks in a two-column grid — the Beech & Baize taskboard design.
+// Reading order inside a band is down the left column, then the right.
+//
+// The band order is also the advance order and the braindump tray order: one
+// source of truth, as the handoff asks.
+const BANDS = [
+  { key: 'todo',        label: 'Up next' },
   { key: 'in_progress', label: 'Doing' },
-  { key: 'done',        label: 'Done' },
+  { key: 'done',        label: 'Done today' },
 ]
+const BAND_KEYS = BANDS.map(b => b.key)
+
+// Captured but not yet triaged. These are real task rows — same table, same
+// realtime — carrying a status the board deliberately doesn't render.
+const BRAINDUMP = 'braindump'
 
 // Work-in-progress limit. This is the old High-priority cap carried over onto
 // the Doing column — the point was always "only a few things at once", which
@@ -244,6 +259,15 @@ export default function TaskBoard({
   // for the people who need to accept/decline them.
   const byStatus = (status) => visibleTasks.filter(t => t.status === status)
 
+  // The pile is deliberately outside the people filter: it's your own capture
+  // buffer, not shared work, and nothing in it has an assignee yet.
+  const dumpTasks = useMemo(
+    () => tasks.filter(t => t.status === BRAINDUMP)
+      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
+    [tasks],
+  )
+  const openCount = byStatus('todo').length + byStatus('in_progress').length
+
   // Tasks needing attention in the Pending tab:
   //  • pending-approval tasks that involve me (I created them and am waiting on
   //    responses, or I'm a still-pending assignee myself), and
@@ -251,7 +275,7 @@ export default function TaskBoard({
   //    surface here for triage regardless of who created them.
   // This intentionally bypasses the people filter.
   const pendingTasksForMe = useMemo(() => tasks.filter(t => {
-    if (t.status === 'archived' || t.status === 'done') return false
+    if (t.status === 'archived' || t.status === 'done' || t.status === BRAINDUMP) return false
     const unassigned = (t.task_assignees || []).length === 0 && !t.assignee_id
     if (unassigned) return true
     return isPendingApproval(t) && (
@@ -259,6 +283,26 @@ export default function TaskBoard({
       (t.task_assignees || []).some(a => a.user_id === currentUserId)
     )
   }), [tasks, currentUserId])
+
+  // Capture drops a bare title into the pile. No priority, no date, no sprint —
+  // the whole point is that it costs one line and no decisions.
+  async function captureToDump(title) {
+    await onAdd({
+      title, notes: '', status: BRAINDUMP, priority: 'medium',
+      due_date: null, project_id: null, recurrence: null, assigneeIds: [],
+    })
+  }
+
+  // Triage is a plain status change, so an item can't be lost between tables.
+  // Landing straight in Done counts as a completion like any other.
+  async function sortFromDump(task, status) {
+    if (status === 'in_progress' && doingCount(tasks) >= MAX_DOING) {
+      return `Doing is full (${MAX_DOING}).`
+    }
+    await onUpdate(task.id, { status })
+    if (status === 'done') onTaskDone?.({ ...task, status: BRAINDUMP })
+    return null
+  }
 
   function resolveAssignees(task) {
     return (task.task_assignees || [])
@@ -416,6 +460,10 @@ export default function TaskBoard({
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         byStatus={byStatus}
+        dumpTasks={dumpTasks}
+        openCount={openCount}
+        onCapture={captureToDump}
+        onSortFromDump={sortFromDump}
         peopleFilter={{
           show: showPeopleFilter,
           me: meMember,
@@ -450,6 +498,7 @@ export default function TaskBoard({
 function PriorityBoard({
   tasks, pendingTasks, currentUserId, onRespondToAssignment, onResolveChangeRequest,
   activeTab, setActiveTab, byStatus, peopleFilter,
+  dumpTasks, openCount, onCapture, onSortFromDump,
   projectName, updatesForTask, resolveAssignees, teamMembers,
   onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onStartEdit, onOpenForm, onTaskDone, onArchiveAll,
 }) {
@@ -606,6 +655,15 @@ function PriorityBoard({
             </button>
             <div className="tab-divider" />
             <button
+              className={`tab tab-dump ${activeTab === 'braindump' ? 'active' : ''}${dumpTasks.length ? ' has-pending' : ''}`}
+              onClick={() => setActiveTab('braindump')}
+            >
+              <span className="status-dot pending" />
+              Braindump
+              <span className="tab-count">{dumpTasks.length}</span>
+            </button>
+            <div className="tab-divider" />
+            <button
               className={`tab tab-archived ${activeTab === 'archived' ? 'active' : ''}`}
               onClick={() => setActiveTab('archived')}
             >
@@ -643,31 +701,57 @@ function PriorityBoard({
             updatesForTask={updatesForTask}
             projectName={projectName}
           />
+        ) : activeTab === 'braindump' ? (
+          <Braindump
+            items={dumpTasks}
+            bands={BANDS}
+            laneCounts={Object.fromEntries(BAND_KEYS.map(k => [k, byStatus(k).length]))}
+            projectName={projectName}
+            onCapture={onCapture}
+            onSort={onSortFromDump}
+            onDelete={onDelete}
+            onBack={() => setActiveTab('board')}
+          />
         ) : (
-          <>
+          <div className="board-bands">
             {zoneNotice && <div className="zone-notice">{zoneNotice}</div>}
-            <div className="kanban">
-              {COLUMNS.map(col => (
-                <KanbanColumn key={col.key} status={col.key} label={col.label}
-                  tasks={getColumnTasks(col.key)}
-                  limit={col.key === 'in_progress' ? MAX_DOING : null}
-                  resolveAssignees={resolveAssignees}
-                  projectName={projectName}
-                  updatesForTask={updatesForTask}
-                  teamMembers={teamMembers}
-                  onEdit={onStartEdit}
-                  onDelete={onDelete}
-                  onUpdate={onUpdate}
-                  onAddUpdate={onAddUpdate}
-                  onDeleteUpdate={onDeleteUpdate}
-                  onUpdateAssignees={onUpdateAssignees}
-                  draftUpdates={draftUpdates}
-                  setDraft={setDraft}
-                  onTaskDone={onTaskDone}
-                />
-              ))}
+
+            {/* Plaque, summary, and the two ways into new work. "Add task"
+                opens the full drawer; "Braindump" is the one-line pile. */}
+            <div className="board-head">
+              <span className="board-plaque">Board</span>
+              <span className="board-summary">
+                {openCount} open · {byStatus('done').length} done today
+              </span>
+              <div className="board-head-spacer" />
+              <button className="bb-btn" onClick={() => setActiveTab('braindump')}>
+                Braindump ({dumpTasks.length})
+              </button>
+              <button className="bb-btn primary" onClick={onOpenForm}>Add task</button>
             </div>
-          </>
+
+            {BANDS.map(band => (
+              <Band key={band.key} status={band.key} label={band.label}
+                tasks={getColumnTasks(band.key)}
+                limit={band.key === 'in_progress' ? MAX_DOING : null}
+                resolveAssignees={resolveAssignees}
+                projectName={projectName}
+                updatesForTask={updatesForTask}
+                teamMembers={teamMembers}
+                onEdit={onStartEdit}
+                onDelete={onDelete}
+                onUpdate={onUpdate}
+                onAddUpdate={onAddUpdate}
+                onDeleteUpdate={onDeleteUpdate}
+                onUpdateAssignees={onUpdateAssignees}
+                draftUpdates={draftUpdates}
+                setDraft={setDraft}
+                onTaskDone={onTaskDone}
+              />
+            ))}
+
+            <GreenhouseStrip doneToday={byStatus('done').length} />
+          </div>
         )}
       </div>
 
@@ -896,23 +980,22 @@ function groupTasksBySprint(tasks, projectName) {
   }))
 }
 
-function KanbanColumn({ status, label, tasks, limit, resolveAssignees, projectName, updatesForTask, teamMembers, onEdit, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, onUpdateAssignees, draftUpdates, setDraft, onTaskDone }) {
+function Band({ status, label, tasks, limit, resolveAssignees, projectName, updatesForTask, teamMembers, onEdit, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, onUpdateAssignees, draftUpdates, setDraft, onTaskDone }) {
   const { setNodeRef, isOver } = useDroppable({ id: `col-${status}` })
   const atLimit = limit != null && tasks.length >= limit
 
-  // To do is the long lane, so it keeps the sprint clustering. Doing is capped
-  // and Done is transient — grouping either would be noise.
+  // Up next is the long band, so it keeps the sprint clustering. Doing is
+  // capped and Done today is transient — grouping either would be noise. A
+  // grouped band drops to a single column: two columns of small groups reads
+  // as a broken grid rather than as two columns.
   const groups = status === 'todo' ? groupTasksBySprint(tasks, projectName) : null
-
-  // SortableContext needs the flat id list in rendered (grouped) order.
   const orderedTasks = groups ? groups.flatMap(g => g.tasks) : tasks
   const items = orderedTasks.map(t => t.id)
 
   const renderRow = (task, showProject = true) => (
     <SortableTaskRow key={task.id} task={task}
-      rank={null}
       assignees={resolveAssignees(task)}
-      projectName={showProject ? projectName(task.project_id) : null}
+      projectName={showProject ? (projectName(task.project_id) || 'unfiled') : null}
       updates={updatesForTask(task.id)}
       teamMembers={teamMembers}
       onEdit={() => onEdit(task)}
@@ -933,13 +1016,16 @@ function KanbanColumn({ status, label, tasks, limit, resolveAssignees, projectNa
   )
 
   return (
-    <section className={`kanban-col col-${status}${isOver ? ' col-over' : ''}${atLimit ? ' col-full' : ''}`}>
-      <header className="zone-header">
-        <span className="zone-label">{label}</span>
-        <span className="zone-count">{tasks.length}{limit != null ? `/${limit}` : ''}</span>
+    <section className={`band band-${status}${isOver ? ' band-over' : ''}${atLimit ? ' band-full' : ''}`}>
+      <header className="band-head">
+        <span className="band-pill">{label}</span>
+        <span className="band-count">
+          {tasks.length}{limit != null ? `/${limit}` : ''} {tasks.length === 1 ? 'task' : 'tasks'}
+        </span>
+        <span className="band-rule" />
       </header>
       <SortableContext items={items} strategy={verticalListSortingStrategy}>
-        <div ref={setNodeRef} className="zone-body kanban-body">
+        <div ref={setNodeRef} className={`band-body${groups ? ' grouped' : ''}`}>
           {groups
             ? groups.map(g => (
                 <div key={g.key} className="sprint-group">
@@ -948,13 +1034,17 @@ function KanbanColumn({ status, label, tasks, limit, resolveAssignees, projectNa
                     <span className="sprint-group-name">{g.name}</span>
                     <span className="sprint-group-count">{g.tasks.length}</span>
                   </div>
-                  {g.tasks.map(task => renderRow(task, false))}
+                  <div className="sprint-group-body">
+                    {g.tasks.map(task => renderRow(task, false))}
+                  </div>
                 </div>
               ))
             : tasks.map(task => renderRow(task))}
           {tasks.length === 0 && (
-            <div className="zone-empty">
-              {status === 'done' ? 'Empty on purpose — finished cards leave for the garden.' : 'Drop tasks here'}
+            <div className="band-empty">
+              {status === 'done'
+                ? 'Empty on purpose — finished cards leave for the garden.'
+                : 'Nothing here. Drop a task in, or sort one from the braindump.'}
             </div>
           )}
         </div>
@@ -979,20 +1069,53 @@ function SortableTaskRow({ task, ...props }) {
 
 const PRIMARY_NEXT = { todo: 'in_progress', in_progress: 'done' }
 
+// The advance order is the band order — one source of truth.
+const NEXT_BAND = { todo: 'in_progress', in_progress: 'done' }
+
+// What the leading stripe and the chip say. They are always the same signal:
+// the handoff is explicit that a stripe never appears without its matching
+// chip, so both come from here.
+function rowKind(task) {
+  if (task.status === 'done') return 'done'
+  if (task.priority === 'high') return 'hi'
+  if (task.due_date) return 'due'
+  return 'plain'
+}
+
+function rowChip(task, kind) {
+  if (kind === 'done') return `done ${formatTime(task.updated_at || task.created_at)}`
+  if (kind === 'hi') return 'high'
+  if (kind === 'due') return formatDate(task.due_date)
+  return 'no date'
+}
+
+// A paper row: stripe, title, one line of meta, a chip, and the controls.
+// Everything the old card showed inline — notes, today's update, history, the
+// action bar — is still here, but folded behind a click. The band layout only
+// works if a resting row is one line high, and most rows are never edited.
 function TaskRow({
-  task, assignees, projectName, updates, rank,
+  task, assignees, projectName, updates,
   teamMembers = [], onUpdateAssignees,
   onEdit, onDelete, onStatusChange, onAddUpdate, onDeleteUpdate,
-  statuses, statusLabels, showPriorityBadge,
+  statuses, statusLabels,
   dragListeners, dragAttributes,
   draftText = '', onDraftChange, onTaskDone,
 }) {
   const assigneeIds = (task.task_assignees || []).map(a => a.user_id)
   const [showActions, setShowActions] = useState(false)
-  const [showHistory, setShowHistory] = useState(false)
   const [expanded, setExpanded] = useState(() => draftText.length > 0)
+  const [showHistory, setShowHistory] = useState(false)
   const isArchived = task.status === 'archived'
+  const isDone = task.status === 'done'
   const isPending = isPendingApproval(task)
+
+  const kind = rowKind(task)
+  const chip = rowChip(task, kind)
+  const owner = assignees.length
+    ? (assignees.length > 1
+        ? `${(assignees[0].display_name || '?').split(/\s+/)[0].toLowerCase()} +${assignees.length - 1}`
+        : (assignees[0].display_name || '?').split(/\s+/)[0].toLowerCase())
+    : 'unassigned'
 
   const today = todayStr()
   const todaysUpdates  = updates.filter(u => u.created_at.slice(0, 10) === today)
@@ -1014,59 +1137,61 @@ function TaskRow({
     if (newStatus === 'done') onTaskDone?.(task)
   }
 
-  function cancelUpdate() {
-    onDraftChange?.('')
-    setExpanded(false)
-  }
-
-  const primaryNext  = PRIMARY_NEXT[task.status]
-  const secondaryNext = statuses.filter(s => s !== task.status && s !== primaryNext)
+  const next = NEXT_BAND[task.status]
+  const secondaryNext = statuses.filter(s => s !== task.status && s !== next)
 
   return (
-    <div className={`task-row priority-${task.priority}${isArchived ? ' archived' : ''}${rank != null ? ' has-rank' : ''}`}>
-      {rank != null && (
-        <span className={`rank-rail rank-${rank}`} title={`Priority rank ${rank} — drag to reorder`}>{rank}</span>
-      )}
-      <div className="task-row-main">
-        {dragListeners && (
-          <button className="drag-handle" type="button"
-            aria-label="Drag to reorder"
-            {...dragListeners} {...dragAttributes}>⠿</button>
-        )}
-        <div className="task-row-info">
-          <div className="task-row-top">
-            {showPriorityBadge && (
-              <span className={`priority-badge ${task.priority}`}>{task.priority}</span>
-            )}
+    <div className={`paper-row kind-${kind}${isArchived ? ' archived' : ''}${expanded ? ' open' : ''}`}>
+      <div className="paper-main">
+        {/* The stripe doubles as the drag handle: it runs the full height of
+            the row and is the one part with nothing else to click. */}
+        <span
+          className="row-stripe"
+          {...(dragListeners || {})} {...(dragAttributes || {})}
+          aria-label={`Drag ${task.title}`}
+        />
+        <button
+          className="row-body"
+          onClick={() => setExpanded(o => !o)}
+          aria-expanded={expanded}
+          title={expanded ? 'Hide details' : 'Show notes and updates'}
+        >
+          <span className="row-title">
             {isPending && <span className="pending-badge" title="Waiting on assignment acceptance">Pending</span>}
             {task.recurrence && (
-              <span className="repeat-badge" title={`Repeats ${RECURRENCE_LABELS[task.recurrence]?.toLowerCase()} — finishing it creates the next one`}>
+              <span className="repeat-badge" title={`Repeats ${RECURRENCE_LABELS[task.recurrence]?.toLowerCase()}`}>
                 🔁 {RECURRENCE_LABELS[task.recurrence]}
               </span>
             )}
-            <p className="task-title">{task.title}</p>
-          </div>
-          {task.notes && <p className="task-notes">{task.notes}</p>}
-        </div>
-
-        <div className="task-row-tags">
-          {task.due_date && (
-            <span className={`due-badge ${isArchived ? '' : dueClass(task.due_date)}`}>
-              {!isArchived && dueClass(task.due_date) === 'overdue' ? 'Overdue · ' : ''}
-              {formatDate(task.due_date)}
-            </span>
+            {task.title}
+          </span>
+          <span className="row-meta">
+            <span>{owner}</span>
+            {projectName && <span>{projectName}</span>}
+            {task.due_date && kind !== 'due' && (
+              <span className={dueClass(task.due_date)}>{formatDate(task.due_date)}</span>
+            )}
+            {todaysUpdates.length > 0 && <span className="row-updated">updated</span>}
+          </span>
+        </button>
+        <span className="row-tail">
+          <span className="row-chip">{chip}</span>
+          <button
+            className={`row-menu${showActions ? ' active' : ''}`}
+            onClick={() => setShowActions(o => !o)}
+            aria-expanded={showActions}
+            aria-label="Actions"
+          >•••</button>
+          {!isArchived && (
+            <button
+              className="row-advance"
+              disabled={!next}
+              title={next ? `Move to ${statusLabels[next]}` : 'Already done'}
+              aria-label={next ? `Move ${task.title} to ${statusLabels[next]}` : 'Already done'}
+              onClick={() => next && onStatusChange(next)}
+            >›</button>
           )}
-          {assignees.length > 0 && <AvatarStack assignees={assignees} />}
-          {projectName && <span className="project-tag">{projectName}</span>}
-        </div>
-        <button
-          className={`menu-btn${showActions ? ' active' : ''}`}
-          /* Click-only: opening on hover meant the action bar sprang open
-             whenever the pointer crossed a card on its way somewhere else. */
-          onClick={() => setShowActions(open => !open)}
-          aria-expanded={showActions}
-          aria-label="Actions"
-        >•••</button>
+        </span>
       </div>
 
       <div className={`task-action-bar${showActions ? ' open' : ''}`}>
@@ -1077,33 +1202,24 @@ function TaskRow({
           </>
         ) : (
           <>
-            {primaryNext && (
-              <button className="action-btn action-primary" onClick={() => { onStatusChange(primaryNext); setShowActions(false) }}>
-                → {statusLabels[primaryNext]}
-              </button>
-            )}
             {secondaryNext.map(s => (
               <button key={s} className="action-btn" onClick={() => { onStatusChange(s); setShowActions(false) }}>
                 → {statusLabels[s]}
               </button>
             ))}
-            {task.status === 'done' && (
+            {isDone && (
               <button className="action-btn" onClick={() => { onStatusChange('archived'); setShowActions(false) }}>Archive</button>
             )}
             {teamMembers.length > 0 && (
               <div className="action-assign">
                 {teamMembers.map(m => {
                   const assigned = assigneeIds.includes(m.id)
-                  const toggle = () => {
-                    const next = assigned
-                      ? assigneeIds.filter(id => id !== m.id)
-                      : [...assigneeIds, m.id]
-                    onUpdateAssignees?.(next)
-                  }
                   return (
                     <button key={m.id} type="button" title={m.display_name}
                       className={`action-assign-chip${assigned ? ' assigned' : ''}`}
-                      onClick={toggle}>
+                      onClick={() => onUpdateAssignees?.(assigned
+                        ? assigneeIds.filter(id => id !== m.id)
+                        : [...assigneeIds, m.id])}>
                       {initials(m.display_name)}
                     </button>
                   )
@@ -1116,115 +1232,312 @@ function TaskRow({
         )}
       </div>
 
-      {/* Show update history for archived tasks; full update UI for active tasks */}
-      {isArchived && updates.length > 0 && (
-        <div className="task-row-update">
-          <div className="updates-section">
-            {updates.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-              .reduce((acc, u) => {
-                const d = u.created_at.slice(0, 10)
-                if (!acc.find(g => g.date === d)) acc.push({ date: d, items: [] })
-                acc.find(g => g.date === d).items.push(u)
-                return acc
-              }, [])
-              .map(({ date, items }) => (
+      {expanded && (
+        <div className="row-detail">
+          {task.notes && <p className="task-notes">{task.notes}</p>}
+
+          {todaysUpdates.length > 0 && (
+            <div className="updates-today">
+              <span className="update-today-label">Today</span>
+              <div className="update-items">
+                {todaysUpdates.map(u => (
+                  <div key={u.id} className="update-item">
+                    <span className="update-body">{u.body}</span>
+                    <span className="update-meta">
+                      {u.profiles?.display_name && <>{u.profiles.display_name} · </>}
+                      {formatTime(u.created_at)}
+                    </span>
+                    <button className="update-delete-btn" title="Delete update"
+                      onClick={() => onDeleteUpdate?.(u.id)}>×</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {historyDates.length > 0 && (
+            <button className="history-toggle" onClick={() => setShowHistory(h => !h)}>
+              {showHistory ? '▲' : '▼'} {historyUpdates.length} past update{historyUpdates.length !== 1 ? 's' : ''}
+            </button>
+          )}
+          {showHistory && (
+            <div className="updates-history">
+              {historyDates.map(date => (
                 <div key={date} className="history-day">
-                  <span className="history-date-label">
-                    {date === todayStr() ? 'Today' : formatHistoryDate(date)}
-                  </span>
+                  <span className="history-date-label">{formatHistoryDate(date)}</span>
                   <div className="update-items">
-                    {items.map(u => (
+                    {historyByDate[date].map(u => (
                       <div key={u.id} className="update-item">
                         <span className="update-body">{u.body}</span>
-                        <span className="update-meta">{u.profiles?.display_name && <>{u.profiles.display_name} · </>}{formatTime(u.created_at)}</span>
+                        {u.profiles?.display_name && (
+                          <span className="update-meta">{u.profiles.display_name}</span>
+                        )}
+                        <button className="update-delete-btn" title="Delete update"
+                          onClick={() => onDeleteUpdate?.(u.id)}>×</button>
                       </div>
                     ))}
                   </div>
                 </div>
-              ))
-            }
-          </div>
-        </div>
-      )}
+              ))}
+            </div>
+          )}
 
-      {!isArchived && (
-        <div className="task-row-update">
-          <div className="updates-section">
-            {todaysUpdates.length > 0 ? (
-              <div className="updates-today">
-                <span className="update-today-label">Today</span>
-                <div className="update-items">
-                  {todaysUpdates.map(u => (
-                    <div key={u.id} className="update-item">
-                      <span className="update-body">{u.body}</span>
-                      <span className="update-meta">
-                        {u.profiles?.display_name && <>{u.profiles.display_name} · </>}
-                        {formatTime(u.created_at)}
-                      </span>
-                      <button className="update-delete-btn" title="Delete update"
-                        onClick={() => onDeleteUpdate?.(u.id)}>×</button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <span className="update-today-label muted">No update yet today</span>
-            )}
-            {historyDates.length > 0 && (
-              <button className="history-toggle" onClick={() => setShowHistory(h => !h)}>
-                {showHistory ? '▲' : '▼'} {historyUpdates.length} past update{historyUpdates.length !== 1 ? 's' : ''}
-              </button>
-            )}
-            {showHistory && (
-              <div className="updates-history">
-                {historyDates.map(date => (
-                  <div key={date} className="history-day">
-                    <span className="history-date-label">{formatHistoryDate(date)}</span>
-                    <div className="update-items">
-                      {historyByDate[date].map(u => (
-                        <div key={u.id} className="update-item">
-                          <span className="update-body">{u.body}</span>
-                          {u.profiles?.display_name && (
-                            <span className="update-meta">{u.profiles.display_name}</span>
-                          )}
-                          <button className="update-delete-btn" title="Delete update"
-                            onClick={() => onDeleteUpdate?.(u.id)}>×</button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {expanded ? (
+          {!isArchived && (
             <div className="update-expanded-area">
               <textarea
-                autoFocus
-                rows={3}
+                rows={2}
                 value={draftText}
                 onChange={e => onDraftChange?.(e.target.value)}
                 placeholder="What happened today? What's the current status?"
               />
               <div className="update-expanded-actions">
-                <button type="button" className="btn-ghost btn-sm" onClick={cancelUpdate}>Cancel</button>
                 <button type="button" className="status-submit-btn todo" onClick={() => submitUpdate('todo')}>To-do</button>
                 <button type="button" className="status-submit-btn inprogress" onClick={() => submitUpdate('in_progress')}>In Progress</button>
                 <button type="button" className="status-submit-btn done" onClick={() => submitUpdate('done')}>Done</button>
               </div>
             </div>
-          ) : (
-            <div
-              className={`update-input-collapsed${draftText ? ' has-draft' : ''}`}
-              onClick={() => setExpanded(true)}
-            >
-              {draftText || 'Add today\'s update…'}
-            </div>
           )}
         </div>
       )}
     </div>
+  )
+}
+
+// ─── Braindump ───────────────────────────────────────────────────────────────
+
+// How long an item has been sitting in the pile. The design shows this as the
+// item's age, which is the only pressure the pile applies.
+function ageOf(iso) {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000))
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m`
+  const hrs = Math.round(mins / 60)
+  if (hrs < 24) return `${hrs}h`
+  return `${Math.round(hrs / 24)}d`
+}
+
+function Braindump({ items, bands, laneCounts, projectName, onCapture, onSort, onDelete, onBack }) {
+  const [draft, setDraft] = useState('')
+  const [selected, setSelected] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [notice, setNotice] = useState('')
+
+  // Selection follows the pile: if the selected item leaves, take the first
+  // one that's left so a triage run never needs the mouse between items.
+  useEffect(() => {
+    if (selected && !items.some(i => i.id === selected)) {
+      setSelected(items.length ? items[0].id : null)
+    }
+  }, [items, selected])
+
+  const sortInto = useCallback(async status => {
+    const item = items.find(i => i.id === selected)
+    if (!item || busy) return
+    setBusy(true)
+    try {
+      const err = await onSort(item, status)
+      setNotice(err || '')
+    } finally { setBusy(false) }
+  }, [items, selected, busy, onSort])
+
+  // 1–3 send the selected item to the matching band. Ignored while typing, or
+  // the capture field would be unusable.
+  useEffect(() => {
+    function onKey(e) {
+      if (selected == null) return
+      if (e.target && /input|textarea/i.test(e.target.tagName)) return
+      const i = bands.findIndex((_, n) => String(n + 1) === e.key)
+      if (i >= 0) { e.preventDefault(); sortInto(bands[i].key) }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [bands, selected, sortInto])
+
+  async function submit(e) {
+    e.preventDefault()
+    const title = draft.trim()
+    if (!title || busy) return
+    setBusy(true)
+    try { await onCapture(title); setDraft(''); setNotice('') }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <div className="dump-wrap">
+      <div className="board-head">
+        <span className="board-plaque">Braindump</span>
+        <span className="board-summary">{items.length} unsorted</span>
+        <div className="board-head-spacer" />
+        <button className="bb-btn" onClick={onBack}>Back to board</button>
+      </div>
+
+      <div className="dump-grid">
+        <div className="dump-pile">
+          <form className="dump-capture" onSubmit={submit}>
+            <input
+              value={draft}
+              onChange={e => setDraft(e.target.value)}
+              placeholder="Dump it here — one line, one task"
+              aria-label="Capture a task"
+            />
+            <button type="submit" className="bb-btn primary" disabled={!draft.trim() || busy}>Add</button>
+          </form>
+          <p className="dump-hint">
+            click an item, then press 1–{bands.length} or hit a tray slot · oldest first
+          </p>
+          {notice && <p className="form-notice">{notice}</p>}
+
+          <div className="dump-list">
+            {items.map(item => (
+              <div
+                key={item.id}
+                className={`dump-item${item.id === selected ? ' on' : ''}`}
+                tabIndex={0}
+                role="button"
+                aria-pressed={item.id === selected}
+                onClick={() => setSelected(item.id)}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(item.id) } }}
+              >
+                <span className="dump-grab" />
+                <span className="dump-body">
+                  <span className="dump-title">{item.title}</span>
+                  <span className="dump-meta">
+                    <span>{ageOf(item.created_at)}</span>
+                    <span>typed</span>
+                  </span>
+                </span>
+                <span className="dump-chip">{projectName(item.project_id) || 'unfiled'}</span>
+              </div>
+            ))}
+            {items.length === 0 && (
+              <div className="dump-empty">Nothing left in the pile. The board has it all.</div>
+            )}
+          </div>
+        </div>
+
+        <div className="dump-tray">
+          <span className="tray-title">Sort into</span>
+          {bands.map((band, i) => (
+            <button
+              key={band.key}
+              className="tray-slot"
+              disabled={selected == null || busy}
+              onClick={() => sortInto(band.key)}
+            >
+              <span className="tray-key">{i + 1}</span>
+              <span className="tray-name">{band.label}</span>
+              <span className="tray-spacer" />
+              <span className="tray-n">{laneCounts[band.key] ?? 0}</span>
+            </button>
+          ))}
+          <span className="tray-rule" />
+          <button
+            className="tray-discard"
+            disabled={selected == null || busy}
+            onClick={() => {
+              const item = items.find(i => i.id === selected)
+              if (item && window.confirm(`Discard "${item.title}"?`)) onDelete(item.id)
+            }}
+          >Discard selected</button>
+          <p className="tray-note">
+            {selected == null
+              ? 'Nothing selected — click an item on the left.'
+              : `1 selected · hit a slot or press its number.`}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Greenhouse strip ────────────────────────────────────────────────────────
+
+// Pinned below the last band. The design carries its own toy economy — growth
+// percentages and a "Water — 12 coins" button — but trakkit already has a real
+// garden with grow timers, packets, clouds and banked overflow. Rather than
+// running a second, contradictory economy, this reads the real one: the flower
+// actually in the ground, its real stage, and the balances the board's own
+// rewards feed. The button goes to the garden instead of watering.
+function GreenhouseStrip({ doneToday }) {
+  const { state, ready } = useGarden()
+  const navigate = useNavigate()
+  const [, setTick] = useState(0)
+
+  const growing = seedByKey(state?.growing_seed)
+  // The remaining time is a live number, so it needs a heartbeat to stay true.
+  useEffect(() => {
+    if (!growing) return
+    const id = setInterval(() => setTick(t => t + 1), 1000)
+    return () => clearInterval(id)
+  }, [growing])
+
+  if (!ready) return null
+
+  const remaining = remainingSeconds(state)
+  const total = state?.growing_grow_seconds ?? growing?.growSeconds ?? 1
+  const pct = growing ? Math.min(100, ((total - remaining) / total) * 100) : 0
+  const stage = growthStage(pct, growing)
+  const stageNo = GROWTH_STAGES.findIndex(s => s.key === stage.key) + 1
+  const isReady = growing && remaining === 0
+  const streak = liveStreak(state?.streak)
+
+  return (
+    <section className="greenhouse-strip">
+      <div className="gh-pot">
+        <span className="gh-soil" />
+        <span className="gh-plant" style={{ '--grow': pct / 100 }}>
+          <span className="gh-bloom">{growing ? stage.emoji : '·'}</span>
+          <span className="gh-stem" />
+          <span className="gh-vessel" />
+        </span>
+      </div>
+      <div className="gh-body">
+        <div>
+          <p className="gh-title">Greenhouse</p>
+          <p className="gh-copy">
+            {growing
+              ? `${growing.name} — finishing tasks earns clouds, and clouds cut the wait. ${isReady ? 'It’s ready to keep or sell.' : 'Bloom at stage 8, then it moves to the garden.'}`
+              : 'Nothing growing. Open a packet and plant a seed to start one.'}
+          </p>
+        </div>
+
+        {growing && (
+          <div className="gh-progress">
+            <div className="gh-progress-row">
+              <span>stage {stageNo} of {GROWTH_STAGES.length} · {stage.label}</span>
+              <span>{isReady ? 'ready to harvest' : `${formatDuration(remaining)} left`}</span>
+            </div>
+            <div className="gh-bar"><span style={{ width: `${pct}%` }} /></div>
+          </div>
+        )}
+
+        <div className="gh-stats">
+          <div className="gh-stat">
+            <span className="gh-num">{(state?.coins ?? 0).toLocaleString()}</span>
+            <span className="gh-label">coins</span>
+          </div>
+          <div className="gh-stat">
+            <span className="gh-num">{streak}</span>
+            <span className="gh-label">day streak</span>
+          </div>
+          <div className="gh-stat">
+            <span className="gh-num">{doneToday}</span>
+            <span className="gh-label">done today</span>
+          </div>
+        </div>
+
+        <div className="gh-actions">
+          <button className="bb-btn primary" onClick={() => navigate('/garden')}>
+            {isReady ? 'Harvest it →' : 'Open the garden →'}
+          </button>
+          <span className="gh-note">
+            {isReady
+              ? 'finished — keep it or sell it'
+              : growing ? 'clouds from finished tasks cut the wait' : 'seeds come from adding tasks'}
+          </span>
+        </div>
+      </div>
+    </section>
   )
 }
 

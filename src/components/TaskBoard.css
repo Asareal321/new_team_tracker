@@ -1365,3 +1365,566 @@
 @media (prefers-reduced-motion: reduce) {
   .task-drawer { animation: none; }
 }
+
+/* ═══ Beech & Baize taskboard ══════════════════════════════════════════════
+   The board's own material system, from the design handoff. Scoped to the two
+   board roots rather than made global: the reskin is the board's, not the
+   app's. Dark values are the handoff's separate dark palette, not an inversion.
+
+   Depth rule: no blurred shadows anywhere. Edges are `0 Npx 0 <edge-color>` —
+   zero blur, zero spread, in the piece's own edge colour, never black, never
+   with alpha. Rest 3px (5px on plaques), hover 4px, pressed 1px. Flat pieces
+   (rows, cards) take a 1px border and no edge at all.
+
+   Press physics: geometry only. Never a colour change on hover.             */
+
+.board-bands,
+.dump-wrap {
+  --bb-ground:       #64B468;
+  --bb-wood:         #89582C;
+  --bb-wood-edge:    #653C1F;
+  --bb-wood-ink:     #FEFCF7;
+  --bb-accent:       #90D94F;
+  --bb-accent-brd:   #63B739;
+  --bb-accent-edge:  #3E8637;
+  --bb-accent-ink:   #0C511A;
+  --bb-accent-tint:  #D3EEB4;
+  --bb-surface:      #FEFCF7;
+  --bb-sunk:         #EDE7DC;
+  --bb-on-surface:   #18110C;
+  --bb-muted:        #6A6258;
+  --bb-border:       #D9D0C1;
+  --bb-flag:         #CD493C;
+  --bb-flag-ink:     #8E2B26;
+  --bb-flag-tint:    #FFDED5;
+  --bb-due:          #DC8818;
+  --bb-due-ink:      #894C06;
+  --bb-due-tint:     #FBE9CA;
+  --bb-selected:     #F6F1E8;
+
+  --bb-toy:  Fredoka, 'Baloo 2', 'Trebuchet MS', sans-serif;
+  --bb-num:  Sono, 'DM Mono', ui-monospace, Menlo, monospace;
+
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  margin-top: 0.75rem;
+  border-radius: 18px;
+  background: var(--bb-ground);
+  color: var(--bb-on-surface);
+}
+
+html[data-theme="dark"] .board-bands,
+html[data-theme="dark"] .dump-wrap {
+  --bb-ground:     #17110D;
+  --bb-surface:    #26201B;
+  --bb-sunk:       #1F1915;
+  --bb-on-surface: #E8E4DD;
+  --bb-muted:      #9D978F;
+  --bb-border:     #3F3831;
+  --bb-wood:       #6E451E;
+  --bb-wood-edge:  #371E0D;
+  --bb-accent:     #7DBE54;
+  --bb-accent-edge:#366C33;
+  --bb-flag:       #DD7767;
+  --bb-due:        #E2A355;
+  --bb-selected:   #2E2721;
+}
+
+/* --- header row ----------------------------------------------------------- */
+
+.board-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.board-head-spacer { flex: 1; }
+
+.board-plaque {
+  background: var(--bb-wood);
+  color: var(--bb-wood-ink);
+  font-family: var(--bb-toy);
+  font-weight: 600;
+  font-size: 21px;
+  line-height: 1.15;
+  letter-spacing: -0.005em;
+  border: 3px solid var(--bb-wood-edge);
+  border-radius: 14px;
+  box-shadow: 0 5px 0 var(--bb-wood-edge);
+  padding: 6px 20px;
+}
+
+.board-summary {
+  font-family: var(--bb-num);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--bb-accent-ink);
+  background: var(--bb-accent-tint);
+  border-radius: 9999px;
+  padding: 4px 12px;
+}
+
+/* Buttons. Two levels only — the system has no tertiary button, so anything
+   lower-weight than these is a text link. */
+.bb-btn {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  border-radius: 9999px;
+  padding: 9px 16px;
+  cursor: pointer;
+  background: var(--bb-surface);
+  color: var(--bb-wood);
+  border: 2px solid var(--bb-border);
+  box-shadow: 0 3px 0 var(--bb-border);
+  transition: transform 90ms, box-shadow 90ms;
+}
+.bb-btn:hover:not(:disabled)  { transform: translateY(-1px); box-shadow: 0 4px 0 var(--bb-border); }
+.bb-btn:active:not(:disabled) { transform: translateY(2px);  box-shadow: 0 1px 0 var(--bb-border); }
+.bb-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.bb-btn.primary {
+  background: var(--bb-accent);
+  color: var(--bb-accent-ink);
+  border-color: var(--bb-accent-brd);
+  box-shadow: 0 3px 0 var(--bb-accent-edge);
+}
+.bb-btn.primary:hover:not(:disabled)  { box-shadow: 0 4px 0 var(--bb-accent-edge); }
+.bb-btn.primary:active:not(:disabled) { box-shadow: 0 1px 0 var(--bb-accent-edge); }
+
+.board-bands :focus-visible,
+.dump-wrap :focus-visible { outline: 2px solid var(--bb-accent-ink); outline-offset: 2px; }
+
+/* --- bands ---------------------------------------------------------------- */
+
+/* A well routed into the board: a top edge only, nothing beneath it. */
+.band {
+  background: var(--bb-sunk);
+  border-top: 2px solid var(--bb-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.band-over { outline: 2px dashed var(--bb-accent-brd); outline-offset: 2px; }
+
+.band-head { display: flex; align-items: center; gap: 10px; }
+.band-pill {
+  background: var(--bb-wood);
+  color: var(--bb-wood-ink);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 2px solid var(--bb-wood-edge);
+  border-radius: 9999px;
+  padding: 3px 12px;
+}
+.band-count {
+  font-family: var(--bb-num);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--bb-muted);
+}
+.band-full .band-count { color: var(--bb-flag-ink); font-weight: 700; }
+.band-rule { flex: 1; height: 1px; background: var(--bb-border); }
+
+/* Tasks read down the left column, then the right. */
+.band-body { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 16px; }
+/* A grouped band goes single-column: two columns of small sprint groups reads
+   as a broken grid rather than as two columns. */
+.band-body.grouped { grid-template-columns: 1fr; gap: 8px; }
+.band-empty {
+  grid-column: 1 / -1;
+  padding: 14px 10px;
+  font-size: 13px;
+  color: var(--bb-muted);
+}
+
+.sprint-group { display: flex; flex-direction: column; gap: 4px; }
+.sprint-group-body { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 16px; }
+.band .sprint-group-head {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--bb-muted);
+  padding: 2px 0;
+  background: none; border: none;
+}
+.band .sprint-group-dot { width: 8px; height: 8px; border-radius: 50%; }
+.band .sprint-group-count { font-family: var(--bb-num); font-weight: 400; }
+
+/* --- paper rows ----------------------------------------------------------- */
+
+/* Paper: flat, 1px border, never an edge. */
+.paper-row {
+  background: var(--bb-surface);
+  border-radius: 4px;
+  border-bottom: 1px solid var(--bb-border);
+}
+.paper-row.open { border-bottom-color: var(--bb-wood); }
+
+.paper-main {
+  display: grid;
+  grid-template-columns: 4px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 0;
+}
+
+/* The stripe is the drag handle — full height, and the one part of the row
+   with nothing else to click. It is *always* paired with the matching chip;
+   a stripe alone would be an unexplained colour. */
+.row-stripe {
+  align-self: stretch;
+  min-height: 28px;
+  border-radius: 4px 0 0 4px;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+}
+.kind-hi  .row-stripe { background: var(--bb-flag); }
+.kind-due .row-stripe { background: var(--bb-due); }
+.row-stripe:active { cursor: grabbing; }
+
+.row-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.row-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--bb-on-surface);
+}
+.kind-done .row-title { color: var(--bb-muted); text-decoration: line-through; }
+
+.row-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-family: var(--bb-num);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--bb-muted);
+}
+.row-meta .overdue { color: var(--bb-flag-ink); font-weight: 700; }
+.row-updated { color: var(--bb-accent-ink); }
+
+.row-tail { display: flex; align-items: center; gap: 6px; }
+.row-chip {
+  font-family: var(--bb-num);
+  font-size: 10px;
+  line-height: 1.5;
+  border-radius: 9999px;
+  padding: 2px 9px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  background: var(--bb-sunk);
+  color: var(--bb-muted);
+}
+.kind-hi   .row-chip { background: var(--bb-flag-tint); color: var(--bb-flag-ink); }
+.kind-due  .row-chip { background: var(--bb-due-tint);  color: var(--bb-due-ink); }
+.kind-done .row-chip { background: var(--bb-accent-tint); color: var(--bb-accent-ink); }
+
+.row-menu, .row-advance {
+  cursor: pointer;
+  background: var(--bb-surface);
+  color: var(--bb-wood);
+  border: 1px solid var(--bb-border);
+  border-radius: 9999px;
+  height: 24px;
+  line-height: 1;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 90ms;
+}
+.row-advance { width: 24px; }
+.row-menu { padding: 0 7px; font-size: 11px; letter-spacing: 0.08em; }
+.row-menu:hover, .row-advance:hover:not(:disabled) { transform: translateY(-1px); }
+.row-menu:active, .row-advance:active:not(:disabled) { transform: translateY(2px); }
+.row-menu.active { background: var(--bb-wood); color: var(--bb-wood-ink); border-color: var(--bb-wood-edge); }
+.row-advance:disabled { opacity: 0.35; cursor: default; }
+
+.paper-row .task-action-bar { padding: 0 10px 8px 14px; }
+.row-detail {
+  padding: 0 10px 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--bb-border);
+  padding-top: 8px;
+}
+.row-detail .task-notes { font-size: 13px; color: var(--bb-muted); }
+
+/* --- braindump ------------------------------------------------------------ */
+
+.dump-grid { display: grid; grid-template-columns: 1fr 268px; gap: 16px; align-items: start; }
+
+.dump-pile {
+  background: var(--bb-surface);
+  border: 1px solid var(--bb-border);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dump-capture { display: flex; gap: 8px; align-items: center; }
+.dump-capture input {
+  flex: 1;
+  background: var(--bb-surface);
+  color: var(--bb-on-surface);
+  border: 1px solid var(--bb-border);
+  border-radius: 4px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.dump-hint, .tray-note {
+  font-family: var(--bb-num);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--bb-muted);
+  line-height: 1.45;
+}
+
+.dump-list { display: flex; flex-direction: column; gap: 8px; }
+.dump-item {
+  border: 1px solid var(--bb-border);
+  background: var(--bb-surface);
+  border-radius: 4px;
+  padding: 10px 12px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 90ms;
+}
+.dump-item:hover { transform: translateY(-1px); }
+.dump-item.on { border: 2px solid var(--bb-wood); background: var(--bb-selected); padding: 9px 11px; }
+.dump-grab {
+  width: 8px;
+  align-self: stretch;
+  min-height: 26px;
+  border-radius: 2px;
+  background: var(--bb-sunk);
+}
+.dump-item.on .dump-grab { background: var(--bb-wood); }
+.dump-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.dump-title { font-size: 14px; line-height: 1.4; }
+.dump-meta {
+  display: flex;
+  gap: 8px;
+  font-family: var(--bb-num);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--bb-muted);
+}
+.dump-chip {
+  font-family: var(--bb-num);
+  font-size: 10px;
+  line-height: 1.5;
+  border-radius: 9999px;
+  padding: 2px 9px;
+  background: var(--bb-sunk);
+  color: var(--bb-on-surface);
+  white-space: nowrap;
+}
+.dump-empty {
+  border: 1px solid var(--bb-border);
+  border-radius: 4px;
+  padding: 20px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--bb-muted);
+}
+
+.dump-tray {
+  background: var(--bb-sunk);
+  border-top: 2px solid var(--bb-border);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: sticky;
+  top: 24px;
+}
+.tray-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bb-muted);
+}
+.tray-slot {
+  text-align: left;
+  cursor: pointer;
+  background: var(--bb-surface);
+  border: 2px solid var(--bb-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: inherit;
+  box-shadow: 0 3px 0 var(--bb-border);
+  transition: transform 90ms, box-shadow 90ms;
+}
+.tray-slot:hover:not(:disabled)  { transform: translateY(-1px); box-shadow: 0 4px 0 var(--bb-border); }
+.tray-slot:active:not(:disabled) { transform: translateY(2px);  box-shadow: 0 1px 0 var(--bb-border); }
+.tray-slot:disabled { opacity: 0.5; cursor: not-allowed; }
+.tray-key {
+  font-family: var(--bb-num);
+  font-size: 11px;
+  color: var(--bb-muted);
+  border: 1px solid var(--bb-border);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+.tray-name { font-size: 14px; font-weight: 700; color: var(--bb-on-surface); }
+.tray-spacer { flex: 1; }
+.tray-n { font-family: var(--bb-num); font-size: 11px; font-variant-numeric: tabular-nums; color: var(--bb-muted); }
+.tray-rule { height: 1px; background: var(--bb-border); margin: 4px 0; }
+/* A text link, not a third button — the system has no tertiary button. */
+.tray-discard {
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 6px 4px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--bb-flag-ink);
+}
+.tray-discard:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* --- greenhouse strip ----------------------------------------------------- */
+
+.greenhouse-strip {
+  background: var(--bb-surface);
+  border: 1px solid var(--bb-border);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+}
+.gh-pot {
+  flex: 0 0 150px;
+  background: var(--bb-sunk);
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 12px;
+  min-height: 170px;
+  position: relative;
+  overflow: hidden;
+}
+.gh-soil { position: absolute; left: 0; right: 0; bottom: 0; height: 34px; background: var(--bb-border); }
+.gh-plant { position: relative; display: flex; flex-direction: column; align-items: center; }
+/* The bloom and stem scale continuously with growth, so the plant visibly
+   changes between stages and not only at their boundaries. */
+.gh-bloom { font-size: calc(20px + var(--grow, 0) * 22px); line-height: 1; }
+.gh-stem {
+  width: 6px;
+  height: calc(18px + var(--grow, 0) * 50px);
+  background: var(--bb-accent-edge);
+  border-radius: 9999px;
+}
+.gh-vessel {
+  width: 64px;
+  height: 34px;
+  background: var(--bb-wood);
+  border: 2px solid var(--bb-wood-edge);
+  border-radius: 4px 4px 8px 8px;
+}
+
+.gh-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.gh-title { font-family: var(--bb-toy); font-weight: 600; font-size: 21px; line-height: 1.15; letter-spacing: -0.005em; }
+.gh-copy { font-size: 14px; line-height: 1.5; color: var(--bb-muted); max-width: 68ch; }
+
+.gh-progress { display: flex; flex-direction: column; gap: 6px; }
+.gh-progress-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--bb-num);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--bb-muted);
+}
+.gh-bar { height: 10px; background: var(--bb-sunk); border-radius: 9999px; overflow: hidden; }
+.gh-bar span {
+  display: block;
+  height: 10px;
+  background: var(--bb-accent);
+  border-right: 2px solid var(--bb-accent-brd);
+  transition: width 180ms;
+}
+
+.gh-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 520px; }
+.gh-stat {
+  border: 1px solid var(--bb-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.gh-num {
+  font-family: var(--bb-num);
+  font-size: 26px;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.gh-label { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--bb-muted); }
+.gh-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.gh-note { font-family: var(--bb-num); font-size: 11px; letter-spacing: 0.02em; color: var(--bb-muted); }
+
+/* --- responsive ----------------------------------------------------------- */
+
+@media (max-width: 1100px) {
+  .band-body, .sprint-group-body { grid-template-columns: 1fr; }
+  .dump-grid { grid-template-columns: 1fr; }
+  /* Tray above the pile, and no longer sticky — a sticky element in a single
+     column follows you down the page for no reason. */
+  .dump-tray { position: static; order: -1; }
+}
+
+@media (max-width: 820px) {
+  .board-bands, .dump-wrap { padding: 14px; }
+  .greenhouse-strip { flex-direction: column; }
+  .gh-pot { flex: 0 0 auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bb-btn, .tray-slot, .dump-item, .row-menu, .row-advance, .gh-bar span { transition: none; }
+  .bb-btn:hover, .bb-btn:active,
+  .tray-slot:hover, .tray-slot:active,
+  .dump-item:hover, .row-menu:hover, .row-menu:active,
+  .row-advance:hover, .row-advance:active { transform: none; }
+}
