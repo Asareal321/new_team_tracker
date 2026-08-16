@@ -31,7 +31,6 @@ export default function GardenPage() {
   const {
     state, flowers, ready,
     plantSeed, placeFlower, moveFlower, sellGrown, sellPlanted, buyPacket, openPacket, expandGarden,
-    markHarvestCelebrated,
   } = useGarden()
   const [tab, setTab] = useState('garden')
   // Which flower is in hand, so the overlay can render it and the grid can
@@ -50,11 +49,10 @@ export default function GardenPage() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [placing, setPlacing] = useState(false)
-  // Mirrors harvest_celebrated locally. If the write fails — most likely the
-  // migration not being applied — the flag would stay false and the cinematic
-  // would restart the instant it finished, so this ends it for the session
-  // regardless.
-  const [celebratedHere, setCelebratedHere] = useState(false)
+  // The flower whose payoff cinematic is playing, or null. Keeping the seed
+  // here rather than reading `growing` at render time means the piece finishes
+  // on the flower it started with even if the slot is cleared underneath it.
+  const [celebrating, setCelebrating] = useState(null)
   const [tick, setTick] = useState(0)
 
   // Drive the countdown once a second while a seed is in the ground.
@@ -261,9 +259,9 @@ export default function GardenPage() {
                       className="garden-btn primary"
                       disabled={!openPlots.length}
                       title={openPlots.length ? '' : 'No empty plots — sell a flower or expand the garden'}
-                      /* Straight to the garden with the bed picker armed, as the
-                         wireframe note asks. */
-                      onClick={() => { setPlacing(true); setTab('garden'); setNotice('Pick an empty bed for it.') }}
+                      /* The payoff plays first; the bed picker is armed when
+                         it finishes (or is skipped). */
+                      onClick={() => setCelebrating(growing)}
                     >
                       Keep it
                     </button>
@@ -559,12 +557,18 @@ export default function GardenPage() {
         )}
       </div>
 
-      {/* The payoff for a finished grow, once per grow. It's a full-screen
-          overlay, so it plays whichever room of the garden you happen to be in. */}
-      {isReady && !state?.harvest_celebrated && !celebratedHere && !opening && (
+      {/* The payoff for a finished grow, played when you choose to keep it —
+          so it lands on a decision you made rather than interrupting you the
+          moment a timer expired. The bed picker is armed on the way out. */}
+      {celebrating && (
         <FlowerGrown
-          seed={growing}
-          onDone={() => { setCelebratedHere(true); markHarvestCelebrated() }}
+          seed={celebrating}
+          onDone={() => {
+            setCelebrating(null)
+            setPlacing(true)
+            setTab('garden')
+            setNotice('Pick an empty bed for it.')
+          }}
         />
       )}
 

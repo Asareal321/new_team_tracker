@@ -33,10 +33,6 @@ const DEFAULT_STATE = {
   // Shave time a cloud produced beyond what the flower it hit still needed.
   // Held until the user picks the seed that should receive it.
   overflow_seconds: 0,
-  // Whether the current grow's payoff cinematic has already played. A finished
-  // flower waits in the greenhouse until it's kept or sold, so without this it
-  // would replay on every visit.
-  harvest_celebrated: false,
 }
 
 // Where a flower waits mid-swap. Off-grid and negative, so no plot renders it
@@ -220,7 +216,6 @@ export function GardenProvider({ children }) {
       onboarded: true,
       discovered,
       ...(seed ? {
-        harvest_celebrated: false,
         growing_seed: seed.key,
         growing_started_at: new Date().toISOString(),
         growing_grow_seconds: seed.growSeconds,
@@ -321,12 +316,6 @@ export function GardenProvider({ children }) {
     return { ...seedByKey(wonKey), isNew }
   }, [save])
 
-  // The payoff cinematic has played for this grow; don't show it again.
-  const markHarvestCelebrated = useCallback(
-    () => save({ harvest_celebrated: true }),
-    [save],
-  )
-
   const plantSeed = useCallback(async seedKey => {
     const seed = seedByKey(seedKey)
     if (!seed) throw new Error('Unknown seed')
@@ -347,7 +336,6 @@ export function GardenProvider({ children }) {
       growing_grow_seconds: seed.growSeconds,
       shaved_seconds: applied,
       overflow_seconds: banked - applied,
-      harvest_celebrated: false,
     })
     return { seed, applied, remainingOverflow: banked - applied }
   }, [save])
@@ -358,7 +346,6 @@ export function GardenProvider({ children }) {
       growing_started_at: null,
       growing_grow_seconds: null,
       shaved_seconds: 0,
-      harvest_celebrated: false,
       ...extra,
     }),
     [save],
@@ -470,7 +457,7 @@ export function GardenProvider({ children }) {
 
   const value = {
     state, flowers, ready, seeds: SEEDS,
-    spawnCloud, bankTaskReward, setQuietMode, completeOnboarding, buyPacket, openPacket, plantSeed, markHarvestCelebrated, placeFlower, moveFlower, sellGrown, sellPlanted, unlockSeed, expandGarden,
+    spawnCloud, bankTaskReward, setQuietMode, completeOnboarding, buyPacket, openPacket, plantSeed, placeFlower, moveFlower, sellGrown, sellPlanted, unlockSeed, expandGarden,
     isDev, devOpen, openDevPanel: () => setDevOpen(true),
   }
 
