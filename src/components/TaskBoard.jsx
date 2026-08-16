@@ -1078,7 +1078,7 @@ function Band({ status, label, tasks, limit, isFull, onBlocked, resolveAssignees
                 {tasks.length === 1 ? 'task finished today' : 'tasks finished today'}
               </span>
               {tasks.length > 0 && (
-                <button className="tally-toggle" onClick={() => setOpen(true)}>Show them</button>
+                <button className="tally-toggle" onClick={() => setOpen(true)}>Show</button>
               )}
             </div>
           ) : groups
@@ -1096,7 +1096,7 @@ function Band({ status, label, tasks, limit, isFull, onBlocked, resolveAssignees
               ))
             : tasks.map(task => renderRow(task))}
           {!collapsed && isTally && (
-            <button className="tally-toggle hide" onClick={() => setOpen(false)}>Hide them</button>
+            <button className="tally-toggle hide" onClick={() => setOpen(false)}>Hide</button>
           )}
           {!collapsed && tasks.length === 0 && (
             <div className="band-empty">
