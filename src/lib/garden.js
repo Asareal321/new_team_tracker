@@ -96,10 +96,74 @@ export const RARITY_COLORS = {
   5: '#e0b93f',
 }
 
-// What a completed task banks. The wireframes put this on the card as it
-// leaves — "+1 seed · 12 coins" — so the numbers are deliberately small and
-// legible rather than tuned.
-export const TASK_REWARD = { seeds: 1, coins: 12 }
+// What each action banks.
+//
+// The three rewards deliberately sit at different points of a task's life, so
+// no single repeated motion pays for everything:
+//   • adding a task pays a seed — the raw material, cheap and plentiful
+//   • clearing the Doing column pays coins — the only route to real money from
+//     the board, and it can't be farmed without actually finishing work
+//   • finishing a task pays a cloud, whose value is its own roll
+//
+// Every one of them is capped per day (DAILY_CAPS). Adding a task is trivially
+// repeatable, so without a cap "add a seed, delete it, add another" would be
+// the most efficient way to play the game — which would make the rest of it
+// pointless.
+export const ADD_TASK_REWARD = { seeds: 1 }
+export const DOING_CLEAR_REWARD = { coins: 60 }
+
+// A day's worth of each. Days are local, not UTC — a cap that rolls over at
+// 7pm local time would read as broken.
+export const DAILY_CAPS = {
+  seeds: 12,    // from adding tasks
+  coins: 300,   // from clearing the Doing column
+  clouds: 10,   // clouds offered for finished tasks
+}
+
+// Quiet mode swaps the cloud for its cash value rather than dropping it: the
+// cloud is now the whole reward for finishing a task, so suppressing it used to
+// mean finishing work paid nothing at all. This is the mean coin payout of a
+// cloud over the finishing curve (see scripts/check-cloud-odds.mjs), rounded.
+export const CLOUD_EXPECTED_COINS = 90
+
+// Local-timezone YYYY-MM-DD. Everything day-shaped in the garden — caps,
+// streaks — uses this, so a day turns over at the user's midnight.
+export function localDay(ts) {
+  const d = ts ? new Date(ts) : new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// The local day before a given YYYY-MM-DD. Anchored at noon so a DST shift
+// can't land the arithmetic on the wrong date.
+export function previousDay(dayStr) {
+  const d = new Date(`${dayStr}T12:00:00`)
+  d.setDate(d.getDate() - 1)
+  return localDay(d)
+}
+
+// Today's counters, rolled over if the stored bucket is from an earlier day.
+export function todayBucket(daily) {
+  const day = localDay()
+  return daily && daily.day === day ? daily : { day, seeds: 0, coins: 0, clouds: 0 }
+}
+
+// Advance a streak for activity on `day`. Same day is a no-op, the day after
+// extends it, anything older starts again at 1.
+export function advanceStreak(streak, day = localDay()) {
+  const s = streak || { current: 0, best: 0, lastDay: null }
+  if (s.lastDay === day) return s
+  const current = s.lastDay === previousDay(day) ? (s.current || 0) + 1 : 1
+  return { current, best: Math.max(current, s.best || 0), lastDay: day }
+}
+
+// A streak only counts while it's still live: today or yesterday. Otherwise
+// it's a stale number the user has already lost.
+export function liveStreak(streak) {
+  const s = streak || { current: 0, best: 0, lastDay: null }
+  if (!s.lastDay) return 0
+  const today = localDay()
+  return s.lastDay === today || s.lastDay === previousDay(today) ? (s.current || 0) : 0
+}
 
 export function seedByKey(key) {
   return SEEDS.find(s => s.key === key) || null

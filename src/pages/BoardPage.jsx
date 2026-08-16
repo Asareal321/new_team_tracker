@@ -108,7 +108,10 @@ function DoneTaskModal({ task, tasks = [], projects, onAdd, onUpdateProject, onP
 export default function BoardPage() {
   const { user } = useAuth()
   const { currentTeamId, teams } = useTeam()
-  const { spawnCloud, bankTaskReward, state: garden, ready: gardenReady, completeOnboarding } = useGarden()
+  const {
+    rewardTaskAdded, rewardTaskDone, rewardDoingCleared,
+    state: garden, ready: gardenReady, completeOnboarding,
+  } = useGarden()
   const [tasks, setTasks] = useState([])
   const [teamMembers, setTeamMembers] = useState([])
   const [projects, setProjects] = useState([])
@@ -116,6 +119,7 @@ export default function BoardPage() {
   const [projectMembers, setProjectMembers] = useState([])
   const [taskUpdates, setTaskUpdates] = useState([])
   const [loading, setLoading] = useState(true)
+  // { task, clearedDoing } — the completion being celebrated.
   const [doneTask, setDoneTask] = useState(null)
   const [showProjectsManager, setShowProjectsManager] = useState(false)
 
@@ -235,6 +239,7 @@ export default function BoardPage() {
       .insert([{ ...task, user_id: user.id, team_id: currentTeamId, position: maxPos + 1000 }])
       .select('id')
       .single()
+    if (data?.id) rewardTaskAdded()
     if (data?.id && assigneeIds.length) {
       await supabase.from('task_assignees').insert(
         assigneeIds.map(uid => ({
@@ -298,10 +303,14 @@ export default function BoardPage() {
   // screen to itself. The reward is paid on every board — the garden belongs to
   // the account, so work done on a team board still counts; only the cloud is
   // personal-only, since it shouldn't interrupt a shared board.
+  // Rewards land once the completion modal is out of the way, so the cloud gets
+  // the centre of the screen to itself. Both pay on every board — the garden
+  // belongs to the account, so work done on a team board counts the same.
   function dismissDoneTask() {
+    const cleared = doneTask?.clearedDoing
     setDoneTask(null)
-    bankTaskReward()
-    if (!currentTeamId) spawnCloud()
+    rewardTaskDone()
+    if (cleared) rewardDoingCleared()
   }
 
   async function updateTask(id, updates) {
@@ -456,12 +465,20 @@ export default function BoardPage() {
         onUpdateAssignees={updateAssignees}
         onRespondToAssignment={respondToAssignment}
         onResolveChangeRequest={resolveChangeRequest}
-        onTaskDone={task => { setDoneTask(task); respawnRecurring(task) }}
+        onTaskDone={task => {
+          // Decided here, not from the refreshed list: this task was the last
+          // one in Doing, and it's leaving because it was finished. Moving a
+          // card back to To-do also empties the column but earns nothing.
+          const clearedDoing = task.status === 'in_progress'
+            && !tasks.some(t => t.status === 'in_progress' && t.id !== task.id)
+          setDoneTask({ task, clearedDoing })
+          respawnRecurring(task)
+        }}
         onArchiveAll={archiveDoneTasks}
       />
       {doneTask && (
         <DoneTaskModal
-          task={doneTask}
+          task={doneTask.task}
           tasks={tasks}
           projects={projects}
           onAdd={addTask}

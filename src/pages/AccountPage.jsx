@@ -78,8 +78,9 @@ export default function AccountPage() {
         <div>
           <strong>Quiet mode</strong>
           <p className="dev-card-hint">
-            Turns the game layer down. Finished tasks still bank seeds and coins —
-            the reward cloud just stops taking over the screen.
+            Turns the game layer down. Finished tasks pay the cloud&rsquo;s average value
+            in coins instead of taking over the screen — you keep the reward and
+            your streak, you just don&rsquo;t have to tap for it.
           </p>
         </div>
         <label className="switch">

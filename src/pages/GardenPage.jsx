@@ -7,7 +7,9 @@ import { useGarden } from '../context/GardenContext'
 import {
   SEEDS, seedByKey, RARITY_COLORS, RARITY_NAMES, PLOTS_PER_ROW, PACKETS,
   nextExpansion, remainingSeconds, formatDuration, MAX_PLOTS, growthStage, GROWTH_STAGES,
+  DAILY_CAPS, todayBucket, liveStreak,
 } from '../lib/garden'
+import { evaluate, GROUPS } from '../lib/achievements'
 import PlotCluster from '../components/PlotCluster'
 import PackOpening from '../components/PackOpening'
 import FlowerGrown from '../components/FlowerGrown'
@@ -18,6 +20,7 @@ const TABS = [
   { key: 'greenhouse', label: 'Greenhouse' },
   { key: 'garden', label: 'Garden' },
   { key: 'herbarium', label: 'Herbarium' },
+  { key: 'awards', label: 'Awards' },
   { key: 'shop', label: 'Shop' },
 ]
 
@@ -129,10 +132,18 @@ export default function GardenPage() {
   const discovered = state?.discovered || {}
   const foundCount = SEEDS.filter(s => (discovered[s.key] || 0) > 0).length
 
+  // Streak, today's caps and the awards shelf. The streak only counts while
+  // it's live — a number from last week is one you've already lost.
+  const streak = liveStreak(state?.streak)
+  const daily = todayBucket(state?.daily)
+  const awards = evaluate(state, flowers.length)
+  const earnedCount = awards.filter(a => a.earned).length
+
   const counts = {
     greenhouse: packetCount ? `${packetCount} to open` : isReady ? 'ready' : null,
     garden: `${flowers.length}/${plotCount}`,
     herbarium: `${foundCount}/${SEEDS.length}`,
+    awards: `${earnedCount}/${awards.length}`,
     shop: affordablePackets ? `${affordablePackets} affordable` : null,
   }
 
@@ -153,6 +164,12 @@ export default function GardenPage() {
         <header className="garden-bar">
           <span className="garden-plaque">Grow a Garden</span>
           <div className="garden-purse">
+            {streak > 0 && (
+              <div className="streak-chip" title={`${streak}-day streak — finish a task each day to keep it`}>
+                <span className="coin-icon">🔥</span>
+                <span className="coin-count">{streak}</span>
+              </div>
+            )}
             <div className="seed-tray" title="Seeds banked from finished tasks">
               <span className="coin-icon">🌱</span>
               <span className="coin-count">{seedCount}</span>
@@ -477,6 +494,95 @@ export default function GardenPage() {
         </section>
         )}
 
+        {/* --- awards: today's allowances, the streak, and the shelf --- */}
+        {tab === 'awards' && (
+        <section className="garden-panel tabbed awards-panel">
+          <span className="panel-label">Today</span>
+
+          {/* Stated plainly rather than discovered by hitting them. Each bar is
+              one of the three board rewards, and the label says what earns it. */}
+          <div className="cap-row">
+            <CapMeter
+              icon="🌱" label="Seeds from adding tasks"
+              used={daily.seeds} cap={DAILY_CAPS.seeds}
+            />
+            <CapMeter
+              icon="🪙" label="Coins from clearing Doing"
+              used={daily.coins} cap={DAILY_CAPS.coins}
+            />
+            <CapMeter
+              icon="☁️" label="Clouds from finished tasks"
+              used={daily.clouds} cap={DAILY_CAPS.clouds}
+            />
+          </div>
+          <p className="garden-empty">
+            Caps reset at midnight. Finishing tasks past the cloud cap still counts
+            toward your streak and your awards.
+          </p>
+
+          <div className="streak-card">
+            <span className="streak-flame">{streak > 0 ? '🔥' : '🌑'}</span>
+            <div>
+              <p className="streak-count">
+                {streak > 0 ? `${streak}-day streak` : 'No streak yet'}
+              </p>
+              <p className="streak-sub">
+                {streak > 0
+                  ? 'Finish at least one task tomorrow to keep it going.'
+                  : 'Finish a task today to start one.'}
+                {state?.streak?.best > 0 && ` Best: ${state.streak.best} days.`}
+              </p>
+            </div>
+          </div>
+
+          <span className="panel-label" style={{ position: 'static', alignSelf: 'flex-start', marginTop: '1.4rem', display: 'inline-block' }}>
+            Awards · {earnedCount} of {awards.length}
+          </span>
+
+          {GROUPS.map(group => {
+            const row = awards.filter(a => a.group === group)
+            if (!row.length) return null
+            // Earned first, then whatever is closest to being earned — the
+            // shelf should read as "what you've done, and what's next".
+            const sorted = [...row].sort((a, b) =>
+              (b.earned - a.earned) || (b.pct - a.pct) || a.goal - b.goal)
+            return (
+              <div key={group} className="award-group">
+                <span className="herb-tier-label">
+                  {group}
+                  <span className="herb-tier-count">
+                    {row.filter(a => a.earned).length}/{row.length}
+                  </span>
+                </span>
+                <div className="award-grid">
+                  {sorted.map(a => (
+                    <div key={a.key} className={`award-card${a.earned ? ' earned' : ''}`}>
+                      <span className="award-icon">{a.icon}</span>
+                      <div className="award-body">
+                        <p className="award-name">{a.name}</p>
+                        <p className="award-blurb">{a.blurb}</p>
+                        {a.earned ? (
+                          <p className="award-when">
+                            {a.earnedAt
+                              ? `Earned ${new Date(a.earnedAt).toLocaleDateString()}`
+                              : 'Earned'}
+                          </p>
+                        ) : (
+                          <>
+                            <div className="award-bar"><span style={{ width: `${a.pct}%` }} /></div>
+                            <p className="award-when">{a.value} / {a.goal}</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </section>
+        )}
+
         {/* --- shop: packets, not species --- */}
         {tab === 'shop' && (
         <section className="garden-panel tabbed shop-panel">
@@ -579,6 +685,25 @@ export default function GardenPage() {
           onDone={() => { setOpened(opening.seed); setOpening(null) }}
         />
       )}
+    </div>
+  )
+}
+
+// One of the three daily allowances. Shows what's left rather than what's
+// been used — "6 seeds left today" is the number you act on.
+function CapMeter({ icon, label, used, cap }) {
+  const left = Math.max(0, cap - used)
+  const pct = Math.min(100, (used / cap) * 100)
+  return (
+    <div className={`cap-meter${left === 0 ? ' spent' : ''}`}>
+      <div className="cap-head">
+        <span className="cap-icon">{icon}</span>
+        <span className="cap-label">{label}</span>
+      </div>
+      <div className="cap-bar"><span style={{ width: `${pct}%` }} /></div>
+      <span className="cap-left">
+        {left === 0 ? 'All used for today' : `${left.toLocaleString()} of ${cap.toLocaleString()} left`}
+      </span>
     </div>
   )
 }
