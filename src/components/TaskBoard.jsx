@@ -45,6 +45,19 @@ const BANDS = [
 ]
 const BAND_KEYS = BANDS.map(b => b.key)
 
+// BANDS above is the *canonical* order: it drives which way ‹ and › move a
+// task, and the braindump tray's 1–3 keys. The board is *displayed* bottom-up —
+// greenhouse, then Done today, Doing, Up next — so the freshest state is at the
+// top and the backlog is what you scroll down into.
+const BANDS_DISPLAY = [...BANDS].reverse()
+
+// Names used on the move controls. STATUS_LABELS is the form's vocabulary
+// ("To Do"); these are the board's ("Up next").
+const MOVE_LABELS = {
+  braindump: 'Braindump', todo: 'Up next', in_progress: 'Doing',
+  done: 'Done today', archived: 'Archived',
+}
+
 // Captured but not yet triaged. These are real task rows — same table, same
 // realtime — carrying a status the board deliberately doesn't render.
 const BRAINDUMP = 'braindump'
@@ -588,6 +601,9 @@ function PriorityBoard({
   }
 
   const activeTask = activeId ? tasks.find(t => t.id === activeId) : null
+  // Dragging already enforced this; the ‹ / › controls and the action bar were
+  // routes around it.
+  const doingFull = tasks.filter(t => t.status === 'in_progress').length >= MAX_DOING
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter}
@@ -730,8 +746,12 @@ function PriorityBoard({
               <button className="bb-btn primary" onClick={onOpenForm}>Add task</button>
             </div>
 
-            {BANDS.map(band => (
+            <GreenhouseStrip doneToday={byStatus('done').length} />
+
+            {BANDS_DISPLAY.map(band => (
               <Band key={band.key} status={band.key} label={band.label}
+                doingFull={doingFull}
+                onBlocked={setZoneNotice}
                 tasks={getColumnTasks(band.key)}
                 limit={band.key === 'in_progress' ? MAX_DOING : null}
                 resolveAssignees={resolveAssignees}
@@ -749,8 +769,6 @@ function PriorityBoard({
                 onTaskDone={onTaskDone}
               />
             ))}
-
-            <GreenhouseStrip doneToday={byStatus('done').length} />
           </div>
         )}
       </div>
@@ -980,7 +998,7 @@ function groupTasksBySprint(tasks, projectName) {
   }))
 }
 
-function Band({ status, label, tasks, limit, resolveAssignees, projectName, updatesForTask, teamMembers, onEdit, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, onUpdateAssignees, draftUpdates, setDraft, onTaskDone }) {
+function Band({ status, label, tasks, limit, doingFull, onBlocked, resolveAssignees, projectName, updatesForTask, teamMembers, onEdit, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, onUpdateAssignees, draftUpdates, setDraft, onTaskDone }) {
   const { setNodeRef, isOver } = useDroppable({ id: `col-${status}` })
   const atLimit = limit != null && tasks.length >= limit
 
@@ -1001,6 +1019,10 @@ function Band({ status, label, tasks, limit, resolveAssignees, projectName, upda
       onEdit={() => onEdit(task)}
       onDelete={() => onDelete(task.id)}
       onStatusChange={s => {
+        if (s === 'in_progress' && task.status !== 'in_progress' && doingFull) {
+          onBlocked?.(`Doing holds ${MAX_DOING}. Finish one to free a slot.`)
+          return
+        }
         onUpdate(task.id, { status: s })
         // Any route into Done banks the reward, not just the drag.
         if (s === 'done' && task.status !== 'done') onTaskDone?.(task)
@@ -1069,8 +1091,11 @@ function SortableTaskRow({ task, ...props }) {
 
 const PRIMARY_NEXT = { todo: 'in_progress', in_progress: 'done' }
 
-// The advance order is the band order — one source of truth.
+// The advance order is the canonical band order — one source of truth. Going
+// back from the first band returns the task to the braindump rather than
+// dead-ending, so a task can always be put back where it came from.
 const NEXT_BAND = { todo: 'in_progress', in_progress: 'done' }
+const PREV_BAND = { todo: BRAINDUMP, in_progress: 'todo', done: 'in_progress' }
 
 // What the leading stripe and the chip say. They are always the same signal:
 // the handoff is explicit that a stripe never appears without its matching
@@ -1138,6 +1163,7 @@ function TaskRow({
   }
 
   const next = NEXT_BAND[task.status]
+  const prev = PREV_BAND[task.status]
   const secondaryNext = statuses.filter(s => s !== task.status && s !== next)
 
   return (
@@ -1183,13 +1209,24 @@ function TaskRow({
             aria-label="Actions"
           >•••</button>
           {!isArchived && (
-            <button
-              className="row-advance"
-              disabled={!next}
-              title={next ? `Move to ${statusLabels[next]}` : 'Already done'}
-              aria-label={next ? `Move ${task.title} to ${statusLabels[next]}` : 'Already done'}
-              onClick={() => next && onStatusChange(next)}
-            >›</button>
+            <>
+              <button
+                className="row-back"
+                disabled={!prev}
+                title={prev === BRAINDUMP ? 'Send back to the braindump' : `Move back to ${MOVE_LABELS[prev]}`}
+                aria-label={prev === BRAINDUMP
+                  ? `Send ${task.title} back to the braindump`
+                  : `Move ${task.title} back to ${MOVE_LABELS[prev]}`}
+                onClick={() => prev && onStatusChange(prev)}
+              >‹</button>
+              <button
+                className="row-advance"
+                disabled={!next}
+                title={next ? `Move to ${MOVE_LABELS[next]}` : 'Already done'}
+                aria-label={next ? `Move ${task.title} to ${MOVE_LABELS[next]}` : 'Already done'}
+                onClick={() => next && onStatusChange(next)}
+              >›</button>
+            </>
           )}
         </span>
       </div>
