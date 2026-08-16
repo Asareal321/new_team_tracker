@@ -1,0 +1,40 @@
+/* Fullscreen host for the pack-opening composition. The piece itself is laid
+   out entirely in inline styles, ported from the design, because every offset
+   is authored in stage pixels. */
+
+.pack-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  overflow: hidden;
+  cursor: pointer;
+  /* The scrim's alpha is animated inline, so only the transition of intent
+     lives here. */
+}
+
+/* Authored at a fixed 1920x1080 and scaled to fit — see the fit() effect. */
+.pack-stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: center center;
+}
+
+.pack-skip {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #fffdf5;
+  background: rgba(0, 0, 0, 0.42);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 999px;
+  padding: 0.35rem 1rem;
+  cursor: pointer;
+  backdrop-filter: blur(2px);
+}
+.pack-skip:hover { background: rgba(0, 0, 0, 0.6); }

@@ -9,7 +9,7 @@ import {
   nextExpansion, remainingSeconds, formatDuration, MAX_PLOTS,
 } from '../lib/garden'
 import PlotCluster from '../components/PlotCluster'
-import PacketOpener from '../components/PacketOpener'
+import PackOpening from '../components/PackOpening'
 import PacketArt from '../components/PacketArt'
 import './GardenPage.css'
 
@@ -423,7 +423,7 @@ export default function GardenPage() {
       </div>
 
       {opening && (
-        <PacketOpener
+        <PackOpening
           packet={opening.packet}
           seed={opening.seed}
           onDone={() => { setOpened(opening.seed); setOpening(null) }}
