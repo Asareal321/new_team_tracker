@@ -1516,7 +1516,7 @@
 .band-rule { flex: 1; height: 1px; background: var(--bb-border); }
 
 /* Tasks read down the left column, then the right. */
-.band-body { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 16px; }
+.band-body { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
 /* A grouped band goes single-column: two columns of small sprint groups reads
    as a broken grid rather than as two columns. */
 .band-body.grouped { grid-template-columns: 1fr; gap: 8px; }
@@ -1528,7 +1528,7 @@
 }
 
 .sprint-group { display: flex; flex-direction: column; gap: 4px; }
-.sprint-group-body { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 16px; }
+.sprint-group-body { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
 .band .sprint-group-head {
   display: flex; align-items: center; gap: 6px;
   font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
@@ -1541,13 +1541,16 @@
 
 /* --- paper rows ----------------------------------------------------------- */
 
-/* Paper: flat, 1px border, never an edge. */
+/* Paper: flat, 1px border, never an edge.
+   A full outline rather than a single rule underneath — the bands sit on a
+   tinted ground, and a card that closes on all four sides is what makes each
+   task read as its own object instead of as a row in a list. */
 .paper-row {
   background: var(--bb-surface);
-  border-radius: 4px;
-  border-bottom: 1px solid var(--bb-border);
+  border-radius: 8px;
+  border: 1px solid var(--bb-border);
 }
-.paper-row.open { border-bottom-color: var(--bb-wood); }
+.paper-row.open { border-color: var(--bb-wood); }
 
 /* Top-aligned, not centred: the row grows downward as updates and the composer
    fill in, and centred controls would drift away from the title they act on. */
