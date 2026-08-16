@@ -517,7 +517,11 @@ html[data-theme="dark"] .plot-sell { background: rgba(38, 42, 44, 0.95); border-
   .coin-pouch { align-self: flex-start; }
   .garden-title { font-size: 1.4rem; }
   .plot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* No hover on a phone — the name and price would be unreachable.
+     The grid is in the selector to outrank the hide rule, which is defined
+     further down the file at otherwise equal specificity. */
   .plot-sell { opacity: 1; }
+  .plot-grid .plot.filled .plot-name { opacity: 1; }
   .sky-sun { width: 48px; height: 48px; right: 24px; }
 }
 
@@ -701,12 +705,22 @@ html[data-theme="dark"] .seed-tray .coin-count { color: #A9E07D; }
 
 /* The name sits on a dark strip at the foot of the bed so the front row of
    blooms can overlap it without the text becoming unreadable. */
+/* The name rides over the top of the bed on hover, matching the sell button at
+   the bottom. Absolute so it takes no space in flow — the rosette can then sit
+   dead centre in the plot instead of dodging a permanent label. */
 .plot.filled .plot-name {
+  position: absolute;
+  top: 5px;
+  margin-top: 0;
   background: rgba(0, 0, 0, 0.42);
   border-radius: 999px;
   padding: 0.05rem 0.5rem;
   backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity 120ms;
 }
+.plot.filled:hover .plot-name,
+.plot.filled:focus-within .plot-name { opacity: 1; }
 
 /* --- rearranging beds -------------------------------------------------- */
 

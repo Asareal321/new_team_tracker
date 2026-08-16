@@ -9,16 +9,15 @@ import './PlotCluster.css'
 // Percentages are of the plot box, which is square (`aspect-ratio: 1`). The
 // ring sits at a radius that fills the bed without letting neighbours touch or
 // clip the edge, and the bottom bloom is held clear of the name label.
-// The ring is centred on 44% rather than 50%: the name pill occupies the
-// bottom of the plot, and a ring centred in the box put the lowest bloom
-// behind it.
+// Centred in the plot. The name and price only appear on hover, so nothing
+// permanently occupies the bottom of the bed for the ring to dodge.
 const RING = [
-  { left: 50, top: 14 },
-  { left: 79, top: 29 },
-  { left: 79, top: 59 },
-  { left: 50, top: 74 },
-  { left: 21, top: 59 },
-  { left: 21, top: 29 },
+  { left: 50, top: 17 },
+  { left: 79, top: 33 },
+  { left: 79, top: 67 },
+  { left: 50, top: 83 },
+  { left: 21, top: 67 },
+  { left: 21, top: 33 },
 ]
 
 // Sway is staggered around the ring so the bed breathes instead of pulsing as
@@ -38,7 +37,7 @@ export default function PlotCluster({ seed }) {
         </span>
       ))}
       {/* Centre bloom last so it sits above the ring where they come close. */}
-      <span className="cluster-bloom is-centre" style={{ left: '50%', top: '44%' }}>
+      <span className="cluster-bloom is-centre" style={{ left: '50%', top: '50%' }}>
         {seed.emoji}
       </span>
     </span>
