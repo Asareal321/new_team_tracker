@@ -13,11 +13,18 @@ import PacketOpener from '../components/PacketOpener'
 import PacketArt from '../components/PacketArt'
 import './GardenPage.css'
 
+const TABS = [
+  { key: 'greenhouse', label: 'Greenhouse' },
+  { key: 'garden', label: 'Garden' },
+  { key: 'shop', label: 'Shop' },
+]
+
 export default function GardenPage() {
   const {
     state, flowers, ready,
-    plantSeed, placeFlower, moveFlower, sellGrown, sellPlanted, buyPacket, expandGarden,
+    plantSeed, placeFlower, moveFlower, sellGrown, sellPlanted, buyPacket, openPacket, expandGarden,
   } = useGarden()
+  const [tab, setTab] = useState('garden')
   // Which flower is in hand, so the overlay can render it and the grid can
   // light up its drop targets.
   const [dragging, setDragging] = useState(null)
@@ -88,6 +95,25 @@ export default function GardenPage() {
   const sproutStage = progress < 25 ? '·' : progress < 55 ? '🌱' : progress < 100 ? '🌿' : growing?.emoji
   const draggedSeed = seedByKey(flowers.find(f => f.id === dragging)?.seed_key)
 
+  // Sealed packets waiting on the greenhouse shelf.
+  const packetStock = state?.packet_inventory || {}
+  const ownedPackets = PACKETS
+    .filter(p => (packetStock[p.key] || 0) > 0)
+    .map(p => ({ packet: p, count: packetStock[p.key] }))
+    .sort((a, b) => b.packet.rarity - a.packet.rarity)
+  const packetCount = Object.values(packetStock).reduce((n, v) => n + v, 0)
+  const seedsOnShelf = Object.values(inventory).reduce((n, v) => n + v, 0)
+  const affordablePackets = PACKETS.filter(p =>
+    (p.currency === 'seeds' ? seedCount : coins) >= p.cost).length
+
+  // The counts are what pull you between rooms, so each says the one thing
+  // worth acting on there — not a total.
+  const counts = {
+    greenhouse: packetCount ? `${packetCount} to open` : isReady ? 'ready' : null,
+    garden: `${flowers.length}/${plotCount}`,
+    shop: affordablePackets ? `${affordablePackets} affordable` : null,
+  }
+
   return (
     <div className="garden-scene" data-tick={tick}>
       <div className="garden-sky">
@@ -100,14 +126,10 @@ export default function GardenPage() {
       </div>
 
       <div className="garden-content">
-        <header className="garden-head">
-          <div className="garden-signpost">
-            <div className="garden-sign">
-              <h1 className="garden-title">Grow a Garden</h1>
-              <p className="garden-sub">Finish tasks · catch the clouds · grow flowers</p>
-            </div>
-            <span className="garden-sign-post" />
-          </div>
+        {/* The coin bar stays put across all three rooms — the wireframe's
+            point is that your balance never leaves the screen. */}
+        <header className="garden-bar">
+          <span className="garden-plaque">Grow a Garden</span>
           <div className="garden-purse">
             <div className="seed-tray" title="Seeds banked from finished tasks">
               <span className="coin-icon">🌱</span>
@@ -120,87 +142,130 @@ export default function GardenPage() {
           </div>
         </header>
 
+        <nav className="shelf-tabs" role="tablist" aria-label="Garden rooms">
+          {TABS.map(t => (
+            <button
+              key={t.key}
+              role="tab"
+              aria-selected={tab === t.key}
+              className={`shelf-tab${tab === t.key ? ' on' : ''}`}
+              onClick={() => setTab(t.key)}
+            >
+              {t.label}
+              {counts[t.key] && <span className="shelf-count">{counts[t.key]}</span>}
+            </button>
+          ))}
+        </nav>
+
         {error && <p className="garden-error">{error}</p>}
         {notice && <p className="garden-notice">{notice}</p>}
 
-        {/* --- greenhouse: what's currently in the ground --- */}
-        <section className="garden-panel greenhouse">
-          <span className="panel-label">Greenhouse</span>
-
-          {!growing && (
-            <>
-              <p className="garden-empty">The bed is empty. Plant something from your tray.</p>
-              <div className="seed-row">
-                {ownedSeeds.map(seed => (
-                  <div key={seed.key} className="seed-packet" style={{ '--rarity': RARITY_COLORS[seed.rarity] }}>
-                    <span className="packet-top" />
-                    <span className="seed-count-badge">×{inventory[seed.key]}</span>
-                    <span className="seed-emoji">{seed.emoji}</span>
-                    <span className="seed-name">{seed.name}</span>
-                    <span className="seed-rarity">{RARITY_NAMES[seed.rarity]}</span>
-                    <span className="seed-meta">{formatDuration(seed.growSeconds)}</span>
-                    <span className="seed-meta">sells for {seed.sellValue} 🪙</span>
-                    <button className="garden-btn primary" onClick={() => run(() => plantSeed(seed.key))}>
-                      Plant
+        {/* --- greenhouse: the one grow slot, plus everything not yet planted --- */}
+        {tab === 'greenhouse' && (
+        <section className="garden-panel tabbed greenhouse">
+          {/* One seed grows at a time, so it gets the middle of the room. */}
+          <div className="grow-hero">
+            {growing ? (
+              <div className="growing-box">
+                <div className="growing-pot" style={{ '--rarity': RARITY_COLORS[growing.rarity] }}>
+                  <span className={`growing-sprout${isReady ? ' bloomed' : ''}`}>{sproutStage}</span>
+                  <span className="pot-soil" />
+                </div>
+                <div className="growing-info">
+                  <p className="growing-name">{growing.name}</p>
+                  <div className="growing-bar"><span style={{ width: `${progress}%` }} /></div>
+                  <p className="growing-time">
+                    {isReady ? '✨ Ready to harvest!' : `${formatDuration(remaining)} left`}
+                    {state?.shaved_seconds > 0 && ` · ☁️ ${formatDuration(state.shaved_seconds)} shaved`}
+                  </p>
+                </div>
+                {isReady && (
+                  <div className="growing-actions">
+                    <button
+                      className="garden-btn primary"
+                      disabled={!openPlots.length}
+                      title={openPlots.length ? '' : 'No empty plots — sell a flower or expand the garden'}
+                      /* Straight to the garden with the bed picker armed, as the
+                         wireframe note asks. */
+                      onClick={() => { setPlacing(true); setTab('garden'); setNotice('Pick an empty bed for it.') }}
+                    >
+                      Keep it
+                    </button>
+                    <button className="garden-btn" onClick={() => run(sellGrown, v => `Sold for ${v} coins.`)}>
+                      Sell · {growing.sellValue} 🪙
                     </button>
                   </div>
-                ))}
-                {ownedSeeds.length === 0 && (
-                  <p className="garden-empty">No seeds yet — open a packet in the shop below.</p>
                 )}
               </div>
-            </>
-          )}
-
-          {growing && (
-            <div className="growing-box">
-              <div className="growing-pot" style={{ '--rarity': RARITY_COLORS[growing.rarity] }}>
-                <span className={`growing-sprout${isReady ? ' bloomed' : ''}`}>{sproutStage}</span>
-                <span className="pot-soil" />
-              </div>
-              <div className="growing-info">
-                <p className="growing-name">{growing.name}</p>
-                <div className="growing-bar"><span style={{ width: `${progress}%` }} /></div>
-                <p className="growing-time">
-                  {isReady ? '✨ Ready to harvest!' : `${formatDuration(remaining)} left`}
-                  {state?.shaved_seconds > 0 && ` · ☁️ ${formatDuration(state.shaved_seconds)} shaved`}
+            ) : (
+              <div className="grow-hero-empty">
+                <span className="grow-hero-pot">🪴</span>
+                <p className="growing-name">Nothing growing</p>
+                <p className="garden-empty">
+                  {ownedSeeds.length ? 'Plant a seed from the shelf below.' : 'Open a packet to find a seed.'}
                 </p>
               </div>
-              {isReady && (
-                <div className="growing-actions">
-                  <button
-                    className="garden-btn primary"
-                    disabled={!openPlots.length}
-                    title={openPlots.length ? '' : 'No empty plots — sell a flower or expand the garden'}
-                    onClick={() => { setPlacing(true); setNotice('Pick an empty bed below to plant it.') }}
-                  >
-                    Keep it
-                  </button>
-                  <button className="garden-btn" onClick={() => run(sellGrown, v => `Sold for ${v} coins.`)}>
-                    Sell · {growing.sellValue} 🪙
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+            )}
+          </div>
+
+          <span className="panel-label">Unopened packets · {packetCount}</span>
+          <div className="seed-row">
+            {ownedPackets.map(({ packet, count }) => (
+              <div key={packet.key} className="seed-packet shop-card" style={{ '--rarity': RARITY_COLORS[packet.rarity] }}>
+                <PacketArt packet={packet} />
+                <span className="seed-count-badge">×{count}</span>
+                <span className="seed-name">{packet.name}</span>
+                <span className="seed-rarity">{RARITY_NAMES[packet.rarity]}</span>
+                <button
+                  className="garden-btn primary"
+                  onClick={() => run(async () => {
+                    const won = await openPacket(packet.key)
+                    setOpening({ packet, seed: won })
+                  })}
+                >
+                  Tear open
+                </button>
+              </div>
+            ))}
+            {!ownedPackets.length && (
+              <p className="garden-empty">No packets on the shelf — buy one in the shop.</p>
+            )}
+          </div>
+
+          <span className="panel-label">Seeds · {seedsOnShelf}</span>
+          <div className="seed-row">
+            {ownedSeeds.map(seed => (
+              <div key={seed.key} className="seed-packet" style={{ '--rarity': RARITY_COLORS[seed.rarity] }}>
+                <span className="packet-top" />
+                <span className="seed-count-badge">×{inventory[seed.key]}</span>
+                <span className="seed-emoji">{seed.emoji}</span>
+                <span className="seed-name">{seed.name}</span>
+                <span className="seed-rarity">{RARITY_NAMES[seed.rarity]}</span>
+                <span className="seed-meta">{formatDuration(seed.growSeconds)}</span>
+                <span className="seed-meta">sells for {seed.sellValue} 🪙</span>
+                <button
+                  className="garden-btn primary"
+                  disabled={!!growing}
+                  title={growing ? 'Something is already growing' : ''}
+                  onClick={() => run(() => plantSeed(seed.key))}
+                >
+                  Plant
+                </button>
+              </div>
+            ))}
+            {ownedSeeds.length === 0 && (
+              <p className="garden-empty">No seeds yet — tear open a packet.</p>
+            )}
+          </div>
         </section>
+        )}
 
         {/* --- the garden itself --- */}
-        <section className="garden-panel field-panel">
+        {tab === 'garden' && (
+        <section className="garden-panel tabbed field-panel">
           <div className="field-head">
-            <span className="panel-label">Your garden</span>
-            {expansion ? (
-              <button
-                className="garden-btn"
-                disabled={coins < expansion.cost}
-                title={coins < expansion.cost ? 'Not enough coins' : ''}
-                onClick={() => run(expandGarden, 'The garden got bigger!')}
-              >
-                🪴 +{PLOTS_PER_ROW} beds · {expansion.cost} 🪙
-              </button>
-            ) : (
-              <span className="garden-maxed">Fully grown ({MAX_PLOTS} beds)</span>
-            )}
+            <span className="panel-label">Plot · {flowers.length} of {plotCount} beds</span>
+            {!expansion && <span className="garden-maxed">Fully grown ({MAX_PLOTS} beds)</span>}
           </div>
 
           <div className="garden-field">
@@ -242,6 +307,13 @@ export default function GardenPage() {
                     />
                   )
                 })}
+                {/* Ghosts of the next row you could buy. Clicking one jumps to
+                    the shop with the tab already switched. */}
+                {expansion && Array.from({ length: PLOTS_PER_ROW }, (_, i) => (
+                  <button key={`locked-${i}`} className="plot locked" onClick={() => setTab('shop')}>
+                    <span className="plot-label">🔒 {expansion.cost} 🪙</span>
+                  </button>
+                ))}
               </div>
               {/* The dragged bed follows the cursor at full size; without an
                   overlay the original would move inside the grid and the plot
@@ -257,13 +329,15 @@ export default function GardenPage() {
             <p className="garden-hint">Drag a bed onto another plot to rearrange — drop it on a planted bed to swap them.</p>
           </div>
         </section>
+        )}
 
         {/* --- shop: packets, not species --- */}
-        <section className="garden-panel shop-panel">
-          <span className="panel-label">Shop</span>
+        {tab === 'shop' && (
+        <section className="garden-panel tabbed shop-panel">
+          <span className="panel-label">Packets</span>
           <p className="garden-empty">
-            You buy a packet, not a flower — what&rsquo;s inside is a roll. Better packets shift the
-            odds upward, but every packet can drop anything.
+            You buy a packet, not a flower — what&rsquo;s inside is a roll. Packets stay sealed on the
+            greenhouse shelf until you tear one open.
           </p>
 
           {opened && (
@@ -312,18 +386,40 @@ export default function GardenPage() {
                     className="garden-btn primary"
                     disabled={!affordable}
                     title={affordable ? '' : `${short.toLocaleString()} short`}
-                    onClick={() => run(async () => {
-                      const won = await buyPacket(packet.key)
-                      setOpening({ packet, seed: won })
-                    })}
+                    onClick={() => run(
+                      () => buyPacket(packet.key),
+                      'Added to your greenhouse shelf.',
+                    )}
                   >
-                    {affordable ? 'Open' : `Need ${short.toLocaleString()}`}
+                    {affordable ? 'Buy' : `Need ${short.toLocaleString()}`}
                   </button>
                 </div>
               )
             })}
           </div>
+
+          <span className="panel-label">Beds</span>
+          <div className="seed-row">
+            {expansion ? (
+              <div className="seed-packet shop-card" style={{ '--rarity': RARITY_COLORS[2] }}>
+                <span className="bed-art">🪴</span>
+                <span className="seed-name">+{PLOTS_PER_ROW} garden beds</span>
+                <span className="shop-price">{expansion.cost.toLocaleString()} 🪙</span>
+                <span className="seed-meta">takes you to {expansion.plotCount} beds</span>
+                <button
+                  className="garden-btn primary"
+                  disabled={coins < expansion.cost}
+                  onClick={() => run(expandGarden, 'The garden got bigger!')}
+                >
+                  {coins >= expansion.cost ? 'Buy' : `Need ${(expansion.cost - coins).toLocaleString()}`}
+                </button>
+              </div>
+            ) : (
+              <p className="garden-empty">Every bed is bought — {MAX_PLOTS} of {MAX_PLOTS}.</p>
+            )}
+          </div>
         </section>
+        )}
       </div>
 
       {opening && (

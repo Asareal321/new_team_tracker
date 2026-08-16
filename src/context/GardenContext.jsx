@@ -19,6 +19,7 @@ const DEFAULT_STATE = {
   quiet_mode: false,
   onboarded: false,
   seed_inventory: {},
+  packet_inventory: {},
   plot_count: STARTING_PLOTS,
   unlocked_rarity: 1,
   growing_seed: null,
@@ -231,15 +232,33 @@ export function GardenProvider({ children }) {
         ? `Not enough seeds — finish ${packet.cost - balance} more task(s).`
         : 'Not enough coins.')
     }
-    const wonKey = rollPacket(packetKey)
-    const inv = { ...(current.seed_inventory || {}) }
-    inv[wonKey] = (inv[wonKey] || 0) + 1
+    // Buying no longer decides what's inside — the packet goes to the shelf
+    // sealed, and the roll happens when you tear it open in the greenhouse.
+    const packets = { ...(current.packet_inventory || {}) }
+    packets[packet.key] = (packets[packet.key] || 0) + 1
     await save({
-      seed_inventory: inv,
+      packet_inventory: packets,
       ...(packet.currency === 'seeds'
         ? { seeds: current.seeds - packet.cost }
         : { coins: current.coins - packet.cost }),
     })
+    return packet
+  }, [save])
+
+  // Tear open a packet you already own. The roll happens here, so an unopened
+  // packet on the shelf has genuinely not been decided yet.
+  const openPacket = useCallback(async packetKey => {
+    const packet = packetByKey(packetKey)
+    const current = stateRef.current
+    if (!packet || !current) throw new Error('Unknown packet')
+    const packets = { ...(current.packet_inventory || {}) }
+    if (!packets[packet.key]) throw new Error(`No ${packet.name} to open`)
+    packets[packet.key] -= 1
+    if (packets[packet.key] <= 0) delete packets[packet.key]
+    const wonKey = rollPacket(packetKey)
+    const inv = { ...(current.seed_inventory || {}) }
+    inv[wonKey] = (inv[wonKey] || 0) + 1
+    await save({ packet_inventory: packets, seed_inventory: inv })
     return seedByKey(wonKey)
   }, [save])
 
@@ -377,7 +396,7 @@ export function GardenProvider({ children }) {
 
   const value = {
     state, flowers, ready, seeds: SEEDS,
-    spawnCloud, bankTaskReward, setQuietMode, completeOnboarding, buyPacket, plantSeed, placeFlower, moveFlower, sellGrown, sellPlanted, unlockSeed, expandGarden,
+    spawnCloud, bankTaskReward, setQuietMode, completeOnboarding, buyPacket, openPacket, plantSeed, placeFlower, moveFlower, sellGrown, sellPlanted, unlockSeed, expandGarden,
     isDev, devOpen, openDevPanel: () => setDevOpen(true),
   }
 

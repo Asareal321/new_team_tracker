@@ -780,3 +780,140 @@ html[data-theme="dark"] .seed-tray .coin-count { color: #A9E07D; }
 @media (prefers-reduced-motion: reduce) {
   .plot.is-overlay { transform: none; }
 }
+
+/* --- shelf tabs: greenhouse / garden / shop ---------------------------- */
+
+/* The bar the wireframe keeps across all three rooms: name on the left,
+   balance on the right, never scrolled away by a tab switch. */
+.garden-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: var(--r-lg, 14px);
+  background: rgba(255, 253, 245, 0.9);
+  border: 2px solid var(--wood-dark, #6a4c30);
+  box-shadow: 0 3px 0 var(--wood-dark, #6a4c30);
+}
+
+.garden-plaque {
+  font-weight: 900;
+  font-size: 1.05rem;
+  color: var(--ink, #2b2926);
+  padding: 0.15rem 0.7rem;
+  border-radius: 12px;
+  background: var(--wood-light, #efe7da);
+  border: 2px solid var(--wood-dark, #6a4c30);
+}
+
+/* Tabs sit on a shelf: the active one loses its bottom edge so it reads as
+   continuous with the panel below. */
+.shelf-tabs {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  border-bottom: 3px solid var(--wood-dark, #6a4c30);
+  padding: 0 0.3rem;
+}
+
+.shelf-tab {
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  border: 2px solid var(--wood-dark, #6a4c30);
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--ink, #2b2926);
+  background: rgba(255, 253, 245, 0.75);
+  margin-bottom: -3px;
+}
+.shelf-tab:hover { background: #fffdf5; }
+.shelf-tab.on {
+  background: var(--leaf-light, #dff2c6);
+  padding-bottom: 0.5rem;
+}
+
+.shelf-count {
+  font-size: 0.66rem;
+  font-weight: 800;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+/* The panel joins the shelf above it. */
+.garden-panel { border-top-left-radius: 0; border-top-right-radius: 0; }
+
+/* --- greenhouse: the single grow slot, centre stage -------------------- */
+
+.grow-hero {
+  display: flex;
+  justify-content: center;
+  padding: 0.6rem 0 1rem;
+  border-bottom: 2px dashed rgba(0, 0, 0, 0.14);
+  margin-bottom: 0.4rem;
+}
+.grow-hero .growing-box {
+  transform: scale(1.08);
+  transform-origin: center;
+}
+.grow-hero-empty {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+.grow-hero-pot { font-size: 2.6rem; line-height: 1; opacity: 0.75; }
+
+/* --- garden: beds you haven't bought yet ------------------------------- */
+
+.plot.locked {
+  border-style: dashed;
+  opacity: 0.62;
+  cursor: pointer;
+  font-family: inherit;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+.plot.locked:hover { opacity: 0.85; }
+
+.bed-art { font-size: 2.4rem; line-height: 1; }
+
+@media (max-width: 620px) {
+  /* Three tabs plus counts overflow a phone; let the shelf scroll instead of
+     wrapping into a second row that breaks the join with the panel. */
+  .shelf-tabs { overflow-x: auto; scrollbar-width: none; }
+  .shelf-tabs::-webkit-scrollbar { display: none; }
+  .shelf-tab { flex: none; }
+  .grow-hero .growing-box { transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grow-hero .growing-box { transform: none; }
+}
+
+/* Inside a tabbed panel the shelf already names the room, so the label stops
+   being a tab straddling the top edge — floated there it collided with the
+   shelf above — and becomes an ordinary section heading. */
+.garden-panel.tabbed .panel-label {
+  position: static;
+  display: inline-block;
+  align-self: flex-start;
+  margin: 0.2rem 0 0.5rem;
+}
+.garden-panel.tabbed { display: flex; flex-direction: column; }
+
+/* .field-head was justify-content: flex-end to push the old expansion button
+   right; with the button moved to the Shop tab its only child is the heading,
+   which belongs on the left. */
+.garden-panel.tabbed .field-head { justify-content: space-between; }
