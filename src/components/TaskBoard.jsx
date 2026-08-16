@@ -11,6 +11,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useNavigate } from 'react-router-dom'
 import { projectDotColor } from '../lib/projectColors'
 import { useGarden } from '../context/GardenContext'
+import DailyCaps from './DailyCaps'
 import {
   seedByKey, remainingSeconds, formatDuration, growthStage, GROWTH_STAGES, liveStreak,
 } from '../lib/garden'
@@ -1058,8 +1059,12 @@ function Band({ status, label, tasks, limit, isFull, onBlocked, resolveAssignees
     <section className={`band band-${status}${isOver ? ' band-over' : ''}${atLimit ? ' band-full' : ''}`}>
       <header className="band-head">
         <span className="band-pill">{label}</span>
+        {/* With a limit shown the noun agrees with the limit, not the count:
+            "1/2 task" is wrong. */}
         <span className="band-count">
-          {tasks.length}{limit != null ? `/${limit}` : ''} {tasks.length === 1 ? 'task' : 'tasks'}
+          {limit != null
+            ? `${tasks.length}/${limit} tasks`
+            : `${tasks.length} ${tasks.length === 1 ? 'task' : 'tasks'}`}
         </span>
         <span className="band-rule" />
       </header>
@@ -1595,6 +1600,8 @@ function GreenhouseStrip({ doneToday }) {
             <span className="gh-label">done today</span>
           </div>
         </div>
+
+        <DailyCaps state={state} />
 
         <div className="gh-actions">
           <button className="bb-btn primary" onClick={() => navigate('/garden')}>

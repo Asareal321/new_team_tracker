@@ -7,7 +7,7 @@ import { useGarden } from '../context/GardenContext'
 import {
   SEEDS, seedByKey, RARITY_COLORS, RARITY_NAMES, PLOTS_PER_ROW, PACKETS,
   nextExpansion, remainingSeconds, formatDuration, MAX_PLOTS, growthStage, GROWTH_STAGES,
-  DAILY_CAPS, todayBucket, liveStreak,
+  liveStreak,
 } from '../lib/garden'
 import { evaluate, GROUPS } from '../lib/achievements'
 import PlotCluster from '../components/PlotCluster'
@@ -132,10 +132,10 @@ export default function GardenPage() {
   const discovered = state?.discovered || {}
   const foundCount = SEEDS.filter(s => (discovered[s.key] || 0) > 0).length
 
-  // Streak, today's caps and the awards shelf. The streak only counts while
-  // it's live — a number from last week is one you've already lost.
+  // The streak chip and the awards shelf. The streak only counts while it's
+  // live — a number from last week is one you've already lost. Today's caps
+  // moved to the board's greenhouse strip, next to the work that spends them.
   const streak = liveStreak(state?.streak)
-  const daily = todayBucket(state?.daily)
   const awards = evaluate(state, flowers.length)
   const earnedCount = awards.filter(a => a.earned).length
 
@@ -494,50 +494,10 @@ export default function GardenPage() {
         </section>
         )}
 
-        {/* --- awards: today's allowances, the streak, and the shelf --- */}
+        {/* --- awards shelf --- */}
         {tab === 'awards' && (
         <section className="garden-panel tabbed awards-panel">
-          <span className="panel-label">Today</span>
-
-          {/* Stated plainly rather than discovered by hitting them. Each bar is
-              one of the three board rewards, and the label says what earns it. */}
-          <div className="cap-row">
-            <CapMeter
-              icon="🌱" label="Seeds from adding tasks"
-              used={daily.seeds} cap={DAILY_CAPS.seeds}
-            />
-            <CapMeter
-              icon="🪙" label="Coins from clearing Doing"
-              used={daily.coins} cap={DAILY_CAPS.coins}
-            />
-            <CapMeter
-              icon="☁️" label="Clouds from finished tasks"
-              used={daily.clouds} cap={DAILY_CAPS.clouds}
-            />
-          </div>
-          <p className="garden-empty">
-            Caps reset at midnight. Finishing tasks past the cloud cap still counts
-            toward your streak and your awards.
-          </p>
-
-          <div className="streak-card">
-            <span className="streak-flame">{streak > 0 ? '🔥' : '🌑'}</span>
-            <div>
-              <p className="streak-count">
-                {streak > 0 ? `${streak}-day streak` : 'No streak yet'}
-              </p>
-              <p className="streak-sub">
-                {streak > 0
-                  ? 'Finish at least one task tomorrow to keep it going.'
-                  : 'Finish a task today to start one.'}
-                {state?.streak?.best > 0 && ` Best: ${state.streak.best} days.`}
-              </p>
-            </div>
-          </div>
-
-          <span className="panel-label" style={{ position: 'static', alignSelf: 'flex-start', marginTop: '1.4rem', display: 'inline-block' }}>
-            Awards · {earnedCount} of {awards.length}
-          </span>
+          <span className="panel-label">Awards · {earnedCount} of {awards.length}</span>
 
           {GROUPS.map(group => {
             const row = awards.filter(a => a.group === group)
@@ -685,25 +645,6 @@ export default function GardenPage() {
           onDone={() => { setOpened(opening.seed); setOpening(null) }}
         />
       )}
-    </div>
-  )
-}
-
-// One of the three daily allowances. Shows what's left rather than what's
-// been used — "6 seeds left today" is the number you act on.
-function CapMeter({ icon, label, used, cap }) {
-  const left = Math.max(0, cap - used)
-  const pct = Math.min(100, (used / cap) * 100)
-  return (
-    <div className={`cap-meter${left === 0 ? ' spent' : ''}`}>
-      <div className="cap-head">
-        <span className="cap-icon">{icon}</span>
-        <span className="cap-label">{label}</span>
-      </div>
-      <div className="cap-bar"><span style={{ width: `${pct}%` }} /></div>
-      <span className="cap-left">
-        {left === 0 ? 'All used for today' : `${left.toLocaleString()} of ${cap.toLocaleString()} left`}
-      </span>
     </div>
   )
 }
