@@ -1,0 +1,53 @@
+/* Fullscreen host for the fully-grown payoff. The piece itself is laid out
+   entirely in inline styles, ported from the design, because every offset is
+   authored in stage pixels. */
+
+.grown-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  overflow: hidden;
+  cursor: pointer;
+  /* Isolate the cinematic: nothing inside it can force layout or paint on the
+     app underneath. */
+  contain: strict;
+}
+
+/* The darkening behind the piece — its own layer with a fixed colour and an
+   animated opacity, because animating a background-color on a full-viewport
+   element repaints the entire screen every frame. */
+.grown-scrim {
+  position: absolute;
+  inset: 0;
+  background: #17110d;
+  opacity: 0;
+  will-change: opacity;
+}
+
+/* Authored at a fixed 1920x1080 and scaled to fit — see useStageScale. */
+.grown-stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.grown-skip {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #fffdf5;
+  background: rgba(0, 0, 0, 0.42);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 999px;
+  padding: 0.35rem 1rem;
+  cursor: pointer;
+  backdrop-filter: blur(2px);
+}
+.grown-skip:hover { background: rgba(0, 0, 0, 0.6); }

@@ -1,6 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { RARITY_COLORS, RARITY_NAMES } from '../lib/garden'
-import { CUES, PACK_DURATION, MOTION, rnd } from '../lib/packTimeline'
+import { RARITY_NAMES } from '../lib/garden'
+import { CO, FONT_TOY, FONT_UI, FONT_NUM, edge, LAYER, tierFor } from '../lib/flowerTiers'
+import { MOTION, rnd } from '../lib/motion'
+import { CUES, PACK_DURATION } from '../lib/packTimeline'
+import { useCinematic, useStageScale, prefersReducedMotion } from './useCinematic'
 import './PackOpening.css'
 
 export { PACK_DURATION }
@@ -8,78 +10,10 @@ export { PACK_DURATION }
 // Flower pack opening — the reward cinematic from the Flower Pack Opening
 // design. The composition is a pure function of authored time T, exactly as the
 // source does: nothing mounts or unmounts at a scene boundary, everything moves
-// by interpolation. Timing lives in ../lib/packTimeline.js so it can be checked
-// without a browser (scripts/check-pack-timeline.mjs).
-//
-// How it's driven matters as much as what it draws. The first cut held T in
-// React state, so all ~70 elements re-rendered every frame with fresh inline
-// style objects — enough reconciliation per frame to drop some of them. Now the
-// tree renders ONCE and the animation loop writes straight to the DOM:
-//
-//   * every animated element registers an `apply(T, el)` through `track()`
-//   * the rAF loop calls those directly — React does no work during playback
-//   * only `transform` and `opacity` are written, so frames stay on the
-//     compositor and never trigger layout or paint
-//
-// That last rule is why the stem scales rather than growing its height, why the
-// petal shower translates rather than setting left/top, and why the scrim is a
-// separate layer whose opacity animates instead of a background-color on the
-// full-viewport overlay.
-
-const CO = {
-  wood: '#89582C', woodEdge: '#653C1F', woodInk: '#FEFCF7',
-  surface: '#FEFCF7', sunk: '#EDE7DC', muted: '#6A6258', border: '#D9D0C1',
-  accent: '#90D94F', accentBorder: '#63B739', accentEdge: '#3E8637',
-}
-
-const FONT_TOY = 'Fredoka, "Baloo 2", "Trebuchet MS", sans-serif'
-const FONT_UI = 'Inter, -apple-system, "Segoe UI", sans-serif'
-const FONT_NUM = 'Sono, "DM Mono", ui-monospace, Menlo, monospace'
-
-// The design names three tiers; the garden has five. Common / Rare / Legendary
-// are the design's palettes verbatim. Uncommon and Epic are built to the same
-// shape from the rarity colour the rest of the app already uses for them, so
-// every rarity gets its own flower rather than sharing a neighbour's.
-function shade(hex, amount) {
-  const n = parseInt(hex.slice(1), 16)
-  const mix = c => Math.round(amount < 0 ? c * (1 + amount) : c + (255 - c) * amount)
-  return `#${[(n >> 16) & 255, (n >> 8) & 255, n & 255].map(c => mix(c).toString(16).padStart(2, '0')).join('')}`
-}
-
-function derivedTier(rarity) {
-  const base = RARITY_COLORS[rarity]
-  return {
-    petal: base, petalEdge: shade(base, -0.35), petalLight: shade(base, 0.45),
-    core: '#E8C766', coreEdge: '#B2913A', flare: `${base}e0`,
-    chipBg: shade(base, 0.72), chipInk: shade(base, -0.55),
-  }
-}
-
-const TIERS = {
-  1: {
-    petal: '#9CC6DE', petalEdge: '#5E93B0', petalLight: '#C8DFEC',
-    core: '#E8C766', coreEdge: '#B2913A', flare: 'rgba(156,198,222,0.85)',
-    chipBg: '#DCEAF2', chipInk: '#245A76',
-  },
-  2: derivedTier(2),
-  3: {
-    petal: '#E58AAE', petalEdge: '#B45B80', petalLight: '#F3C3D5',
-    core: '#DC8818', coreEdge: '#894C06', flare: 'rgba(229,138,174,0.9)',
-    chipBg: '#FBDCE7', chipInk: '#8E2B5A',
-  },
-  4: derivedTier(4),
-  5: {
-    petal: '#C79BE8', petalEdge: '#8E62B4', petalLight: '#E3CDF4',
-    core: '#F0B93C', coreEdge: '#9B6C0C', flare: 'rgba(240,185,60,0.9)',
-    chipBg: '#F6E4B8', chipInk: '#7A4E06',
-  },
-}
-
-const edge = (px, color) => `0 ${px}px 0 ${color}`
-
-// Promoted to its own compositor layer and told exactly what will change, so
-// the browser doesn't re-rasterise it every frame.
-const LAYER = { willChange: 'transform, opacity', backfaceVisibility: 'hidden' }
+// by interpolation. Timing lives in ../lib/packTimeline.js and the playback
+// runtime in ./useCinematic.js, shared with the fully-grown payoff. Per that
+// runtime's contract, everything animated here writes only `transform` and
+// `opacity`.
 
 /* ---- the pack --------------------------------------------------------- */
 const PW = 320, PH = 440, TOOTH = 32, TEETH = 10, DEPTH = 16
@@ -385,83 +319,22 @@ function NamePlaque({ track, C, tier, seed }) {
 
 /* ---- the whole piece -------------------------------------------------- */
 export default function PackOpening({ packet, seed, onDone }) {
-  const [scale, setScale] = useState(() =>
-    Math.min(window.innerWidth / 1920, window.innerHeight / 1080))
-  const done = useRef(false)
-  // Callers pass an inline arrow, so `onDone`'s identity changes on every
-  // render. Held in a ref, the timeline effect can mount once and stay mounted.
-  const doneCb = useRef(onDone)
-  doneCb.current = onDone
-
-  // Every animated element registers here during render; the loop writes to
-  // them directly. Rebuilt each render because the ref callbacks are fresh
-  // closures, so React re-invokes all of them.
-  const reg = useRef([])
-  reg.current = []
-  const track = apply => el => { if (el) reg.current.push([el, apply]) }
-
-  const reduced = typeof matchMedia === 'function'
-    && matchMedia('(prefers-reduced-motion: reduce)').matches
+  const scale = useStageScale()
   // Reduced motion skips the drop, rattle and camera push and joins at the
   // reveal — the information still arrives, the theatre doesn't.
-  const start = reduced ? CUES.Name : 0
-
-  // The composition is authored at a fixed 1920x1080, so it's scaled to fit
-  // the viewport rather than reflowed — every offset is in stage pixels.
-  useEffect(() => {
-    const fit = () => setScale(Math.min(window.innerWidth / 1920, window.innerHeight / 1080))
-    window.addEventListener('resize', fit)
-    return () => window.removeEventListener('resize', fit)
-  }, [])
+  const start = prefersReducedMotion() ? CUES.Name : 0
+  const { track, finish } = useCinematic({ duration: PACK_DURATION, start, onDone })
 
   const C = CUES
-  const cam = { up: MOTION.enter({ from: 0, to: 0.04, start: C.Shake + 0.1, end: C.Tear }),
-                down: MOTION.enter({ from: 0, to: 0.04, start: C.Name + 0.1, end: C.Name + 1.6 }) }
+  const camUp = MOTION.enter({ from: 0, to: 0.04, start: C.Shake + 0.1, end: C.Tear })
+  const camDown = MOTION.enter({ from: 0, to: 0.04, start: C.Name + 0.1, end: C.Name + 1.6 })
   const liftF = MOTION.enter({ from: 0, to: 52, start: C.Name, end: C.Name + 1.5 })
   const rewardUp = MOTION.enter({ from: 0, to: 0.2, start: C.Shake + 0.1, end: C.Tear + 0.4 })
   const rewardDown = MOTION.enter({ from: 0, to: 0.16, start: C.Name, end: C.Name + 1.6 })
   const scrimUp = MOTION.enter({ from: 0, to: 1, start: 0.15, end: 0.95 })
   const scrimDown = MOTION.enter({ from: 0, to: 1, start: C.Return + 0.35, end: C.Return + 1.15 })
 
-  function finish() {
-    if (done.current) return
-    done.current = true
-    doneCb.current()
-  }
-
-  const paint = T => {
-    const list = reg.current
-    for (let i = 0; i < list.length; i++) list[i][1](T, list[i][0])
-  }
-
-  // Paint frame zero synchronously, before the browser shows anything —
-  // otherwise the first painted frame is whatever the static styles say, which
-  // flashes the pack at its resting position before it drops in.
-  useLayoutEffect(() => { paint(start) })
-
-  useEffect(() => {
-    let raf
-    const t0 = performance.now()
-    const tick = now => {
-      // Time comes from the wall clock, not from a frame counter, so a
-      // backgrounded tab resumes at the right point instead of playing back
-      // the frames it missed in fast-forward.
-      const T = start + (now - t0) / 1000
-      paint(Math.min(T, PACK_DURATION))
-      if (T >= PACK_DURATION) { finish(); return }
-      raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [start])
-
-  useEffect(() => {
-    function onKey(e) { if (e.key === 'Escape') finish() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
-
-  const tier = TIERS[seed.rarity] || TIERS[3]
+  const tier = tierFor(seed.rarity)
 
   return (
     <div className="pack-overlay" onClick={finish}>
@@ -474,7 +347,7 @@ export default function PackOpening({ packet, seed, onDone }) {
       />
       <div className="pack-stage" style={{ transform: `translate(-50%, -50%) scale(${scale})` }}>
         <div
-          ref={track((T, el) => { el.style.transform = `scale(${1 + cam.up(T) - cam.down(T)})` })}
+          ref={track((T, el) => { el.style.transform = `scale(${1 + camUp(T) - camDown(T)})` })}
           style={{ position: 'absolute', inset: 0, transformOrigin: '50% 48%', ...LAYER }}
         >
           <div

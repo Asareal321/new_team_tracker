@@ -10,6 +10,7 @@ import {
 } from '../lib/garden'
 import PlotCluster from '../components/PlotCluster'
 import PackOpening from '../components/PackOpening'
+import FlowerGrown from '../components/FlowerGrown'
 import PacketArt from '../components/PacketArt'
 import './GardenPage.css'
 
@@ -30,6 +31,7 @@ export default function GardenPage() {
   const {
     state, flowers, ready,
     plantSeed, placeFlower, moveFlower, sellGrown, sellPlanted, buyPacket, openPacket, expandGarden,
+    markHarvestCelebrated,
   } = useGarden()
   const [tab, setTab] = useState('garden')
   // Which flower is in hand, so the overlay can render it and the grid can
@@ -48,6 +50,11 @@ export default function GardenPage() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [placing, setPlacing] = useState(false)
+  // Mirrors harvest_celebrated locally. If the write fails — most likely the
+  // migration not being applied — the flag would stay false and the cinematic
+  // would restart the instant it finished, so this ends it for the session
+  // regardless.
+  const [celebratedHere, setCelebratedHere] = useState(false)
   const [tick, setTick] = useState(0)
 
   // Drive the countdown once a second while a seed is in the ground.
@@ -551,6 +558,15 @@ export default function GardenPage() {
         </section>
         )}
       </div>
+
+      {/* The payoff for a finished grow, once per grow. It's a full-screen
+          overlay, so it plays whichever room of the garden you happen to be in. */}
+      {isReady && !state?.harvest_celebrated && !celebratedHere && !opening && (
+        <FlowerGrown
+          seed={growing}
+          onDone={() => { setCelebratedHere(true); markHarvestCelebrated() }}
+        />
+      )}
 
       {opening && (
         <PackOpening
