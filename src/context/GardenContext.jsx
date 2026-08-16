@@ -27,6 +27,33 @@ const DEFAULT_STATE = {
   shaved_seconds: 0,
 }
 
+// Where a flower waits mid-swap. Off-grid and negative, so no plot renders it
+// and it can't collide with a real index.
+const PARKED_PLOT = -1
+
+// A swap that dies between its writes — tab closed, connection dropped — leaves
+// a flower parked off-grid, where nothing would ever show it again. Every load
+// puts strays back in the first free plot, so a flower can't be lost to a
+// half-finished rearrange.
+async function rescueParked(rows) {
+  const parked = rows.filter(f => f.plot_index < 0)
+  if (!parked.length) return rows
+  const taken = new Set(rows.filter(f => f.plot_index >= 0).map(f => f.plot_index))
+  const fixed = []
+  for (const flower of parked) {
+    let plot = 0
+    while (taken.has(plot)) plot += 1
+    taken.add(plot)
+    const { error } = await supabase.from('garden_flowers').update({ plot_index: plot }).eq('id', flower.id)
+    if (error) {
+      console.error('[trakkit] could not rescue a parked flower', error.message)
+      continue
+    }
+    fixed.push({ ...flower, plot_index: plot })
+  }
+  return rows.filter(f => f.plot_index >= 0).concat(fixed)
+}
+
 export function GardenProvider({ children }) {
   const { user } = useAuth()
   const [state, setState] = useState(null)
@@ -51,7 +78,7 @@ export function GardenProvider({ children }) {
       supabase.from('garden_flowers').select('*').eq('user_id', user.id),
     ])
     setState(rows || { user_id: user.id, ...DEFAULT_STATE })
-    setFlowers(flowerRows || [])
+    setFlowers(await rescueParked(flowerRows || []))
     setReady(true)
   }, [user])
 
@@ -260,6 +287,55 @@ export function GardenProvider({ children }) {
     await clearGrowing()
   }, [flowers, user, clearGrowing])
 
+  // Rearranging the garden. Dropping onto an empty plot moves; dropping onto a
+  // planted one swaps the two.
+  //
+  // The table has `unique (user_id, plot_index)`, and the constraint is not
+  // deferrable, so a swap can't be two plain updates — the first would collide
+  // with the row it's about to displace. The occupant is parked at PARKED_PLOT
+  // (off-grid, so nothing renders it) for the duration. If a later step fails
+  // the earlier ones are undone, and `load()` reconciles anything still parked.
+  const moveFlower = useCallback(async (flowerId, toPlotIndex) => {
+    const moving = flowers.find(f => f.id === flowerId)
+    if (!moving || moving.plot_index === toPlotIndex) return
+    const occupant = flowers.find(f => f.plot_index === toPlotIndex)
+    const from = moving.plot_index
+    const snapshot = flowers
+
+    setFlowers(prev => prev.map(f => {
+      if (f.id === moving.id) return { ...f, plot_index: toPlotIndex }
+      if (occupant && f.id === occupant.id) return { ...f, plot_index: from }
+      return f
+    }))
+
+    const set = (id, plot_index) =>
+      supabase.from('garden_flowers').update({ plot_index }).eq('id', id)
+
+    try {
+      if (!occupant) {
+        const { error } = await set(moving.id, toPlotIndex)
+        if (error) throw error
+      } else {
+        let { error } = await set(occupant.id, PARKED_PLOT)
+        if (error) throw error
+        ;({ error } = await set(moving.id, toPlotIndex))
+        if (error) {
+          await set(occupant.id, toPlotIndex)
+          throw error
+        }
+        ;({ error } = await set(occupant.id, from))
+        if (error) {
+          await set(moving.id, from)
+          await set(occupant.id, toPlotIndex)
+          throw error
+        }
+      }
+    } catch (e) {
+      setFlowers(snapshot)
+      throw e
+    }
+  }, [flowers])
+
   const sellGrown = useCallback(async () => {
     const seed = seedByKey(stateRef.current?.growing_seed)
     if (!seed) throw new Error('Nothing is ready to sell')
@@ -301,7 +377,7 @@ export function GardenProvider({ children }) {
 
   const value = {
     state, flowers, ready, seeds: SEEDS,
-    spawnCloud, bankTaskReward, setQuietMode, completeOnboarding, buyPacket, plantSeed, placeFlower, sellGrown, sellPlanted, unlockSeed, expandGarden,
+    spawnCloud, bankTaskReward, setQuietMode, completeOnboarding, buyPacket, plantSeed, placeFlower, moveFlower, sellGrown, sellPlanted, unlockSeed, expandGarden,
     isDev, devOpen, openDevPanel: () => setDevOpen(true),
   }
 

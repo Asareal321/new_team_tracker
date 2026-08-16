@@ -1,4 +1,8 @@
 import { useEffect, useState } from 'react'
+import {
+  DndContext, DragOverlay, closestCenter, useDraggable, useDroppable,
+  useSensor, useSensors, MouseSensor, TouchSensor,
+} from '@dnd-kit/core'
 import { useGarden } from '../context/GardenContext'
 import {
   SEEDS, seedByKey, RARITY_COLORS, RARITY_NAMES, PLOTS_PER_ROW, PACKETS,
@@ -12,8 +16,18 @@ import './GardenPage.css'
 export default function GardenPage() {
   const {
     state, flowers, ready,
-    plantSeed, placeFlower, sellGrown, sellPlanted, buyPacket, expandGarden,
+    plantSeed, placeFlower, moveFlower, sellGrown, sellPlanted, buyPacket, expandGarden,
   } = useGarden()
+  // Which flower is in hand, so the overlay can render it and the grid can
+  // light up its drop targets.
+  const [dragging, setDragging] = useState(null)
+  // A mouse drag starts after a few pixels, but touch needs a hold: with a
+  // distance trigger, every attempt to scroll the garden past a bed would pick
+  // the bed up instead.
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 6 } }),
+  )
   // The packet being torn open, and its already-decided contents.
   const [opening, setOpening] = useState(null)
   const [opened, setOpened] = useState(null)
@@ -72,6 +86,7 @@ export default function GardenPage() {
   // Sprout art grows through four stages so the plot visibly changes shape as
   // the timer runs down, not just the progress bar.
   const sproutStage = progress < 25 ? '·' : progress < 55 ? '🌱' : progress < 100 ? '🌿' : growing?.emoji
+  const draggedSeed = seedByKey(flowers.find(f => f.id === dragging)?.seed_key)
 
   return (
     <div className="garden-scene" data-tick={tick}>
@@ -189,39 +204,57 @@ export default function GardenPage() {
           </div>
 
           <div className="garden-field">
-            <div className="plot-grid">
-              {Array.from({ length: plotCount }, (_, i) => {
-                const flower = byPlot.get(i)
-                const seed = seedByKey(flower?.seed_key)
-                if (flower && seed) {
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={e => setDragging(e.active.id)}
+              onDragCancel={() => setDragging(null)}
+              onDragEnd={({ active, over }) => {
+                setDragging(null)
+                if (!over) return
+                const to = Number(String(over.id).replace('plot-', ''))
+                run(() => moveFlower(active.id, to))
+              }}
+            >
+              <div className={`plot-grid${dragging ? ' rearranging' : ''}`}>
+                {Array.from({ length: plotCount }, (_, i) => {
+                  const flower = byPlot.get(i)
+                  const seed = seedByKey(flower?.seed_key)
+                  if (flower && seed) {
+                    return (
+                      <FilledPlot
+                        key={flower.id}
+                        index={i}
+                        flower={flower}
+                        seed={seed}
+                        onSell={() => run(() => sellPlanted(flower.id), v => `Sold for ${v} coins.`)}
+                      />
+                    )
+                  }
                   return (
-                    <div key={i} className="plot filled" style={{ '--rarity': RARITY_COLORS[seed.rarity] }}>
-                      <PlotCluster seed={seed} />
-                      <span className="plot-name">{seed.name}</span>
-                      <button
-                        className="plot-sell"
-                        title={`Sell ${seed.name} for ${seed.sellValue} coins`}
-                        onClick={() => run(() => sellPlanted(flower.id), v => `Sold for ${v} coins.`)}
-                      >
-                        Sell {seed.sellValue} 🪙
-                      </button>
-                    </div>
+                    <EmptyPlot
+                      key={i}
+                      index={i}
+                      placing={placing}
+                      onPlace={async () => {
+                        if (await run(() => placeFlower(i), 'Planted in your garden!')) setPlacing(false)
+                      }}
+                    />
                   )
-                }
-                return (
-                  <button
-                    key={i}
-                    className={`plot empty${placing ? ' selectable' : ''}`}
-                    disabled={!placing}
-                    onClick={async () => {
-                      if (await run(() => placeFlower(i), 'Planted in your garden!')) setPlacing(false)
-                    }}
-                  >
-                    <span className="plot-label">{placing ? 'Plant here' : ''}</span>
-                  </button>
-                )
-              })}
-            </div>
+                })}
+              </div>
+              {/* The dragged bed follows the cursor at full size; without an
+                  overlay the original would move inside the grid and the plot
+                  it left would look permanently empty mid-drag. */}
+              <DragOverlay dropAnimation={null}>
+                {draggedSeed && (
+                  <div className="plot filled is-overlay" style={{ '--rarity': RARITY_COLORS[draggedSeed.rarity] }}>
+                    <PlotCluster seed={draggedSeed} />
+                  </div>
+                )}
+              </DragOverlay>
+            </DndContext>
+            <p className="garden-hint">Drag a bed onto another plot to rearrange — drop it on a planted bed to swap them.</p>
           </div>
         </section>
 
@@ -301,5 +334,49 @@ export default function GardenPage() {
         />
       )}
     </div>
+  )
+}
+
+// A planted bed: draggable so it can be rearranged, and droppable so another
+// bed can be swapped onto it.
+function FilledPlot({ index, flower, seed, onSell }) {
+  const { attributes, listeners, setNodeRef: dragRef, isDragging } = useDraggable({ id: flower.id })
+  const { setNodeRef: dropRef, isOver } = useDroppable({ id: `plot-${index}` })
+
+  return (
+    <div
+      ref={dropRef}
+      className={`plot filled${isDragging ? ' is-dragging' : ''}${isOver ? ' is-over' : ''}`}
+      style={{ '--rarity': RARITY_COLORS[seed.rarity] }}
+    >
+      {/* The grab handle covers the bed but sits under the sell button, so
+          selling still works while any drag from the soil picks the bed up. */}
+      <span ref={dragRef} className="plot-grab" {...listeners} {...attributes} aria-label={`Move ${seed.name}`} />
+      <PlotCluster seed={seed} />
+      <span className="plot-name">{seed.name}</span>
+      <button
+        className="plot-sell"
+        title={`Sell ${seed.name} for ${seed.sellValue} coins`}
+        onClick={onSell}
+      >
+        Sell {seed.sellValue} 🪙
+      </button>
+    </div>
+  )
+}
+
+// An empty bed: a drop target for rearranging, and still the click target for
+// planting whatever just finished growing.
+function EmptyPlot({ index, placing, onPlace }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `plot-${index}` })
+  return (
+    <button
+      ref={setNodeRef}
+      className={`plot empty${placing ? ' selectable' : ''}${isOver ? ' is-over' : ''}`}
+      disabled={!placing}
+      onClick={onPlace}
+    >
+      <span className="plot-label">{placing ? 'Plant here' : ''}</span>
+    </button>
   )
 }
