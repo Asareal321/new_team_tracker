@@ -1589,7 +1589,7 @@ function GreenhouseStrip({ doneToday }) {
         onClick={() => navigate('/garden?tab=quests')}
         title={`${say} — open Trak’s quests`}
       >
-        <Trak mood={claimable ? 'happy' : isReady ? 'point' : growing ? 'idle' : 'think'} size={46} />
+        <Trak mood={claimable ? 'happy' : isReady ? 'point' : growing ? 'idle' : 'think'} size={64} />
         {claimable > 0 && <span className="gh-trak-dot" aria-hidden="true" />}
       </button>
 
