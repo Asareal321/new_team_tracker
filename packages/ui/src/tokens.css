@@ -1,0 +1,122 @@
+/* Beech & Baize — design tokens.
+   Generated from DESIGN.md at the repo root; that file is the source of truth
+   for why each value is what it is. Ramps were built in OKLCH (lightness on a
+   perceptual curve, chroma peaking mid-ramp, hue bending across each) and
+   converted to hex. Every neutral is warm-tinted: nothing here has R = G = B. */
+
+:root {
+  /* Beech — oiled beech ply. Structural chrome: rail, plaques, zone labels. */
+  --bb-primary: #89582C;
+  --bb-primary-edge: #653C1F;
+  --bb-primary-ink: #FEFCF7;
+
+  /* Poster paint — the single action color. */
+  --bb-accent: #90D94F;
+  --bb-accent-border: #63B739;
+  --bb-accent-edge: #3E8637;
+  --bb-accent-ink: #0C511A;
+  --bb-accent-tint: #D3EEB4;
+
+  /* Table baize — the field the pieces sit on. */
+  --bb-ground: #64B468;
+  --bb-ground-ink: #18110C;
+
+  /* Card stock. */
+  --bb-surface: #FEFCF7;
+  --bb-surface-sunk: #EDE7DC;
+  --bb-on-surface: #18110C;
+  --bb-muted: #6A6258;
+  --bb-border: #D9D0C1;
+
+  /* State — poster paint, red and amber pots. */
+  --bb-flag: #CD493C;
+  --bb-flag-ink: #8E2B26;
+  --bb-flag-tint: #FFDED5;
+  --bb-due: #DC8818;
+  --bb-due-ink: #894C06;
+  --bb-due-tint: #FBE9CA;
+
+  /* Wordmark only. Never interface. */
+  --bb-brand-lime: #C3F73A;
+  --bb-brand-ink: #071013;
+
+  /* Shape — hierarchical by material, never uniform. */
+  --bb-r-paper: 4px;
+  --bb-r-routed: 8px;
+  --bb-r-plaque: 14px;
+  --bb-r-token: 9999px;
+
+  /* Spacing — 4px base. The board is dense enough that an 8px base
+     would round every decision upward and cost about a row per column. */
+  --bb-space-xs: 4px;
+  --bb-space-sm: 8px;
+  --bb-space-md: 12px;
+  --bb-space-lg: 16px;
+  --bb-space-xl: 24px;
+  --bb-space-2xl: 40px;
+  --bb-rail-width: 212px;
+
+  /* Type */
+  --bb-font-display: Fredoka, "Baloo 2", "Trebuchet MS", sans-serif;
+  --bb-font-body: Inter, -apple-system, "Segoe UI", sans-serif;
+  --bb-font-data: Sono, "DM Mono", ui-monospace, Menlo, monospace;
+
+  /* Motion — geometry only, and fast. Nothing else transitions. */
+  --bb-press-duration: 90ms;
+}
+
+/* Dark is a separate design, not an inversion: the ground goes warm near-black
+   rather than navy, surfaces step UP instead of casting shadows, and the paints
+   lose roughly 15% chroma because saturated color reads hotter on dark. */
+[data-theme="dark"] {
+  --bb-primary: #6E451E;
+  --bb-primary-edge: #371E0D;
+  --bb-primary-ink: #FEFCF7;
+
+  --bb-accent: #7DBE54;
+  --bb-accent-border: #569A42;
+  --bb-accent-edge: #366C33;
+  --bb-accent-ink: #17110D;
+  --bb-accent-tint: #1E3619;
+
+  --bb-ground: #17110D;
+  --bb-ground-ink: #E8E4DD;
+
+  --bb-surface: #26201B;
+  --bb-surface-sunk: #1E1813;
+  --bb-on-surface: #E8E4DD;
+  --bb-muted: #9D978F;
+  --bb-border: #3F3831;
+
+  --bb-flag: #DD7767;
+  --bb-flag-ink: #DD7767;
+  --bb-flag-tint: #411F19;
+  --bb-due: #E2A355;
+  --bb-due-ink: #E2A355;
+  --bb-due-tint: #3B260C;
+}
+
+/* Project palette. Nine slots assigned by a hash of the project id. Hues live
+   in the cool half of the wheel plus rose — the warm quadrant is reserved for
+   state (flag h29, due h68, accent h133, beech h66) and every hue here clears
+   all four by at least 20 degrees, so a project can never read as a priority.
+   Every slot sits at the same lightness as its peers. */
+.bb-pc-0 { --bb-pj-dot: #9C8600; --bb-pj-bg: #EFE9C5; --bb-pj-ink: #554800; }
+.bb-pc-1 { --bb-pj-dot: #00A062; --bb-pj-bg: #CEF2DC; --bb-pj-ink: #005732; }
+.bb-pc-2 { --bb-pj-dot: #00A19A; --bb-pj-bg: #C4F3EF; --bb-pj-ink: #005854; }
+.bb-pc-3 { --bb-pj-dot: #0099C4; --bb-pj-bg: #C5F0FE; --bb-pj-ink: #00536C; }
+.bb-pc-4 { --bb-pj-dot: #3689DD; --bb-pj-bg: #D1EBFF; --bb-pj-ink: #17497B; }
+.bb-pc-5 { --bb-pj-dot: #8374DA; --bb-pj-bg: #E6E4FF; --bb-pj-ink: #463D7A; }
+.bb-pc-6 { --bb-pj-dot: #AB65C0; --bb-pj-bg: #F6DEFD; --bb-pj-ink: #5E346A; }
+.bb-pc-7 { --bb-pj-dot: #C55B96; --bb-pj-bg: #FFDCED; --bb-pj-ink: #6D2E51; }
+.bb-pc-8 { --bb-pj-dot: #7D8792; --bb-pj-bg: #EBE7E1; --bb-pj-ink: #4D4740; }
+
+[data-theme="dark"] .bb-pc-0 { --bb-pj-bg: #312C08; --bb-pj-ink: #C7B967; }
+[data-theme="dark"] .bb-pc-1 { --bb-pj-bg: #113321; --bb-pj-ink: #7ACC9E; }
+[data-theme="dark"] .bb-pc-2 { --bb-pj-bg: #003331; --bb-pj-ink: #59CDC6; }
+[data-theme="dark"] .bb-pc-3 { --bb-pj-bg: #01313D; --bb-pj-ink: #5FC7E6; }
+[data-theme="dark"] .bb-pc-4 { --bb-pj-bg: #172D44; --bb-pj-ink: #85BCF9; }
+[data-theme="dark"] .bb-pc-5 { --bb-pj-bg: #2A2744; --bb-pj-ink: #B4ADF7; }
+[data-theme="dark"] .bb-pc-6 { --bb-pj-bg: #36233C; --bb-pj-ink: #D4A2E3; }
+[data-theme="dark"] .bb-pc-7 { --bb-pj-bg: #3E2030; --bb-pj-ink: #EA9CC3; }
+[data-theme="dark"] .bb-pc-8 { --bb-pj-bg: #2F2A25; --bb-pj-ink: #BBB7AF; }

@@ -1,0 +1,38 @@
+{
+  "name": "@trakkit/ui",
+  "version": "0.1.0",
+  "description": "Beech & Baize \u2014 the trakkit design system. Painted wooden pieces on a baize board.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles.css": "./dist/styles.css",
+    "./tokens.css": "./dist/tokens.css",
+    "./fonts.css": "./dist/fonts.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "*.css"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && cp src/*.css dist/ && mkdir -p dist/fonts && cp src/fonts/*.woff2 dist/fonts/ && cat src/fonts.css src/tokens.css src/components.css > dist/styles.css && mkdir -p guides && cp ../../DESIGN.md guides/beech-and-baize.md"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.6.3"
+  }
+}

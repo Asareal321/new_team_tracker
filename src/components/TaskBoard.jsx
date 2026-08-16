@@ -1562,63 +1562,60 @@ function GreenhouseStrip({ doneToday }) {
   const isReady = growing && remaining === 0
   const streak = liveStreak(state?.streak)
 
+  const best = state?.streak?.best || 0
+
+  // Two lines: what's growing, then what today has paid out. The strip sits
+  // above the bands, and the bands are the page — anything taller than this
+  // pushes the actual work below the fold.
   return (
     <section className="greenhouse-strip">
-      <div className="gh-pot">
-        <span className="gh-soil" />
-        <span className="gh-plant" style={{ '--grow': pct / 100 }}>
-          <span className="gh-bloom">{growing ? stage.emoji : '·'}</span>
-          <span className="gh-stem" />
-          <span className="gh-vessel" />
-        </span>
-      </div>
-      <div className="gh-body">
-        <div>
-          <p className="gh-title">Greenhouse</p>
-          <p className="gh-copy">
-            {growing
-              ? `${growing.name} — finishing tasks earns clouds, and clouds cut the wait. ${isReady ? 'It’s ready to keep or sell.' : 'Bloom at stage 8, then it moves to the garden.'}`
-              : 'Nothing growing. Open a packet and plant a seed to start one.'}
-          </p>
-        </div>
-
-        {growing && (
-          <div className="gh-progress">
-            <div className="gh-progress-row">
-              <span>stage {stageNo} of {GROWTH_STAGES.length} · {stage.label}</span>
-              <span>{isReady ? 'ready to harvest' : `${formatDuration(remaining)} left`}</span>
+      <div className="gh-line">
+        <span className="gh-emoji" aria-hidden="true">{growing ? stage.emoji : '🪴'}</span>
+        <span className="gh-name">{growing ? growing.name : 'Greenhouse'}</span>
+        {growing ? (
+          <>
+            <span className="gh-stage">stage {stageNo} of {GROWTH_STAGES.length} · {stage.label}</span>
+            <div className="gh-bar" role="img" aria-label={`${Math.round(pct)}% grown`}>
+              <span style={{ width: `${pct}%` }} />
             </div>
-            <div className="gh-bar"><span style={{ width: `${pct}%` }} /></div>
-          </div>
-        )}
-
-        <div className="gh-stats">
-          <div className="gh-stat">
-            <span className="gh-num">{(state?.coins ?? 0).toLocaleString()}</span>
-            <span className="gh-label">coins</span>
-          </div>
-          <div className="gh-stat">
-            <span className="gh-num">{streak}</span>
-            <span className="gh-label">day streak</span>
-          </div>
-          <div className="gh-stat">
-            <span className="gh-num">{doneToday}</span>
-            <span className="gh-label">done today</span>
-          </div>
-        </div>
-
-        <DailyCaps state={state} />
-
-        <div className="gh-actions">
-          <button className="bb-btn primary" onClick={() => navigate('/garden')}>
-            {isReady ? 'Harvest it →' : 'Open the garden →'}
-          </button>
-          <span className="gh-note">
-            {isReady
-              ? 'finished — keep it or sell it'
-              : growing ? 'clouds from finished tasks cut the wait' : 'seeds come from adding tasks'}
+            <span className="gh-left">
+              {isReady ? 'ready to harvest' : `${formatDuration(remaining)} left`}
+            </span>
+          </>
+        ) : (
+          <span className="gh-stage gh-idle">
+            Nothing growing — open a packet and plant a seed.
           </span>
-        </div>
+        )}
+        <button
+          className="bb-btn primary gh-go"
+          onClick={() => navigate('/garden')}
+          title={isReady
+            ? 'Finished — keep it or sell it'
+            : growing ? 'Clouds from finished tasks cut the wait' : 'Seeds come from adding tasks'}
+        >
+          {isReady ? 'Harvest →' : 'Garden →'}
+        </button>
+      </div>
+
+      <div className="gh-chips">
+        <span className="gh-chip" title="Coins you can spend in the shop">
+          <span aria-hidden="true">🪙</span>{(state?.coins ?? 0).toLocaleString()} coins
+        </span>
+        <span
+          className="gh-chip"
+          title={streak > 0
+            ? `Finish at least one task tomorrow to keep it going.${best > 0 ? ` Best: ${best} ${best === 1 ? 'day' : 'days'}.` : ''}`
+            : `Finish a task today to start a streak.${best > 0 ? ` Best: ${best} ${best === 1 ? 'day' : 'days'}.` : ''}`}
+        >
+          <span aria-hidden="true">{streak > 0 ? '🔥' : '🌑'}</span>
+          {streak} {streak === 1 ? 'day' : 'days'}
+        </span>
+        <span className="gh-chip" title="Tasks you've finished today">
+          <span aria-hidden="true">✅</span>{doneToday} done today
+        </span>
+        <span className="gh-chip-rule" aria-hidden="true" />
+        <DailyCaps state={state} />
       </div>
     </section>
   )

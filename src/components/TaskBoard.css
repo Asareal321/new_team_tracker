@@ -1419,8 +1419,7 @@
 .board-bands .band-count,
 .board-bands .row-meta,
 .board-bands .row-chip,
-.board-bands .gh-num,
-.board-bands .gh-progress-row,
+.board-bands .gh-chip,
 .board-bands .tally-num,
 .dump-wrap .dump-meta,
 .dump-wrap .tray-n,
@@ -1912,85 +1911,76 @@
   background: var(--accent-bg);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  padding: 16px;
+  padding: 11px 12px;
   display: flex;
-  gap: 16px;
-  align-items: stretch;
-}
-.gh-pot {
-  flex: 0 0 150px;
-  background: var(--bg-surface);
-  border-radius: 8px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding: 12px;
-  min-height: 170px;
-  position: relative;
-  overflow: hidden;
-}
-.gh-soil { position: absolute; left: 0; right: 0; bottom: 0; height: 34px; background: var(--bg-muted); }
-.gh-plant { position: relative; display: flex; flex-direction: column; align-items: center; }
-/* The bloom and stem scale continuously with growth, so the plant visibly
-   changes between stages and not only at their boundaries. */
-.gh-bloom { font-size: calc(20px + var(--grow, 0) * 22px); line-height: 1; }
-.gh-stem {
-  width: 6px;
-  height: calc(18px + var(--grow, 0) * 50px);
-  background: var(--bb-accent-edge);
-  border-radius: 9999px;
-}
-.gh-vessel {
-  width: 64px;
-  height: 34px;
-  background: var(--accent);
-  border: 2px solid var(--accent);
-  border-radius: 4px 4px 8px 8px;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.gh-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
-.gh-title { font-weight: 750; font-size: var(--fs-xl); line-height: 1.15; letter-spacing: -0.02em; }
-.gh-copy { font-size: 14px; line-height: 1.5; color: var(--bb-muted); max-width: 68ch; }
-
-.gh-progress { display: flex; flex-direction: column; gap: 6px; }
-.gh-progress-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
+/* Line one: what's growing. The plant is an inline glyph rather than a potted
+   scene — a pot tall enough to look like one costs more height than the whole
+   strip is worth. */
+.gh-line { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.gh-emoji { font-size: 18px; line-height: 1; }
+.gh-name { font-weight: 750; font-size: var(--fs-md); letter-spacing: -0.02em; }
+.gh-stage {
   font-family: var(--bb-num);
   font-size: 11px;
   letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
   color: var(--bb-muted);
 }
-.gh-bar { height: 10px; background: var(--bg-surface); border-radius: 9999px; overflow: hidden; }
+.gh-idle { font-variant-numeric: normal; }
+.gh-left {
+  font-family: var(--bb-num);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--bb-muted);
+  white-space: nowrap;
+}
+/* The bar takes whatever the row has left, and stops shrinking before it stops
+   reading as a bar. */
+.gh-bar {
+  flex: 1 1 120px;
+  min-width: 90px;
+  height: 6px;
+  background: var(--bg-surface);
+  border-radius: 9999px;
+  overflow: hidden;
+}
 .gh-bar span {
   display: block;
-  height: 10px;
+  height: 100%;
   background: var(--bb-accent);
   border-right: 2px solid var(--bb-accent-brd);
   transition: width 180ms;
 }
+.gh-go { margin-left: auto; font-size: 12px; padding: 5px 13px; }
 
-.gh-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 520px; }
-.gh-stat {
-  border: 1px solid var(--bb-border);
-  border-radius: 8px;
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.gh-num {
-  font-family: var(--bb-num);
-  font-size: 26px;
-  line-height: 1.1;
-  letter-spacing: -0.01em;
+/* Line two: what today has paid out, and what's left to pay. The rule splits
+   the two — banked totals on the left, today's remaining allowances on the
+   right — so the same number never reads as both. */
+.gh-chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.gh-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  line-height: 1.5;
   font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+  background: var(--bg-surface);
+  border: 1px solid var(--bb-border);
+  border-radius: 9999px;
+  padding: 2px 9px;
+  white-space: nowrap;
+  cursor: help;
 }
-.gh-label { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--bb-muted); }
-.gh-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.gh-note { font-family: var(--bb-num); font-size: 11px; letter-spacing: 0.02em; color: var(--bb-muted); }
+/* A spent allowance is stated, not hidden — it explains a refusal you may be
+   about to hit. */
+.gh-chip.cap.spent { color: var(--bb-due-ink); background: var(--bb-due-tint); border-color: var(--bb-due); }
+.gh-chip-rule { width: 1px; height: 15px; background: var(--bb-border); margin: 0 2px; }
 
 /* --- responsive ----------------------------------------------------------- */
 
@@ -2004,8 +1994,9 @@
 
 @media (max-width: 820px) {
   .board-bands, .dump-wrap { padding: 14px; }
-  .greenhouse-strip { flex-direction: column; }
-  .gh-pot { flex: 0 0 auto; }
+  /* Narrow enough that the bar and the button would each get a line of their
+     own; the button leads instead of trailing a wrapped row. */
+  .gh-go { margin-left: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {

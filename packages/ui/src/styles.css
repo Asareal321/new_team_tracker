@@ -1,0 +1,4 @@
+/* The single stylesheet a host app imports. Order matters: tokens define the
+   custom properties every component rule reads. */
+@import "./tokens.css";
+@import "./components.css";

@@ -1,0 +1,34 @@
+/* Beech & Baize brand faces, self-hosted.
+   Two working weights across the system — 400 and 700 — plus Fredoka at a
+   single 600 cut used only on plaques. Latin subsets; SIL Open Font License.
+   Self-hosted deliberately: the app previously pulled Inter from the Google
+   Fonts CDN on every page load, a third-party dependency on the critical path. */
+
+@font-face {
+  font-family: "Fredoka";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("./fonts/fredoka-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/inter-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/inter-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Sono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/sono-400.woff2") format("woff2");
+}

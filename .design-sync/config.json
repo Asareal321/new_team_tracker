@@ -1,0 +1,20 @@
+{
+  "pkg": "@trakkit/ui",
+  "globalName": "TrakkitUI",
+  "projectId": "6035aeac-87a3-4185-8337-69469c0e261f",
+  "shape": "package",
+  "buildCmd": "npm --prefix packages/ui run build",
+  "srcDir": "src",
+  "tsconfig": "tsconfig.json",
+  "cssEntry": "dist/styles.css",
+  "docsDir": "docs",
+  "extraFonts": [
+    "dist/fonts.css"
+  ],
+  "guidelinesGlob": [
+    "guides/**/*.md"
+  ],
+  "provider": {
+    "component": "DSRoot"
+  }
+}
