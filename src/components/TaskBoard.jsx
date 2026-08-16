@@ -69,8 +69,8 @@ const BRAINDUMP = 'braindump'
 // and it now applies to the backlog as well: an Up next that grows without
 // bound is just a second braindump with more ceremony. The braindump is the
 // overflow — it exists precisely so a full board doesn't block capture.
-const MAX_DOING = 2
-const MAX_UP_NEXT = 4
+export const MAX_DOING = 2
+export const MAX_UP_NEXT = 4
 const BAND_LIMITS = { todo: MAX_UP_NEXT, in_progress: MAX_DOING }
 
 // One check, used by every route into a band: the form, drag-and-drop, the

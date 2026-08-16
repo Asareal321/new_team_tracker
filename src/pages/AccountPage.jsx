@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../auth/AuthContext'
 import { useGarden } from '../context/GardenContext'
 import { useTeam } from '../context/TeamContext'
+import Onboarding from '../components/Onboarding'
 import './AccountPage.css'
 
 export default function AccountPage() {
@@ -22,6 +23,7 @@ export default function AccountPage() {
   const [displayName, setDisplayName] = useState(profile?.display_name || '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [tour, setTour] = useState(false)
 
   async function handleSave(e) {
     e.preventDefault()
@@ -92,6 +94,22 @@ export default function AccountPage() {
           <span className="switch-track"><span className="switch-knob" /></span>
         </label>
       </div>
+
+      {/* The tour only fires once, and the rules it explains are the ones you
+          forget by the time you need them. */}
+      <div className="account-card settings-card">
+        <div>
+          <strong>Trak&rsquo;s tour</strong>
+          <p className="dev-card-hint">
+            The rabbit&rsquo;s walkthrough again — how the bands and their limits work,
+            sprints and projects, and the whole garden loop. Nothing is planted or
+            changed the second time round.
+          </p>
+        </div>
+        <button className="btn-ghost btn-sm" onClick={() => setTour(true)}>Replay</button>
+      </div>
+
+      {tour && <Onboarding mode="replay" displayName={profile?.display_name} onClose={() => setTour(false)} />}
 
       {isDev && (
         <div className="account-card dev-card">

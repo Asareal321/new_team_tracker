@@ -384,6 +384,7 @@ export default function BoardPage() {
     setProjects(prev => [...prev, row])
     const { error } = await supabase.from('projects').insert(row)
     if (error) { setProjects(prev => prev.filter(p => p.id !== id)); throw error }
+    return id
   }
 
   async function updateProject(id, updates) {
@@ -491,9 +492,18 @@ export default function BoardPage() {
       {gardenReady && garden && !garden.onboarded && !currentTeamId && (
         <Onboarding
           displayName={user?.user_metadata?.display_name}
-          onFinish={async ({ seedKey, firstTask }) => {
+          onFinish={async ({ seedKey, sprintName, firstTask }) => {
+            // A named sprint is created for real, so the sprint the tour just
+            // explained is on the board when the tour closes. If creating it
+            // fails (the personal-projects migration hasn't run), the first
+            // task still lands — unfiled beats lost.
+            let projectId = null
+            if (sprintName) {
+              try { projectId = await addProject({ name: sprintName, status: 'active', group_id: null }) }
+              catch { projectId = null }
+            }
             if (firstTask) {
-              await addTask({ title: firstTask, notes: '', status: 'todo', priority: 'high', due_date: null, project_id: null, assigneeIds: [user.id] })
+              await addTask({ title: firstTask, notes: '', status: 'todo', priority: 'high', due_date: null, project_id: projectId, assigneeIds: [user.id] })
             }
             await completeOnboarding(seedKey)
             await fetchTasks()

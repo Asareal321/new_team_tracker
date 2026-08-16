@@ -16,47 +16,136 @@
   border-radius: 20px;
   box-shadow: var(--shadow-pop);
   width: 100%;
-  max-width: 440px;
-  padding: 1.5rem 1.5rem 1.25rem;
-  text-align: center;
+  max-width: 560px;
+  /* The tour explains the rules, and some of the rules are tables. The card
+     scrolls rather than growing past the viewport on a laptop. */
+  max-height: min(88vh, 720px);
+  overflow-y: auto;
+  padding: 1.4rem 1.5rem 1.1rem;
 }
 
-.onb-steps { display: flex; gap: 6px; justify-content: center; margin-bottom: 1.1rem; }
-.onb-pip { width: 22px; height: 5px; border-radius: 999px; background: var(--border); }
+.onb-steps { display: flex; gap: 5px; justify-content: center; margin-bottom: 1.15rem; }
+.onb-pip { width: 18px; height: 5px; border-radius: 999px; background: var(--border); }
 .onb-pip.on { background: var(--accent); }
 
-.onb-title { font-size: 1.3rem; font-weight: 800; color: var(--text-1); margin-bottom: 0.45rem; }
-.onb-body { font-size: 0.9rem; color: var(--text-3); line-height: 1.55; max-width: 40ch; margin: 0 auto 1.1rem; }
+/* Trak on the left, the reading column on the right. */
+.onb-scene { display: flex; gap: 1rem; align-items: flex-start; text-align: left; }
+.onb-guide { flex: 0 0 92px; position: relative; display: flex; justify-content: center; }
+.onb-text { flex: 1; min-width: 0; }
+/* What he's presenting, tucked against him. */
+.onb-hero {
+  position: absolute;
+  right: -6px;
+  bottom: -2px;
+  font-size: 2rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.18));
+}
 
-.onb-hero { font-size: 3.4rem; line-height: 1; margin-bottom: 0.6rem; }
+.onb-title {
+  font-size: 1.28rem;
+  font-weight: 800;
+  color: var(--text-1);
+  line-height: 1.2;
+  margin-bottom: 0.5rem;
+}
+.onb-body {
+  font-size: 0.9rem;
+  color: var(--text-3);
+  line-height: 1.55;
+  margin-bottom: 0.7rem;
+}
+.onb-body strong, .onb-body b { color: var(--text-1); font-weight: 700; }
+.onb-fine { font-size: 0.82rem; color: var(--text-4); }
 
-.onb-seeds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-bottom: 1.2rem; }
+.onb-seeds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 0.5rem; }
 .onb-seed {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.9rem 0.4rem;
+  gap: 0.25rem;
+  padding: 0.7rem 0.35rem;
   background: var(--bg-subtle);
   border: 3px solid var(--border);
   border-radius: 14px;
   cursor: pointer;
   font-family: inherit;
+  text-align: center;
 }
 .onb-seed:hover { border-color: var(--rarity); }
 .onb-seed.picked { border-color: var(--rarity); background: var(--bg-accent); }
-.onb-seed-emoji { font-size: 2rem; line-height: 1; }
+.onb-seed-emoji { font-size: 1.8rem; line-height: 1; }
 .onb-seed-name { font-size: 0.8rem; font-weight: 700; color: var(--text-1); }
+.onb-seed-meta { font-size: 0.66rem; color: var(--text-4); font-variant-numeric: tabular-nums; }
+
+/* Cloud tiers. A table because it is one — five rows of three comparable
+   numbers read worse as sentences. */
+.onb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  margin-bottom: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+.onb-table th {
+  text-align: left;
+  font-size: 0.66rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-4);
+  padding-bottom: 0.25rem;
+}
+.onb-table td { padding: 0.24rem 0; color: var(--text-2); border-top: 1px solid var(--border); }
+.onb-table td:first-child { font-weight: 600; color: var(--text-1); }
+.onb-table th + th, .onb-table td + td { text-align: right; }
+.onb-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 999px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.onb-list { margin: 0 0 0.7rem 1.05rem; padding: 0; font-size: 0.9rem; line-height: 1.55; color: var(--text-3); }
+.onb-list li { margin-bottom: 0.25rem; }
+.onb-list strong { color: var(--text-1); }
+
+.onb-caps { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.7rem; }
+.onb-cap {
+  background: var(--bg-subtle);
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.8rem;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.onb-cap b { color: var(--text-1); font-weight: 800; }
+
+/* The four bands, in the order work moves through them. */
+.onb-flow { list-style: none; margin: 0 0 0.7rem; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.onb-flow li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  background: var(--bg-subtle);
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.84rem;
+}
+.onb-flow b { color: var(--text-1); font-weight: 700; }
+.onb-flow span { color: var(--text-4); font-size: 0.78rem; }
 
 .onb-input {
   width: 100%;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
+  font-family: inherit;
   color: var(--text-1);
   background: var(--bg-subtle);
   border: 2px solid var(--border);
   border-radius: 12px;
-  padding: 0.6rem 0.8rem;
-  margin-bottom: 0.9rem;
+  padding: 0.55rem 0.75rem;
+  margin-bottom: 0.6rem;
 }
 
 .onb-error {
@@ -65,7 +154,38 @@
   border-radius: 10px;
   padding: 0.45rem 0.7rem;
   font-size: 0.8rem;
-  margin-bottom: 0.8rem;
+  margin-top: 0.8rem;
 }
 
-.onb-actions { display: flex; gap: 0.5rem; justify-content: center; }
+.onb-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1.1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
+}
+
+/* The way out, kept quiet and in the same place on every screen. */
+.onb-bail {
+  display: block;
+  margin: 0.7rem auto 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 0.78rem;
+  color: var(--text-4);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.onb-bail:hover { color: var(--text-2); }
+.onb-bail:disabled { opacity: 0.5; cursor: default; }
+
+@media (max-width: 520px) {
+  /* Trak moves above the text — beside it, he'd leave the copy about 20
+     characters wide. */
+  .onb-scene { flex-direction: column; align-items: center; text-align: center; }
+  .onb-guide { flex: 0 0 auto; }
+  .onb-list, .onb-flow li, .onb-table { text-align: left; }
+  .onb-caps { justify-content: center; }
+}
