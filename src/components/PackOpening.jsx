@@ -79,10 +79,10 @@ function Pack({ track, C, tier, packet }) {
             <div style={{
               width: 108, height: 108, borderRadius: 999, background: tier.chipBg,
               border: `3px solid ${tier.petalEdge}`, display: 'grid', placeItems: 'center',
-              font: `600 34px/1 ${FONT_TOY}`, color: tier.chipInk,
+              font: `800 34px/1 ${FONT_TOY}`, letterSpacing: '-0.02em', color: tier.chipInk,
             }}>?</div>
           </div>
-          <div style={{ font: `400 13px/1.4 ${FONT_NUM}`, color: CO.muted }}>
+          <div style={{ font: `500 13px/1.4 ${FONT_NUM}`, fontVariantNumeric: 'tabular-nums', color: CO.muted }}>
             1 seed · {packet.cost.toLocaleString()} {packet.currency === 'seeds' ? 'seeds' : 'coins'}
           </div>
         </div>
@@ -298,7 +298,7 @@ function NamePlaque({ track, C, tier, seed }) {
       <div style={{
         background: CO.wood, color: CO.woodInk, borderRadius: 14,
         border: `3px solid ${CO.woodEdge}`, boxShadow: edge(5, CO.woodEdge),
-        padding: '14px 44px', font: `600 52px/1.05 ${FONT_TOY}`,
+        padding: '14px 44px', font: `800 52px/1.05 ${FONT_TOY}`,
         letterSpacing: '-0.015em', whiteSpace: 'nowrap',
       }}>{seed.name}</div>
       <div
@@ -309,7 +309,7 @@ function NamePlaque({ track, C, tier, seed }) {
         })}
         style={{
           background: tier.chipBg, color: tier.chipInk, borderRadius: 999,
-          padding: '8px 20px', font: `400 18px/1.35 ${FONT_NUM}`,
+          padding: '8px 20px', font: `600 18px/1.35 ${FONT_NUM}`, fontVariantNumeric: 'tabular-nums',
           letterSpacing: '0.02em', textTransform: 'uppercase', opacity: 0, ...LAYER,
         }}
       >{RARITY_NAMES[seed.rarity]} seed</div>

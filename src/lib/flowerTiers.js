@@ -15,9 +15,13 @@ export const CO = {
   lime: '#C3F73A', brandInk: '#071013',
 }
 
-export const FONT_TOY = 'Fredoka, "Baloo 2", "Trebuchet MS", sans-serif'
-export const FONT_UI = 'Inter, -apple-system, "Segoe UI", sans-serif'
-export const FONT_NUM = 'Sono, "DM Mono", ui-monospace, Menlo, monospace'
+// One face throughout. The source designs used Fredoka for display and Sono for
+// figures; those are roles, not fonts, so Inter carries them with weight and
+// tracking instead — FONT_NUM is paired with tabular figures at every use site.
+const INTER = 'Inter, -apple-system, "Segoe UI", Roboto, sans-serif'
+export const FONT_TOY = INTER
+export const FONT_UI = INTER
+export const FONT_NUM = INTER
 
 export const edge = (px, color) => `0 ${px}px 0 ${color}`
 

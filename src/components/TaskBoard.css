@@ -1380,57 +1380,51 @@
 
 .board-bands,
 .dump-wrap {
-  --bb-ground:       #64B468;
-  --bb-wood:         #89582C;
-  --bb-wood-edge:    #653C1F;
-  --bb-wood-ink:     #FEFCF7;
-  --bb-accent:       #90D94F;
-  --bb-accent-brd:   #63B739;
-  --bb-accent-edge:  #3E8637;
-  --bb-accent-ink:   #0C511A;
-  --bb-accent-tint:  #D3EEB4;
-  --bb-surface:      #FEFCF7;
-  --bb-sunk:         #EDE7DC;
-  --bb-on-surface:   #18110C;
-  --bb-muted:        #6A6258;
-  --bb-border:       #D9D0C1;
-  --bb-flag:         #CD493C;
-  --bb-flag-ink:     #8E2B26;
-  --bb-flag-tint:    #FFDED5;
-  --bb-due:          #DC8818;
-  --bb-due-ink:      #894C06;
-  --bb-due-tint:     #FBE9CA;
-  --bb-selected:     #F6F1E8;
-
-  --bb-toy:  Fredoka, 'Baloo 2', 'Trebuchet MS', sans-serif;
-  --bb-num:  Sono, 'DM Mono', ui-monospace, Menlo, monospace;
+  /* The board runs on the app's own tokens. It previously carried a second
+     material system — a second green, wood, zero-blur "edges", and two extra
+     typefaces — which is what made it read as a different product. The --bb-*
+     names survive as a local vocabulary, but every one now resolves to an app
+     token, so dark theme and any future retheme follow for free. */
+  --bb-wood:         var(--accent);      /* ink — the brand's dark */
+  --bb-wood-edge:    var(--accent);
+  --bb-wood-ink:     var(--accent-on);   /* lime — the wordmark's pair */
+  --bb-accent:       var(--accent);
+  --bb-accent-brd:   var(--accent);
+  --bb-accent-edge:  var(--accent-hover);
+  --bb-accent-ink:   var(--accent-text);
+  --bb-accent-tint:  var(--accent-bg);
+  --bb-surface:      var(--bg-surface);
+  --bb-sunk:         var(--bg-subtle);
+  --bb-on-surface:   var(--text-1);
+  --bb-muted:        var(--text-4);
+  --bb-border:       var(--border);
+  --bb-flag:         var(--prio-high);
+  --bb-flag-ink:     var(--red-text);
+  --bb-flag-tint:    var(--red-bg);
+  --bb-due:          var(--prio-medium);
+  --bb-due-ink:      var(--yellow-text);
+  --bb-due-tint:     var(--yellow-bg);
+  --bb-selected:     var(--bg-accent);
+  /* Display and figures are roles, not faces: Inter carries both. */
+  --bb-toy: inherit;
+  --bb-num: inherit;
 
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 24px;
-  margin-top: 0.75rem;
-  border-radius: 18px;
-  background: var(--bb-ground);
-  color: var(--bb-on-surface);
+  gap: 0.85rem;
+  color: var(--text-1);
 }
 
-html[data-theme="dark"] .board-bands,
-html[data-theme="dark"] .dump-wrap {
-  --bb-ground:     #17110D;
-  --bb-surface:    #26201B;
-  --bb-sunk:       #1F1915;
-  --bb-on-surface: #E8E4DD;
-  --bb-muted:      #9D978F;
-  --bb-border:     #3F3831;
-  --bb-wood:       #6E451E;
-  --bb-wood-edge:  #371E0D;
-  --bb-accent:     #7DBE54;
-  --bb-accent-edge:#366C33;
-  --bb-flag:       #DD7767;
-  --bb-due:        #E2A355;
-  --bb-selected:   #2E2721;
-}
+/* Numbers still align in columns, they just do it in Inter. */
+.board-bands .band-count,
+.board-bands .row-meta,
+.board-bands .row-chip,
+.board-bands .gh-num,
+.board-bands .gh-progress-row,
+.board-bands .tally-num,
+.dump-wrap .dump-meta,
+.dump-wrap .tray-n,
+.dump-wrap .tray-key { font-variant-numeric: tabular-nums; }
 
 /* --- header row ----------------------------------------------------------- */
 
@@ -1438,17 +1432,14 @@ html[data-theme="dark"] .dump-wrap {
 .board-head-spacer { flex: 1; }
 
 .board-plaque {
-  background: var(--bb-wood);
-  color: var(--bb-wood-ink);
-  font-family: var(--bb-toy);
-  font-weight: 600;
-  font-size: 21px;
+  background: var(--accent);
+  color: var(--accent-on);
+  font-weight: 750;
+  font-size: var(--fs-xl);
   line-height: 1.15;
-  letter-spacing: -0.005em;
-  border: 3px solid var(--bb-wood-edge);
-  border-radius: 14px;
-  box-shadow: 0 5px 0 var(--bb-wood-edge);
-  padding: 6px 20px;
+  letter-spacing: -0.02em;
+  border-radius: var(--r-pill);
+  padding: 5px 16px;
 }
 
 .board-summary {
@@ -1473,35 +1464,30 @@ html[data-theme="dark"] .dump-wrap {
   border-radius: 9999px;
   padding: 9px 16px;
   cursor: pointer;
-  background: var(--bb-surface);
-  color: var(--bb-wood);
-  border: 2px solid var(--bb-border);
-  box-shadow: 0 3px 0 var(--bb-border);
-  transition: transform 90ms, box-shadow 90ms;
+  background: var(--bg-surface);
+  color: var(--text-1);
+  border: 1px solid var(--border);
+  transition: background 0.12s, border-color 0.12s;
 }
-.bb-btn:hover:not(:disabled)  { transform: translateY(-1px); box-shadow: 0 4px 0 var(--bb-border); }
-.bb-btn:active:not(:disabled) { transform: translateY(2px);  box-shadow: 0 1px 0 var(--bb-border); }
+.bb-btn:hover:not(:disabled) { background: var(--bg-muted); }
 .bb-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .bb-btn.primary {
-  background: var(--bb-accent);
-  color: var(--bb-accent-ink);
-  border-color: var(--bb-accent-brd);
-  box-shadow: 0 3px 0 var(--bb-accent-edge);
+  background: var(--accent);
+  color: var(--accent-on);
+  border-color: var(--accent);
 }
-.bb-btn.primary:hover:not(:disabled)  { box-shadow: 0 4px 0 var(--bb-accent-edge); }
-.bb-btn.primary:active:not(:disabled) { box-shadow: 0 1px 0 var(--bb-accent-edge); }
+.bb-btn.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
 
 .board-bands :focus-visible,
 .dump-wrap :focus-visible { outline: 2px solid var(--bb-accent-ink); outline-offset: 2px; }
 
 /* --- bands ---------------------------------------------------------------- */
 
-/* A well routed into the board: a top edge only, nothing beneath it. */
 .band {
-  background: var(--bb-sunk);
-  border-top: 2px solid var(--bb-border);
-  border-radius: 8px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
   padding: 8px 10px;
   display: flex;
   flex-direction: column;
@@ -1511,15 +1497,14 @@ html[data-theme="dark"] .dump-wrap {
 
 .band-head { display: flex; align-items: center; gap: 10px; }
 .band-pill {
-  background: var(--bb-wood);
-  color: var(--bb-wood-ink);
-  font-size: 11px;
+  background: var(--accent);
+  color: var(--accent-on);
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
-  border: 2px solid var(--bb-wood-edge);
-  border-radius: 9999px;
-  padding: 3px 12px;
+  border-radius: var(--r-pill);
+  padding: 3px 10px;
 }
 .band-count {
   font-family: var(--bb-num);
@@ -1565,10 +1550,12 @@ html[data-theme="dark"] .dump-wrap {
 }
 .paper-row.open { border-bottom-color: var(--bb-wood); }
 
+/* Top-aligned, not centred: the row grows downward as updates and the composer
+   fill in, and centred controls would drift away from the title they act on. */
 .paper-main {
   display: grid;
   grid-template-columns: 4px 1fr auto;
-  align-items: center;
+  align-items: start;
   gap: 10px;
   padding: 8px 10px 8px 0;
 }
@@ -1625,7 +1612,7 @@ html[data-theme="dark"] .dump-wrap {
 .row-meta .overdue { color: var(--bb-flag-ink); font-weight: 700; }
 .row-updated { color: var(--bb-accent-ink); }
 
-.row-tail { display: flex; align-items: center; gap: 6px; }
+.row-tail { display: flex; align-items: center; gap: 6px; padding-top: 1px; }
 .row-chip {
   font-family: var(--bb-num);
   font-size: 10px;
@@ -1664,15 +1651,115 @@ html[data-theme="dark"] .dump-wrap {
 .row-advance:disabled, .row-back:disabled { opacity: 0.35; cursor: default; }
 
 .paper-row .task-action-bar { padding: 0 10px 8px 14px; }
-.row-detail {
-  padding: 0 10px 10px 14px;
+
+/* --- the update line and composer (always on the row) --------------------- */
+
+/* The newest update, or the notes when there isn't one yet. Clamped to two
+   lines: a long update shouldn't be able to push the band off the screen. */
+.row-glance, .row-notes {
+  display: block;
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  color: var(--text-3);
+  margin-top: 3px;
+}
+.row-notes { color: var(--text-4); }
+.glance-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.glance-when {
+  font-size: var(--fs-xs);
+  color: var(--text-4);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  margin-right: 6px;
+}
+.glance-more {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-text);
+  background: var(--accent-bg);
+  border: none;
+  border-radius: var(--r-pill);
+  padding: 1px 7px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.glance-more:hover { background: var(--bg-muted); }
+
+.row-history {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  border-top: 1px solid var(--bb-border);
-  padding-top: 8px;
+  gap: 6px;
+  margin-top: 6px;
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
 }
-.row-detail .task-notes { font-size: 13px; color: var(--bb-muted); }
+.row-history .history-day { display: flex; flex-direction: column; gap: 2px; }
+.row-history .history-date-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-4);
+}
+.row-history .history-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+.row-history .history-line > span:first-child { flex: 1; min-width: 0; }
+
+/* A one-line target at rest; it expands where it stands rather than opening
+   anything. */
+.row-composer {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-top: 5px;
+  padding: 4px 8px;
+  border: 1px dashed var(--border);
+  border-radius: var(--r-sm);
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  color: var(--text-4);
+  cursor: text;
+}
+.row-composer:hover { border-color: var(--text-4); color: var(--text-3); }
+.row-composer.has-draft {
+  border-style: solid;
+  border-color: var(--accent);
+  color: var(--text-1);
+}
+.row-composer.open {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--bg-surface);
+  padding: 6px;
+  cursor: default;
+}
+.row-composer.open textarea {
+  width: 100%;
+  resize: vertical;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  color: var(--text-1);
+  line-height: 1.45;
+}
+.composer-actions { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.composer-actions .m-spacer { flex: 1; }
+.composer-actions .status-submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* --- braindump ------------------------------------------------------------ */
 
@@ -1780,19 +1867,17 @@ html[data-theme="dark"] .dump-wrap {
 .tray-slot {
   text-align: left;
   cursor: pointer;
-  background: var(--bb-surface);
-  border: 2px solid var(--bb-border);
-  border-radius: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
   padding: 10px 12px;
   display: flex;
   align-items: center;
   gap: 10px;
   font-family: inherit;
-  box-shadow: 0 3px 0 var(--bb-border);
-  transition: transform 90ms, box-shadow 90ms;
+  transition: background 0.12s, border-color 0.12s;
 }
-.tray-slot:hover:not(:disabled)  { transform: translateY(-1px); box-shadow: 0 4px 0 var(--bb-border); }
-.tray-slot:active:not(:disabled) { transform: translateY(2px);  box-shadow: 0 1px 0 var(--bb-border); }
+.tray-slot:hover:not(:disabled) { background: var(--bg-muted); border-color: var(--text-4); }
 .tray-slot:disabled { opacity: 0.5; cursor: not-allowed; }
 .tray-key {
   font-family: var(--bb-num);
@@ -1821,10 +1906,12 @@ html[data-theme="dark"] .dump-wrap {
 
 /* --- greenhouse strip ----------------------------------------------------- */
 
+/* The one card that keeps a green tint, so the garden stays visible from the
+   board without the board becoming a second product. */
 .greenhouse-strip {
-  background: var(--bb-surface);
-  border: 1px solid var(--bb-border);
-  border-radius: 8px;
+  background: var(--accent-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
   padding: 16px;
   display: flex;
   gap: 16px;
@@ -1832,7 +1919,7 @@ html[data-theme="dark"] .dump-wrap {
 }
 .gh-pot {
   flex: 0 0 150px;
-  background: var(--bb-sunk);
+  background: var(--bg-surface);
   border-radius: 8px;
   display: flex;
   align-items: flex-end;
@@ -1842,7 +1929,7 @@ html[data-theme="dark"] .dump-wrap {
   position: relative;
   overflow: hidden;
 }
-.gh-soil { position: absolute; left: 0; right: 0; bottom: 0; height: 34px; background: var(--bb-border); }
+.gh-soil { position: absolute; left: 0; right: 0; bottom: 0; height: 34px; background: var(--bg-muted); }
 .gh-plant { position: relative; display: flex; flex-direction: column; align-items: center; }
 /* The bloom and stem scale continuously with growth, so the plant visibly
    changes between stages and not only at their boundaries. */
@@ -1856,13 +1943,13 @@ html[data-theme="dark"] .dump-wrap {
 .gh-vessel {
   width: 64px;
   height: 34px;
-  background: var(--bb-wood);
-  border: 2px solid var(--bb-wood-edge);
+  background: var(--accent);
+  border: 2px solid var(--accent);
   border-radius: 4px 4px 8px 8px;
 }
 
 .gh-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
-.gh-title { font-family: var(--bb-toy); font-weight: 600; font-size: 21px; line-height: 1.15; letter-spacing: -0.005em; }
+.gh-title { font-weight: 750; font-size: var(--fs-xl); line-height: 1.15; letter-spacing: -0.02em; }
 .gh-copy { font-size: 14px; line-height: 1.5; color: var(--bb-muted); max-width: 68ch; }
 
 .gh-progress { display: flex; flex-direction: column; gap: 6px; }
@@ -1876,7 +1963,7 @@ html[data-theme="dark"] .dump-wrap {
   font-variant-numeric: tabular-nums;
   color: var(--bb-muted);
 }
-.gh-bar { height: 10px; background: var(--bb-sunk); border-radius: 9999px; overflow: hidden; }
+.gh-bar { height: 10px; background: var(--bg-surface); border-radius: 9999px; overflow: hidden; }
 .gh-bar span {
   display: block;
   height: 10px;

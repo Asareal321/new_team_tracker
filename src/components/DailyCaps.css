@@ -65,7 +65,7 @@
 }
 
 .cap-left {
-  font-family: var(--bb-num, Sono, ui-monospace, monospace);
+  font-family: inherit;
   font-size: 11px;
   letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;

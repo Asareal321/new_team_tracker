@@ -1152,10 +1152,10 @@ function rowChip(task, kind) {
   return 'no date'
 }
 
-// A paper row: stripe, title, one line of meta, a chip, and the controls.
-// Everything the old card showed inline — notes, today's update, history, the
-// action bar — is still here, but folded behind a click. The band layout only
-// works if a resting row is one line high, and most rows are never edited.
+// A row: stripe, title, meta, and — permanently — the newest update. Folding
+// the update behind a click was the wrong trade: the update IS the status, and
+// it's the one line you come to the board to read. So the newest one is always
+// on the row, with the composer under it; only the history costs a click.
 function TaskRow({
   task, assignees, projectName, updates,
   teamMembers = [], onUpdateAssignees,
@@ -1166,8 +1166,8 @@ function TaskRow({
 }) {
   const assigneeIds = (task.task_assignees || []).map(a => a.user_id)
   const [showActions, setShowActions] = useState(false)
-  const [expanded, setExpanded] = useState(() => draftText.length > 0)
   const [showHistory, setShowHistory] = useState(false)
+  const [composing, setComposing] = useState(() => draftText.length > 0)
   const isArchived = task.status === 'archived'
   const isDone = task.status === 'done'
   const isPending = isPendingApproval(task)
@@ -1180,10 +1180,13 @@ function TaskRow({
         : (assignees[0].display_name || '?').split(/\s+/)[0].toLowerCase())
     : 'unassigned'
 
+  // Sorted here rather than trusted from the caller: `updatesForTask` hands
+  // these over oldest-first, which silently put the *first* update on the row
+  // as though it were the latest news.
+  const recent = [...updates].sort((a, b) => b.created_at.localeCompare(a.created_at))
+  const latest = recent[0]
   const today = todayStr()
-  const todaysUpdates  = updates.filter(u => u.created_at.slice(0, 10) === today)
-  const historyUpdates = updates.filter(u => u.created_at.slice(0, 10) !== today)
-  const historyByDate  = historyUpdates.reduce((acc, u) => {
+  const historyByDate = recent.slice(1).reduce((acc, u) => {
     const d = u.created_at.slice(0, 10)
     if (!acc[d]) acc[d] = []
     acc[d].push(u)
@@ -1196,7 +1199,7 @@ function TaskRow({
     if (!text) return
     onAddUpdate(text, newStatus)
     onDraftChange?.('')
-    setExpanded(false)
+    setComposing(false)
     if (newStatus === 'done') onTaskDone?.(task)
   }
 
@@ -1205,7 +1208,7 @@ function TaskRow({
   const secondaryNext = statuses.filter(s => s !== task.status && s !== next)
 
   return (
-    <div className={`paper-row kind-${kind}${isArchived ? ' archived' : ''}${expanded ? ' open' : ''}`}>
+    <div className={`paper-row kind-${kind}${isArchived ? ' archived' : ''}`}>
       <div className="paper-main">
         {/* The stripe doubles as the drag handle: it runs the full height of
             the row and is the one part with nothing else to click. */}
@@ -1214,12 +1217,7 @@ function TaskRow({
           {...(dragListeners || {})} {...(dragAttributes || {})}
           aria-label={`Drag ${task.title}`}
         />
-        <button
-          className="row-body"
-          onClick={() => setExpanded(o => !o)}
-          aria-expanded={expanded}
-          title={expanded ? 'Hide details' : 'Show notes and updates'}
-        >
+        <div className="row-body">
           <span className="row-title">
             {isPending && <span className="pending-badge" title="Waiting on assignment acceptance">Pending</span>}
             {task.recurrence && (
@@ -1235,9 +1233,85 @@ function TaskRow({
             {task.due_date && kind !== 'due' && (
               <span className={dueClass(task.due_date)}>{formatDate(task.due_date)}</span>
             )}
-            {todaysUpdates.length > 0 && <span className="row-updated">updated</span>}
           </span>
-        </button>
+
+          {/* The newest update, always visible. With none yet, the task's own
+              notes take the line — there's always something worth reading. */}
+          {latest ? (
+            <span className="row-glance">
+              <span className="glance-text">{latest.body}</span>
+              <span className="glance-when">
+                {latest.created_at.slice(0, 10) === today
+                  ? formatTime(latest.created_at)
+                  : formatHistoryDate(latest.created_at.slice(0, 10))}
+              </span>
+              {recent.length > 1 && (
+                <button
+                  className="glance-more"
+                  aria-expanded={showHistory}
+                  onClick={() => setShowHistory(h => !h)}
+                  title={showHistory ? 'Hide earlier updates' : 'Show earlier updates'}
+                >{showHistory ? '−' : '+'}{recent.length - 1}</button>
+              )}
+            </span>
+          ) : task.notes ? (
+            <span className="row-notes">{task.notes}</span>
+          ) : null}
+
+          {/* Earlier updates, and the notes once an update has displaced them. */}
+          {showHistory && (
+            <span className="row-history">
+              {task.notes && <span className="row-notes">{task.notes}</span>}
+              {historyDates.map(date => (
+                <span key={date} className="history-day">
+                  <span className="history-date-label">
+                    {date === today ? 'Today' : formatHistoryDate(date)}
+                  </span>
+                  {historyByDate[date].map(u => (
+                    <span key={u.id} className="history-line">
+                      <span>{u.body}</span>
+                      <span className="glance-when">
+                        {u.profiles?.display_name ? `${u.profiles.display_name} · ` : ''}
+                        {formatTime(u.created_at)}
+                      </span>
+                      <button className="update-delete-btn" title="Delete update"
+                        onClick={() => onDeleteUpdate?.(u.id)}>×</button>
+                    </span>
+                  ))}
+                </span>
+              ))}
+            </span>
+          )}
+
+          {/* One click from typing, as it was before the row went compact. */}
+          {!isArchived && (composing ? (
+            <span className="row-composer open">
+              <textarea
+                autoFocus
+                rows={2}
+                value={draftText}
+                onChange={e => onDraftChange?.(e.target.value)}
+                placeholder="What happened? What's the status now?"
+              />
+              <span className="composer-actions">
+                <button type="button" className="btn-ghost btn-sm"
+                  onClick={() => { onDraftChange?.(''); setComposing(false) }}>Cancel</button>
+                <span className="m-spacer" />
+                <button type="button" className="status-submit-btn todo" disabled={!draftText.trim()}
+                  onClick={() => submitUpdate('todo')}>Up next</button>
+                <button type="button" className="status-submit-btn inprogress" disabled={!draftText.trim()}
+                  onClick={() => submitUpdate('in_progress')}>Doing</button>
+                <button type="button" className="status-submit-btn done" disabled={!draftText.trim()}
+                  onClick={() => submitUpdate('done')}>Done</button>
+              </span>
+            </span>
+          ) : (
+            <button
+              className={`row-composer${draftText ? ' has-draft' : ''}`}
+              onClick={() => setComposing(true)}
+            >{draftText || 'Add an update…'}</button>
+          ))}
+        </div>
         <span className="row-tail">
           <span className="row-chip">{chip}</span>
           <button
@@ -1306,74 +1380,6 @@ function TaskRow({
           </>
         )}
       </div>
-
-      {expanded && (
-        <div className="row-detail">
-          {task.notes && <p className="task-notes">{task.notes}</p>}
-
-          {todaysUpdates.length > 0 && (
-            <div className="updates-today">
-              <span className="update-today-label">Today</span>
-              <div className="update-items">
-                {todaysUpdates.map(u => (
-                  <div key={u.id} className="update-item">
-                    <span className="update-body">{u.body}</span>
-                    <span className="update-meta">
-                      {u.profiles?.display_name && <>{u.profiles.display_name} · </>}
-                      {formatTime(u.created_at)}
-                    </span>
-                    <button className="update-delete-btn" title="Delete update"
-                      onClick={() => onDeleteUpdate?.(u.id)}>×</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {historyDates.length > 0 && (
-            <button className="history-toggle" onClick={() => setShowHistory(h => !h)}>
-              {showHistory ? '▲' : '▼'} {historyUpdates.length} past update{historyUpdates.length !== 1 ? 's' : ''}
-            </button>
-          )}
-          {showHistory && (
-            <div className="updates-history">
-              {historyDates.map(date => (
-                <div key={date} className="history-day">
-                  <span className="history-date-label">{formatHistoryDate(date)}</span>
-                  <div className="update-items">
-                    {historyByDate[date].map(u => (
-                      <div key={u.id} className="update-item">
-                        <span className="update-body">{u.body}</span>
-                        {u.profiles?.display_name && (
-                          <span className="update-meta">{u.profiles.display_name}</span>
-                        )}
-                        <button className="update-delete-btn" title="Delete update"
-                          onClick={() => onDeleteUpdate?.(u.id)}>×</button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {!isArchived && (
-            <div className="update-expanded-area">
-              <textarea
-                rows={2}
-                value={draftText}
-                onChange={e => onDraftChange?.(e.target.value)}
-                placeholder="What happened today? What's the current status?"
-              />
-              <div className="update-expanded-actions">
-                <button type="button" className="status-submit-btn todo" onClick={() => submitUpdate('todo')}>To-do</button>
-                <button type="button" className="status-submit-btn inprogress" onClick={() => submitUpdate('in_progress')}>In Progress</button>
-                <button type="button" className="status-submit-btn done" onClick={() => submitUpdate('done')}>Done</button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }

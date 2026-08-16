@@ -73,7 +73,7 @@ function Bed({ track, C }) {
           </div>
           <div
             ref={track((T, el) => { el.textContent = `${Math.round(meter(T) * 100)}%` })}
-            style={{ font: `400 16px/1 ${FONT_NUM}`, color: CO.woodInk, minWidth: 60, textAlign: 'right' }}
+            style={{ font: `600 16px/1 ${FONT_NUM}`, fontVariantNumeric: 'tabular-nums', color: CO.woodInk, minWidth: 60, textAlign: 'right' }}
           >80%</div>
         </div>
       </div>
@@ -300,7 +300,7 @@ function Plaque({ track, C, tier, seed }) {
       <div style={{
         background: CO.wood, color: CO.woodInk, borderRadius: 14,
         border: `3px solid ${CO.woodEdge}`, boxShadow: edge(5, CO.woodEdge),
-        padding: '14px 44px', font: `600 52px/1.05 ${FONT_TOY}`,
+        padding: '14px 44px', font: `800 52px/1.05 ${FONT_TOY}`,
         letterSpacing: '-0.015em', whiteSpace: 'nowrap',
       }}>{seed.name}</div>
       <div
@@ -313,13 +313,13 @@ function Plaque({ track, C, tier, seed }) {
       >
         <div style={{
           background: tier.chipBg, color: tier.chipInk, borderRadius: 999,
-          padding: '8px 20px', font: `400 18px/1.35 ${FONT_NUM}`,
+          padding: '8px 20px', font: `600 18px/1.35 ${FONT_NUM}`, fontVariantNumeric: 'tabular-nums',
           textTransform: 'uppercase', letterSpacing: '0.02em',
         }}>{RARITY_NAMES[seed.rarity]}</div>
         {/* "Worth", not "+N coins": nothing has been paid out yet. */}
         <div style={{
           background: CO.dueTint, color: CO.dueInk, borderRadius: 999,
-          padding: '8px 20px', font: `400 18px/1.35 ${FONT_NUM}`,
+          padding: '8px 20px', font: `600 18px/1.35 ${FONT_NUM}`, fontVariantNumeric: 'tabular-nums',
         }}>worth {seed.sellValue.toLocaleString()} coins</div>
       </div>
     </div>
