@@ -704,7 +704,7 @@ function PriorityBoard({
               <button className="btn-ghost btn-sm" onClick={() => {
                 if (window.confirm(`Archive all ${byStatus('done').length} completed task(s)?`)) onArchiveAll()
               }}>
-                Archive all ({byStatus('done').length})
+                Archive all
               </button>
             )}
             <button className="btn-primary btn-sm" onClick={onOpenForm}>+ Add Task</button>
@@ -752,7 +752,7 @@ function PriorityBoard({
               </span>
               <div className="board-head-spacer" />
               <button className="bb-btn" onClick={() => setActiveTab('braindump')}>
-                Braindump ({dumpTasks.length})
+                Braindump
               </button>
               <button className="bb-btn primary" onClick={onOpenForm}>Add task</button>
             </div>
