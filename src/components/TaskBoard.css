@@ -1929,3 +1929,35 @@ html[data-theme="dark"] .dump-wrap {
   .row-advance:hover, .row-advance:active,
   .row-back:hover, .row-back:active { transform: none; }
 }
+
+/* Done today is a tally, not a list — finished work only needs to be countable,
+   and listing it pushed the live bands off the screen. */
+.band-body.tally { grid-template-columns: 1fr; }
+.band-tally {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 4px 8px;
+}
+.tally-num {
+  font-family: var(--bb-num);
+  font-size: 26px;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--bb-on-surface);
+}
+.tally-label { font-size: 13px; color: var(--bb-muted); }
+.tally-toggle {
+  margin-left: auto;
+  background: none;
+  border: none;
+  padding: 4px 2px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--bb-wood);
+  text-decoration: underline;
+}
+.tally-toggle.hide { grid-column: 1 / -1; margin-left: 0; text-align: left; }
+html[data-theme="dark"] .tally-toggle { color: var(--bb-accent); }

@@ -45,30 +45,47 @@ const BANDS = [
 ]
 const BAND_KEYS = BANDS.map(b => b.key)
 
+// Names used on the move controls and limit notices. STATUS_LABELS is the
+// form's vocabulary ("To Do"); these are the board's ("Up next").
+const MOVE_LABELS = {
+  braindump: 'Braindump', todo: 'Up next', in_progress: 'Doing',
+  done: 'Done today', archived: 'Archived',
+}
+
 // BANDS above is the *canonical* order: it drives which way ‹ and › move a
 // task, and the braindump tray's 1–3 keys. The board is *displayed* bottom-up —
 // greenhouse, then Done today, Doing, Up next — so the freshest state is at the
 // top and the backlog is what you scroll down into.
 const BANDS_DISPLAY = [...BANDS].reverse()
 
-// Names used on the move controls. STATUS_LABELS is the form's vocabulary
-// ("To Do"); these are the board's ("Up next").
-const MOVE_LABELS = {
-  braindump: 'Braindump', todo: 'Up next', in_progress: 'Doing',
-  done: 'Done today', archived: 'Archived',
-}
+
 
 // Captured but not yet triaged. These are real task rows — same table, same
 // realtime — carrying a status the board deliberately doesn't render.
 const BRAINDUMP = 'braindump'
 
-// Work-in-progress limit. This is the old High-priority cap carried over onto
-// the Doing column — the point was always "only a few things at once", which
-// maps onto WIP rather than onto priority now the board is status-based.
-const MAX_DOING = 3
+// Work-in-progress limits. The point was always "only a few things at once",
+// and it now applies to the backlog as well: an Up next that grows without
+// bound is just a second braindump with more ceremony. The braindump is the
+// overflow — it exists precisely so a full board doesn't block capture.
+const MAX_DOING = 2
+const MAX_UP_NEXT = 4
+const BAND_LIMITS = { todo: MAX_UP_NEXT, in_progress: MAX_DOING }
 
-function doingCount(tasks, exceptId) {
-  return tasks.filter(t => t.status === 'in_progress' && t.id !== exceptId).length
+// One check, used by every route into a band: the form, drag-and-drop, the
+// ‹ / › controls, the action bar, and the braindump tray. Each of those was
+// previously its own check, or no check at all.
+function bandFull(tasks, status, exceptId) {
+  const limit = BAND_LIMITS[status]
+  if (!limit) return false
+  return tasks.filter(t => t.status === status && t.id !== exceptId).length >= limit
+}
+
+function bandFullNotice(status) {
+  return `${MOVE_LABELS[status]} holds ${BAND_LIMITS[status]}.`
+    + (status === 'todo'
+      ? ' Finish something, or send this to the braindump.'
+      : ' Finish one to free a slot.')
 }
 
 function initials(name) {
@@ -165,9 +182,9 @@ export default function TaskBoard({
     if (!form.title.trim()) return
     const { assigneeIds, ...rest } = { ...form, ...overrides }
     const payload = { ...rest, priority: rest.priority || 'medium', due_date: rest.due_date || null, project_id: rest.project_id || null }
-    // Enforce the work-in-progress limit on create and edit.
-    if (payload.status === 'in_progress' && doingCount(tasks, editingId) >= MAX_DOING) {
-      setFormNotice(`Doing is full (${MAX_DOING}). Finish or move something back first.`)
+    // The limits hold on create and edit too, or the form is the way around them.
+    if (bandFull(tasks, payload.status, editingId)) {
+      setFormNotice(bandFullNotice(payload.status))
       return
     }
     if (editingId) {
@@ -309,9 +326,7 @@ export default function TaskBoard({
   // Triage is a plain status change, so an item can't be lost between tables.
   // Landing straight in Done counts as a completion like any other.
   async function sortFromDump(task, status) {
-    if (status === 'in_progress' && doingCount(tasks) >= MAX_DOING) {
-      return `Doing is full (${MAX_DOING}).`
-    }
+    if (bandFull(tasks, status)) return bandFullNotice(status)
     await onUpdate(task.id, { status })
     if (status === 'done') onTaskDone?.({ ...task, status: BRAINDUMP })
     return null
@@ -572,11 +587,8 @@ function PriorityBoard({
 
     const colTasks = getColumnTasks(tgtStatus).filter(t => t.id !== active.id)
 
-    // The WIP limit has to hold on drop as well as on the form, or the drag
-    // becomes the way around it.
-    if (tgtStatus === 'in_progress' && srcTask.status !== 'in_progress'
-        && colTasks.length >= MAX_DOING) {
-      setZoneNotice(`Doing holds ${MAX_DOING}. Finish one to free a slot.`)
+    if (tgtStatus !== srcTask.status && bandFull(tasks, tgtStatus, active.id)) {
+      setZoneNotice(bandFullNotice(tgtStatus))
       return
     }
 
@@ -603,7 +615,7 @@ function PriorityBoard({
   const activeTask = activeId ? tasks.find(t => t.id === activeId) : null
   // Dragging already enforced this; the ‹ / › controls and the action bar were
   // routes around it.
-  const doingFull = tasks.filter(t => t.status === 'in_progress').length >= MAX_DOING
+  const isFull = status => bandFull(tasks, status)
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter}
@@ -750,10 +762,10 @@ function PriorityBoard({
 
             {BANDS_DISPLAY.map(band => (
               <Band key={band.key} status={band.key} label={band.label}
-                doingFull={doingFull}
+                isFull={isFull}
                 onBlocked={setZoneNotice}
                 tasks={getColumnTasks(band.key)}
-                limit={band.key === 'in_progress' ? MAX_DOING : null}
+                limit={BAND_LIMITS[band.key] ?? null}
                 resolveAssignees={resolveAssignees}
                 projectName={projectName}
                 updatesForTask={updatesForTask}
@@ -998,9 +1010,17 @@ function groupTasksBySprint(tasks, projectName) {
   }))
 }
 
-function Band({ status, label, tasks, limit, doingFull, onBlocked, resolveAssignees, projectName, updatesForTask, teamMembers, onEdit, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, onUpdateAssignees, draftUpdates, setDraft, onTaskDone }) {
+function Band({ status, label, tasks, limit, isFull, onBlocked, resolveAssignees, projectName, updatesForTask, teamMembers, onEdit, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, onUpdateAssignees, draftUpdates, setDraft, onTaskDone }) {
   const { setNodeRef, isOver } = useDroppable({ id: `col-${status}` })
   const atLimit = limit != null && tasks.length >= limit
+
+  // Done today is a tally, not a list. Finished work is the one thing you never
+  // need to read — it just needs to be countable — and listing it pushed the
+  // live bands off the screen. It still opens, because a mis-clicked task has
+  // to be recoverable and each row's ‹ is the way back.
+  const isTally = status === 'done'
+  const [open, setOpen] = useState(false)
+  const collapsed = isTally && !open
 
   // Up next is the long band, so it keeps the sprint clustering. Doing is
   // capped and Done today is transient — grouping either would be noise. A
@@ -1019,10 +1039,7 @@ function Band({ status, label, tasks, limit, doingFull, onBlocked, resolveAssign
       onEdit={() => onEdit(task)}
       onDelete={() => onDelete(task.id)}
       onStatusChange={s => {
-        if (s === 'in_progress' && task.status !== 'in_progress' && doingFull) {
-          onBlocked?.(`Doing holds ${MAX_DOING}. Finish one to free a slot.`)
-          return
-        }
+        if (s !== task.status && isFull?.(s)) { onBlocked?.(bandFullNotice(s)); return }
         onUpdate(task.id, { status: s })
         // Any route into Done banks the reward, not just the drag.
         if (s === 'done' && task.status !== 'done') onTaskDone?.(task)
@@ -1047,8 +1064,21 @@ function Band({ status, label, tasks, limit, doingFull, onBlocked, resolveAssign
         <span className="band-rule" />
       </header>
       <SortableContext items={items} strategy={verticalListSortingStrategy}>
-        <div ref={setNodeRef} className={`band-body${groups ? ' grouped' : ''}`}>
-          {groups
+        <div
+          ref={setNodeRef}
+          className={`band-body${groups ? ' grouped' : ''}${collapsed ? ' tally' : ''}`}
+        >
+          {collapsed ? (
+            <div className="band-tally">
+              <span className="tally-num">{tasks.length}</span>
+              <span className="tally-label">
+                {tasks.length === 1 ? 'task finished today' : 'tasks finished today'}
+              </span>
+              {tasks.length > 0 && (
+                <button className="tally-toggle" onClick={() => setOpen(true)}>Show them</button>
+              )}
+            </div>
+          ) : groups
             ? groups.map(g => (
                 <div key={g.key} className="sprint-group">
                   <div className="sprint-group-head">
@@ -1062,7 +1092,10 @@ function Band({ status, label, tasks, limit, doingFull, onBlocked, resolveAssign
                 </div>
               ))
             : tasks.map(task => renderRow(task))}
-          {tasks.length === 0 && (
+          {!collapsed && isTally && (
+            <button className="tally-toggle hide" onClick={() => setOpen(false)}>Hide them</button>
+          )}
+          {!collapsed && tasks.length === 0 && (
             <div className="band-empty">
               {status === 'done'
                 ? 'Empty on purpose — finished cards leave for the garden.'
