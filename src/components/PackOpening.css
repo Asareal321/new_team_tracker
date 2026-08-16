@@ -8,8 +8,20 @@
   z-index: 90;
   overflow: hidden;
   cursor: pointer;
-  /* The scrim's alpha is animated inline, so only the transition of intent
-     lives here. */
+  /* Isolate the whole cinematic: nothing inside it can force layout or paint
+     on the app underneath. */
+  contain: strict;
+}
+
+/* The darkening behind the piece. It's its own layer with a fixed colour and an
+   animated opacity — animating a background-color on a full-viewport element
+   repaints the entire screen every frame. */
+.pack-scrim {
+  position: absolute;
+  inset: 0;
+  background: #17110d;
+  opacity: 0;
+  will-change: opacity;
 }
 
 /* Authored at a fixed 1920x1080 and scaled to fit — see the fit() effect. */
@@ -20,6 +32,7 @@
   width: 1920px;
   height: 1080px;
   transform-origin: center center;
+  will-change: transform;
 }
 
 .pack-skip {

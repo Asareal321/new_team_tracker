@@ -117,16 +117,18 @@ export function seedByKey(key) {
 //
 // The payouts were originally token: a Legendary shaved an hour off a grow time
 // measured in days, so the best possible cloud barely moved the bar and the
-// interaction felt decorative. They're now scaled so a good cloud is worth
-// stopping for — a Legendary takes a meaningful bite out of even a 24-hour
-// flower, and the idle (nothing planted) payout is worth banking toward a
-// packet. The growth chances are up too, so the ladder is climbed more often.
+// interaction felt decorative. The shave times below are set outright; the coin
+// payouts (what a cloud is worth when nothing is planted) track them so the two
+// routes stay comparable.
+//
+// A Legendary now out-runs several of the shorter flowers on its own, which is
+// why a cloud's shave can overflow — see `overflow_seconds` in GardenContext.
 export const CLOUD_TIERS = [
-  { tier: 1, name: 'Common',    color: '#b9c6cf', glow: 'rgba(185,198,207,0.5)', shaveMinutes: 20,  coins: 15,  growChance: 0.44 },
-  { tier: 2, name: 'Uncommon',  color: '#5aa9d6', glow: 'rgba(90,169,214,0.55)', shaveMinutes: 45,  coins: 30,  growChance: 0.30 },
-  { tier: 3, name: 'Rare',      color: '#a97fd6', glow: 'rgba(169,127,214,0.6)',  shaveMinutes: 100, coins: 60,  growChance: 0.26 },
-  { tier: 4, name: 'Epic',      color: '#e08a4f', glow: 'rgba(224,138,79,0.65)',  shaveMinutes: 200, coins: 120, growChance: 0.24 },
-  { tier: 5, name: 'Legendary', color: '#e0b93f', glow: 'rgba(224,185,63,0.75)',  shaveMinutes: 420, coins: 250, growChance: 0 },
+  { tier: 1, name: 'Common',    color: '#b9c6cf', glow: 'rgba(185,198,207,0.5)', shaveMinutes: 30,  coins: 20,  growChance: 0.44 },
+  { tier: 2, name: 'Uncommon',  color: '#5aa9d6', glow: 'rgba(90,169,214,0.55)', shaveMinutes: 60,  coins: 40,  growChance: 0.30 },
+  { tier: 3, name: 'Rare',      color: '#a97fd6', glow: 'rgba(169,127,214,0.6)',  shaveMinutes: 120, coins: 80,  growChance: 0.26 },
+  { tier: 4, name: 'Epic',      color: '#e08a4f', glow: 'rgba(224,138,79,0.65)',  shaveMinutes: 300, coins: 200, growChance: 0.24 },
+  { tier: 5, name: 'Legendary', color: '#e0b93f', glow: 'rgba(224,185,63,0.75)',  shaveMinutes: 600, coins: 400, growChance: 0 },
 ]
 
 export const CLOUD_MAX_TAPS = 4
@@ -176,6 +178,35 @@ export function remainingSeconds(state, now = Date.now()) {
   const elapsed = (now - new Date(state.growing_started_at).getTime()) / 1000
   const total = state.growing_grow_seconds ?? seedByKey(state.growing_seed)?.growSeconds ?? 0
   return Math.max(0, Math.ceil(total - elapsed - (state.shaved_seconds || 0)))
+}
+
+// The pot's art through a grow. Previously three markers and then the flower,
+// which on a 24-hour Legendary meant the pot looked identical for hours at a
+// stretch — there was nothing to come back and check. Eight stages means the
+// picture changes several times across even a short grow, and each one is
+// named, so the pot reports progress in words as well as shape.
+//
+// `at` is the percentage complete the stage begins at. The last two stages are
+// the flower's own emoji: a tight, pale bud, then the bloom itself — so the
+// species reveals itself as it finishes rather than appearing from nowhere.
+export const GROWTH_STAGES = [
+  { at: 0,   key: 'sown',      label: 'Sown',         emoji: '·',   scale: 0.75, bud: false },
+  { at: 6,   key: 'germ',      label: 'Germinating',  emoji: '🌰',  scale: 0.7,  bud: false },
+  { at: 16,  key: 'sprout',    label: 'Sprouting',    emoji: '🌱',  scale: 0.8,  bud: false },
+  { at: 30,  key: 'seedling',  label: 'Seedling',     emoji: '🌿',  scale: 0.9,  bud: false },
+  { at: 45,  key: 'leafing',   label: 'Leafing out',  emoji: '☘️',  scale: 1,    bud: false },
+  { at: 60,  key: 'stem',      label: 'Growing tall', emoji: '🪴',  scale: 1.05, bud: false },
+  { at: 78,  key: 'bud',       label: 'Budding',      emoji: null,  scale: 0.72, bud: true },
+  { at: 100, key: 'bloom',     label: 'In bloom',     emoji: null,  scale: 1.15, bud: false },
+]
+
+// The stage a grow is currently at. `seed` supplies the emoji for the last two
+// stages; without one they fall back to the generic pot.
+export function growthStage(progress, seed = null) {
+  const pct = Math.max(0, Math.min(100, progress))
+  let stage = GROWTH_STAGES[0]
+  for (const s of GROWTH_STAGES) if (pct >= s.at) stage = s
+  return { ...stage, emoji: stage.emoji ?? seed?.emoji ?? '🪴' }
 }
 
 export function formatDuration(seconds) {

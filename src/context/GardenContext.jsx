@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { supabase } from '../supabase'
 import { useAuth } from '../auth/AuthContext'
 import {
-  SEEDS, seedByKey, cloudShaveSeconds, cloudIdleCoins,
+  SEEDS, seedByKey, cloudShaveSeconds, cloudIdleCoins, remainingSeconds,
   nextExpansion, STARTING_PLOTS, TASK_REWARD, packetByKey, rollPacket,
 } from '../lib/garden'
 import { isDevUser } from '../lib/devMode'
@@ -30,6 +30,9 @@ const DEFAULT_STATE = {
   growing_started_at: null,
   growing_grow_seconds: null,
   shaved_seconds: 0,
+  // Shave time a cloud produced beyond what the flower it hit still needed.
+  // Held until the user picks the seed that should receive it.
+  overflow_seconds: 0,
 }
 
 // Where a flower waits mid-swap. Off-grid and negative, so no plot renders it
@@ -161,16 +164,26 @@ export function GardenProvider({ children }) {
     dismissCloud(id)
     const current = stateRef.current
     if (!current) return null
+    const shave = cloudShaveSeconds(tier)
     // Preview clouds report what they *would* have paid, but write nothing.
     if (cloud?.preview) {
-      return current.growing_seed
-        ? { type: 'shave', amount: cloudShaveSeconds(tier), preview: true }
-        : { type: 'coins', amount: cloudIdleCoins(tier), preview: true }
+      if (!current.growing_seed) return { type: 'coins', amount: cloudIdleCoins(tier), preview: true }
+      const left = remainingSeconds(current) ?? 0
+      return { type: 'shave', amount: Math.min(shave, left), overflow: Math.max(0, shave - left), preview: true }
     }
     if (current.growing_seed) {
-      const shaved = cloudShaveSeconds(tier)
-      await save({ shaved_seconds: (current.shaved_seconds || 0) + shaved })
-      return { type: 'shave', amount: shaved }
+      // The good tiers now shave more than some species take to grow, so a
+      // cloud can finish the flower outright. The excess isn't discarded and
+      // isn't silently rolled into the next plant either — it's banked, and the
+      // user chooses which seed receives it when they plant next.
+      const left = remainingSeconds(current) ?? 0
+      const applied = Math.min(shave, left)
+      const over = shave - applied
+      await save({
+        shaved_seconds: (current.shaved_seconds || 0) + applied,
+        overflow_seconds: (current.overflow_seconds || 0) + over,
+      })
+      return { type: 'shave', amount: applied, overflow: over }
     }
     const coins = cloudIdleCoins(tier)
     await save({ coins: (current.coins || 0) + coins })
@@ -311,13 +324,20 @@ export function GardenProvider({ children }) {
     if (!inv[seed.key]) throw new Error(`No ${seed.name} seeds — open a packet to find one`)
     inv[seed.key] -= 1
     if (inv[seed.key] <= 0) delete inv[seed.key]
+    // Planting is the choice of which flower gets the banked overflow. It's
+    // capped at this seed's own grow time, so a huge bank isn't burned on a
+    // three-hour Daisy — whatever it can't absorb stays banked for the next one.
+    const banked = stateRef.current?.overflow_seconds || 0
+    const applied = Math.min(banked, seed.growSeconds)
     await save({
       seed_inventory: inv,
       growing_seed: seed.key,
       growing_started_at: new Date().toISOString(),
       growing_grow_seconds: seed.growSeconds,
-      shaved_seconds: 0,
+      shaved_seconds: applied,
+      overflow_seconds: banked - applied,
     })
+    return { seed, applied, remainingOverflow: banked - applied }
   }, [save])
 
   const clearGrowing = useCallback(

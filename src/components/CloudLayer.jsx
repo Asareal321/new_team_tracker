@@ -22,6 +22,11 @@ export default function CloudLayer({ clouds, onPop, devSignal = null, onRoll = n
       text: reward.type === 'shave'
         ? `−${formatDuration(reward.amount)} grow time`
         : `+${reward.amount} coins`,
+      // A cloud big enough to finish the flower outright says where the rest
+      // went, or the missing time reads as a bug.
+      extra: reward.overflow > 0
+        ? `${formatDuration(reward.overflow)} saved for your next flower`
+        : null,
       preview: !!reward.preview,
     }
     setToasts(prev => [...prev, toast])
@@ -50,6 +55,7 @@ export default function CloudLayer({ clouds, onPop, devSignal = null, onRoll = n
           <div key={t.id} className={`cloud-toast${t.preview ? ' preview' : ''}`}>
             {t.preview && <span className="toast-tag">preview</span>}
             {t.text}
+            {t.extra && <span className="toast-extra">☁️ {t.extra}</span>}
           </div>
         ))}
       </div>

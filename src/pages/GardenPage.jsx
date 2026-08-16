@@ -6,7 +6,7 @@ import {
 import { useGarden } from '../context/GardenContext'
 import {
   SEEDS, seedByKey, RARITY_COLORS, RARITY_NAMES, PLOTS_PER_ROW, PACKETS,
-  nextExpansion, remainingSeconds, formatDuration, MAX_PLOTS,
+  nextExpansion, remainingSeconds, formatDuration, MAX_PLOTS, growthStage, GROWTH_STAGES,
 } from '../lib/garden'
 import PlotCluster from '../components/PlotCluster'
 import PackOpening from '../components/PackOpening'
@@ -21,6 +21,10 @@ const TABS = [
 ]
 
 const RARITY_ORDER = [1, 2, 3, 4, 5]
+
+// Stage boundaries, marked on the grow bar. The first is skipped — a tick at 0%
+// is just the end cap.
+const GROWTH_TICKS = GROWTH_STAGES.slice(1).map(s => s.at).filter(at => at < 100)
 
 export default function GardenPage() {
   const {
@@ -93,9 +97,12 @@ export default function GardenPage() {
   const totalSeconds = state?.growing_grow_seconds ?? growing?.growSeconds ?? 1
   const progress = growing ? Math.min(100, ((totalSeconds - remaining) / totalSeconds) * 100) : 0
   const openPlots = Array.from({ length: plotCount }, (_, i) => i).filter(i => !byPlot.has(i))
-  // Sprout art grows through four stages so the plot visibly changes shape as
-  // the timer runs down, not just the progress bar.
-  const sproutStage = progress < 25 ? '·' : progress < 55 ? '🌱' : progress < 100 ? '🌿' : growing?.emoji
+  // Eight named stages, so a long grow visibly changes several times instead of
+  // holding one picture for hours.
+  const stage = growthStage(progress, growing)
+  // Shave time a cloud produced beyond what its flower still needed, waiting
+  // for the user to choose which seed receives it.
+  const overflow = state?.overflow_seconds || 0
   const draggedSeed = seedByKey(flowers.find(f => f.id === dragging)?.seed_key)
 
   // Sealed packets waiting on the greenhouse shelf.
@@ -194,17 +201,48 @@ export default function GardenPage() {
         {/* --- greenhouse: the one grow slot, plus everything not yet planted --- */}
         {tab === 'greenhouse' && (
         <section className="garden-panel tabbed greenhouse">
+          {/* Banked cloud time with nowhere to go yet. It's stated up front
+              because the choice of which seed receives it is the user's, and an
+              unexplained head start on a plant would just look like a bug. */}
+          {overflow > 0 && (
+            <div className="overflow-banner">
+              <span className="overflow-icon">☁️</span>
+              <div>
+                <p className="overflow-title">{formatDuration(overflow)} of cloud time banked</p>
+                <p className="overflow-sub">
+                  {growing
+                    ? 'It goes to the next seed you plant — a seed shorter than the bank keeps the leftover for the one after.'
+                    : 'Plant a seed below and it starts that far along.'}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* One seed grows at a time, so it gets the middle of the room. */}
           <div className="grow-hero">
             {growing ? (
               <div className="growing-box">
                 <div className="growing-pot" style={{ '--rarity': RARITY_COLORS[growing.rarity] }}>
-                  <span className={`growing-sprout${isReady ? ' bloomed' : ''}`}>{sproutStage}</span>
+                  <span
+                    className={`growing-sprout${isReady ? ' bloomed' : ''}${stage.bud ? ' budding' : ''}`}
+                    style={{ '--stage-scale': stage.scale }}
+                    key={stage.key}
+                  >{stage.emoji}</span>
                   <span className="pot-soil" />
                 </div>
                 <div className="growing-info">
-                  <p className="growing-name">{growing.name}</p>
-                  <div className="growing-bar"><span style={{ width: `${progress}%` }} /></div>
+                  <p className="growing-name">
+                    {growing.name}
+                    <span className="growing-stage">{stage.label}</span>
+                  </p>
+                  {/* Ticks mark where each stage begins, so the bar shows how
+                      far it is to the next visible change, not just to the end. */}
+                  <div className="growing-bar">
+                    <span style={{ width: `${progress}%` }} />
+                    {GROWTH_TICKS.map(at => (
+                      <i key={at} className={`growing-tick${progress >= at ? ' passed' : ''}`} style={{ left: `${at}%` }} />
+                    ))}
+                  </div>
                   <p className="growing-time">
                     {isReady ? '✨ Ready to harvest!' : `${formatDuration(remaining)} left`}
                     {state?.shaved_seconds > 0 && ` · ☁️ ${formatDuration(state.shaved_seconds)} shaved`}
@@ -274,11 +312,25 @@ export default function GardenPage() {
                 <span className="seed-rarity">{RARITY_NAMES[seed.rarity]}</span>
                 <span className="seed-meta">{formatDuration(seed.growSeconds)}</span>
                 <span className="seed-meta">sells for {seed.sellValue} 🪙</span>
+                {/* What the banked cloud time would actually do to *this*
+                    species, so the choice is made on real numbers. */}
+                {overflow > 0 && !growing && (
+                  <span className="seed-overflow">
+                    {overflow >= seed.growSeconds
+                      ? '☁️ ready at once'
+                      : `☁️ ${formatDuration(seed.growSeconds - overflow)} left`}
+                  </span>
+                )}
                 <button
                   className="garden-btn primary"
                   disabled={!!growing}
                   title={growing ? 'Something is already growing' : ''}
-                  onClick={() => run(() => plantSeed(seed.key))}
+                  onClick={() => run(
+                    () => plantSeed(seed.key),
+                    r => r.applied > 0
+                      ? `Planted with ${formatDuration(r.applied)} of cloud time${r.remainingOverflow > 0 ? ` — ${formatDuration(r.remainingOverflow)} still banked` : ''}.`
+                      : 'Planted.',
+                  )}
                 >
                   Plant
                 </button>

@@ -342,6 +342,10 @@ html[data-theme="dark"] .coin-count {
   height: 34%;
   background: linear-gradient(180deg, var(--soil), var(--soil-dark));
 }
+/* The sprout grows physically as well as changing glyph — --stage-scale comes
+   from GROWTH_STAGES. It has to be re-applied inside every keyframe, because
+   the sway animation drives `transform` and would otherwise wipe it. Remounting
+   on each stage change (the `key`) is what replays the pop. */
 .growing-sprout {
   position: relative;
   z-index: 1;
@@ -349,23 +353,51 @@ html[data-theme="dark"] .coin-count {
   line-height: 1;
   margin-bottom: 0.35rem;
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.2));
-  animation: sway 4s ease-in-out infinite;
+  animation:
+    stage-in 420ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    sway 4s ease-in-out infinite 420ms;
 }
+/* A bud is a tight, not-yet-open version of the flower it's about to become. */
+.growing-sprout.budding { filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.2)) saturate(0.5) brightness(1.08); }
 .growing-sprout.bloomed { animation: pop-bloom 500ms cubic-bezier(0.34, 1.56, 0.64, 1), sway 4s ease-in-out infinite 500ms; }
 
 @keyframes sway {
-  0%, 100% { transform: rotate(-4deg); }
-  50%      { transform: rotate(4deg); }
+  0%, 100% { transform: rotate(-4deg) scale(var(--stage-scale, 1)); }
+  50%      { transform: rotate(4deg) scale(var(--stage-scale, 1)); }
+}
+@keyframes stage-in {
+  0%   { transform: rotate(-4deg) scale(calc(var(--stage-scale, 1) * 0.55)); }
+  100% { transform: rotate(-4deg) scale(var(--stage-scale, 1)); }
 }
 @keyframes pop-bloom {
-  0%   { transform: scale(0.4); }
-  100% { transform: scale(1); }
+  0%   { transform: scale(calc(var(--stage-scale, 1) * 0.4)); }
+  100% { transform: scale(var(--stage-scale, 1)); }
 }
 
 .growing-info { flex: 1; min-width: 200px; }
-.growing-name { font-size: 1.1rem; font-weight: 800; color: var(--ink); margin-bottom: 0.45rem; }
+.growing-name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--ink);
+  margin-bottom: 0.45rem;
+}
+.growing-stage {
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--rarity, var(--ink-soft));
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+}
 
 .growing-bar {
+  position: relative;
   height: 14px;
   border-radius: 999px;
   background: #eadfc9;
@@ -373,6 +405,17 @@ html[data-theme="dark"] .coin-count {
   overflow: hidden;
   padding: 0;
 }
+/* One tick per growth stage, so the bar shows how far it is to the next
+   visible change rather than only to the end. */
+.growing-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: rgba(0, 0, 0, 0.16);
+}
+.growing-tick.passed { background: rgba(255, 255, 255, 0.5); }
 .growing-bar span {
   display: block;
   height: 100%;
@@ -1056,3 +1099,43 @@ html[data-theme="dark"] .seed-tray .coin-count { color: #A9E07D; }
 
 html[data-theme="dark"] .herb-card { background: rgba(255, 255, 255, 0.04); }
 html[data-theme="dark"] .herb-progress { background: rgba(255, 255, 255, 0.12); }
+
+/* --- banked cloud overflow ----------------------------------------------- */
+
+.overflow-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1.1rem;
+  padding: 0.7rem 1rem;
+  border: 3px solid #7fb7d8;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #eaf6fd, #d5ecf8);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.07);
+}
+.overflow-icon { font-size: 1.6rem; line-height: 1; flex-shrink: 0; }
+.overflow-title { font-size: 0.95rem; font-weight: 900; color: #1d5878; }
+.overflow-sub { font-size: 0.76rem; font-weight: 600; color: #35708f; margin-top: 0.1rem; }
+
+.seed-overflow {
+  font-size: 0.68rem;
+  font-weight: 900;
+  color: #1d5878;
+  background: #d5ecf8;
+  border: 2px solid #7fb7d8;
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+  margin-top: 0.2rem;
+}
+
+html[data-theme="dark"] .overflow-banner {
+  background: linear-gradient(180deg, #1b3a49, #12262f);
+  border-color: #3d7a99;
+}
+html[data-theme="dark"] .overflow-title { color: #a8d9f0; }
+html[data-theme="dark"] .overflow-sub { color: #7fb0c9; }
+html[data-theme="dark"] .seed-overflow {
+  color: #a8d9f0;
+  background: #1b3a49;
+  border-color: #3d7a99;
+}

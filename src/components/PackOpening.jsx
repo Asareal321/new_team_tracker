@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { RARITY_COLORS, RARITY_NAMES } from '../lib/garden'
 import { CUES, PACK_DURATION, MOTION, rnd } from '../lib/packTimeline'
 import './PackOpening.css'
@@ -6,14 +6,25 @@ import './PackOpening.css'
 export { PACK_DURATION }
 
 // Flower pack opening — the reward cinematic from the Flower Pack Opening
-// design. One element tree rendered as a pure function of authored time T,
-// exactly as the source composition does: nothing mounts or unmounts at a
-// scene boundary, everything moves by interpolation.
+// design. The composition is a pure function of authored time T, exactly as the
+// source does: nothing mounts or unmounts at a scene boundary, everything moves
+// by interpolation. Timing lives in ../lib/packTimeline.js so it can be checked
+// without a browser (scripts/check-pack-timeline.mjs).
 //
-// The design ships against a composition engine with a scene scrubber and a
-// tweaks panel. Only the timeline itself is needed at runtime, so it's
-// reimplemented here — the cue table, `animate`, and the three easings the
-// piece actually uses — rather than pulling in the editor.
+// How it's driven matters as much as what it draws. The first cut held T in
+// React state, so all ~70 elements re-rendered every frame with fresh inline
+// style objects — enough reconciliation per frame to drop some of them. Now the
+// tree renders ONCE and the animation loop writes straight to the DOM:
+//
+//   * every animated element registers an `apply(T, el)` through `track()`
+//   * the rAF loop calls those directly — React does no work during playback
+//   * only `transform` and `opacity` are written, so frames stay on the
+//     compositor and never trigger layout or paint
+//
+// That last rule is why the stem scales rather than growing its height, why the
+// petal shower translates rather than setting left/top, and why the scrim is a
+// separate layer whose opacity animates instead of a background-color on the
+// full-viewport overlay.
 
 const CO = {
   wood: '#89582C', woodEdge: '#653C1F', woodInk: '#FEFCF7',
@@ -66,8 +77,13 @@ const TIERS = {
 
 const edge = (px, color) => `0 ${px}px 0 ${color}`
 
+// Promoted to its own compositor layer and told exactly what will change, so
+// the browser doesn't re-rasterise it every frame.
+const LAYER = { willChange: 'transform, opacity', backfaceVisibility: 'hidden' }
+
 /* ---- the pack --------------------------------------------------------- */
 const PW = 320, PH = 440, TOOTH = 32, TEETH = 10, DEPTH = 16
+const STEM_H = 300
 
 const zigzagFront = () => {
   const p = [`0px ${DEPTH}px`]
@@ -88,28 +104,33 @@ const zigzagStrip = h => {
   return `polygon(${p.join(',')})`
 }
 
-function Pack({ T, C, tier, packet }) {
-  const drop = MOTION.pop({ from: -1180, to: 0, start: 0.35, end: 1.25 })(T)
-  const amp = MOTION.enter({ from: 0, to: 7.5, start: C.Shake + 0.15, end: C.Tear - 0.15 })(T)
-    - MOTION.enter({ from: 0, to: 7.5, start: C.Tear, end: C.Tear + 0.35 })(T)
-  const rattle = Math.sin((T - C.Shake) * 21) * amp
-  const jolt = MOTION.pop({ from: 0, to: -26, start: C.Tear, end: C.Tear + 0.25 })(T)
-    + MOTION.enter({ from: 0, to: 26, start: C.Tear + 0.3, end: C.Tear + 0.7 })(T)
-  const sink = MOTION.enter({ from: 0, to: 18, start: C.Bloom + 0.1, end: C.Name })(T)
-  const packFade = 1 - MOTION.enter({ from: 0, to: 1, start: C.Return + 0.3, end: C.Return + 1.1 })(T)
+function Pack({ track, C, tier, packet }) {
+  const drop = MOTION.pop({ from: -1180, to: 0, start: 0.35, end: 1.25 })
+  const ampUp = MOTION.enter({ from: 0, to: 7.5, start: C.Shake + 0.15, end: C.Tear - 0.15 })
+  const ampDown = MOTION.enter({ from: 0, to: 7.5, start: C.Tear, end: C.Tear + 0.35 })
+  const joltDown = MOTION.pop({ from: 0, to: -26, start: C.Tear, end: C.Tear + 0.25 })
+  const joltUp = MOTION.enter({ from: 0, to: 26, start: C.Tear + 0.3, end: C.Tear + 0.7 })
+  const sink = MOTION.enter({ from: 0, to: 18, start: C.Bloom + 0.1, end: C.Name })
+  const packFade = MOTION.enter({ from: 0, to: 1, start: C.Return + 0.3, end: C.Return + 1.1 })
 
-  const stripY = MOTION.enter({ from: 0, to: -520, start: C.Tear + 0.05, end: C.Tear + 0.85 })(T)
-  const stripX = MOTION.enter({ from: 0, to: 330, start: C.Tear + 0.05, end: C.Tear + 0.95 })(T)
-  const stripRot = MOTION.enter({ from: 0, to: 68, start: C.Tear + 0.05, end: C.Tear + 0.95 })(T)
-  const stripFade = 1 - MOTION.enter({ from: 0, to: 1, start: C.Tear + 0.45, end: C.Tear + 0.9 })(T)
+  const stripY = MOTION.enter({ from: 0, to: -520, start: C.Tear + 0.05, end: C.Tear + 0.85 })
+  const stripX = MOTION.enter({ from: 0, to: 330, start: C.Tear + 0.05, end: C.Tear + 0.95 })
+  const stripRot = MOTION.enter({ from: 0, to: 68, start: C.Tear + 0.05, end: C.Tear + 0.95 })
+  const stripFade = MOTION.enter({ from: 0, to: 1, start: C.Tear + 0.45, end: C.Tear + 0.9 })
 
   return (
-    <div style={{
-      position: 'absolute', left: '50%', top: '50%', width: PW, height: PH,
-      marginLeft: -PW / 2, marginTop: -PH / 2 + 40,
-      transform: `translateY(${drop + jolt + sink}px) rotate(${rattle}deg)`,
-      transformOrigin: '50% 100%', opacity: packFade,
-    }}>
+    <div
+      ref={track((T, el) => {
+        const rattle = Math.sin((T - C.Shake) * 21) * (ampUp(T) - ampDown(T))
+        el.style.transform = `translate3d(0, ${drop(T) + joltDown(T) + joltUp(T) + sink(T)}px, 0) rotate(${rattle}deg)`
+        el.style.opacity = 1 - packFade(T)
+      })}
+      style={{
+        position: 'absolute', left: '50%', top: '50%', width: PW, height: PH,
+        marginLeft: -PW / 2, marginTop: -PH / 2 + 40,
+        transformOrigin: '50% 100%', ...LAYER,
+      }}
+    >
       <div style={{ position: 'absolute', inset: 0, background: CO.wood, clipPath: zigzagFront(), borderRadius: 8 }}>
         <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 6, background: CO.woodEdge }} />
         <div style={{
@@ -132,12 +153,17 @@ function Pack({ T, C, tier, packet }) {
           </div>
         </div>
       </div>
-      <div style={{
-        position: 'absolute', left: 0, top: 0, width: PW, height: 78,
-        background: CO.woodEdge, clipPath: zigzagStrip(78), borderRadius: '8px 8px 0 0',
-        transform: `translate(${stripX}px, ${stripY}px) rotate(${stripRot}deg)`,
-        opacity: stripFade, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
+      <div
+        ref={track((T, el) => {
+          el.style.transform = `translate3d(${stripX(T)}px, ${stripY(T)}px, 0) rotate(${stripRot(T)}deg)`
+          el.style.opacity = 1 - stripFade(T)
+        })}
+        style={{
+          position: 'absolute', left: 0, top: 0, width: PW, height: 78,
+          background: CO.woodEdge, clipPath: zigzagStrip(78), borderRadius: '8px 8px 0 0',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', ...LAYER,
+        }}
+      >
         <div style={{
           font: `700 11px/1.3 ${FONT_UI}`, letterSpacing: '0.1em',
           color: CO.woodInk, textTransform: 'uppercase', paddingBottom: 10,
@@ -148,44 +174,62 @@ function Pack({ T, C, tier, packet }) {
 }
 
 /* ---- the flower ------------------------------------------------------- */
-function Flower({ T, C, tier, seed }) {
-  const rise = MOTION.enter({ from: 120, to: -205, start: C.Bloom + 0.05, end: C.Bloom + 1.3 })(T)
-    + MOTION.enter({ from: 0, to: -22, start: C.Name, end: C.Name + 1.4 })(T)
-  const stemH = MOTION.enter({ from: 0, to: 300, start: C.Bloom + 0.1, end: C.Bloom + 1.2 })(T)
-  const sway = Math.sin((T - C.Bloom) * 1.5) * MOTION.enter({ from: 0, to: 2.2, start: C.Bloom + 1.3, end: C.Name })(T)
-  const headPop = MOTION.pop({ from: 0.2, to: 1, start: C.Bloom + 0.55, end: C.Bloom + 1.15 })(T)
-  const fade = 1 - MOTION.enter({ from: 0, to: 1, start: C.Return + 0.3, end: C.Return + 1.1 })(T)
-  const flare = MOTION.pop({ from: 0, to: 1, start: C.Bloom + 1.35, end: C.Bloom + 2.1 })(T)
-  const flareSpin = (T - C.Bloom) * 9
-  const coreScale = MOTION.pop({ from: 0, to: 1, start: C.Bloom + 1.15, end: C.Bloom + 1.6 })(T)
+function Flower({ track, C, tier, seed }) {
+  const riseA = MOTION.enter({ from: 120, to: -205, start: C.Bloom + 0.05, end: C.Bloom + 1.3 })
+  const riseB = MOTION.enter({ from: 0, to: -22, start: C.Name, end: C.Name + 1.4 })
+  // The stem scales instead of growing its height: animating `height` is a
+  // layout write every frame, which is exactly what stalls the compositor.
+  const stemGrow = MOTION.enter({ from: 0, to: 1, start: C.Bloom + 0.1, end: C.Bloom + 1.2 })
+  const swayAmp = MOTION.enter({ from: 0, to: 2.2, start: C.Bloom + 1.3, end: C.Name })
+  const headPop = MOTION.pop({ from: 0.2, to: 1, start: C.Bloom + 0.55, end: C.Bloom + 1.15 })
+  const fade = MOTION.enter({ from: 0, to: 1, start: C.Return + 0.3, end: C.Return + 1.1 })
+  const flare = MOTION.pop({ from: 0, to: 1, start: C.Bloom + 1.35, end: C.Bloom + 2.1 })
+  const coreScale = MOTION.pop({ from: 0, to: 1, start: C.Bloom + 1.15, end: C.Bloom + 1.6 })
 
   const petals = 8
   return (
-    <div style={{
-      position: 'absolute', left: '50%', top: '50%', width: 0, height: 0,
-      transform: `translateY(${rise}px) rotate(${sway}deg)`,
-      transformOrigin: '50% 100%', opacity: fade,
-    }}>
-      <div style={{
-        position: 'absolute', left: -9, top: 0, width: 18, height: stemH,
-        background: CO.accentEdge, borderRadius: 9, transformOrigin: '50% 0%',
-      }} />
-      {[-1, 1].map(s => (
-        <div key={s} style={{
-          position: 'absolute', left: s < 0 ? -96 : 6, top: 96,
-          width: 94, height: 40, background: CO.accent,
-          border: `3px solid ${CO.accentBorder}`,
-          borderRadius: s < 0 ? '40px 6px 40px 6px' : '6px 40px 6px 40px',
-          transform: `rotate(${s * 14}deg) scaleX(${MOTION.pop({
-            from: 0, to: 1, start: C.Bloom + 0.75 + (s < 0 ? 0 : 0.12), end: C.Bloom + 1.3,
-          })(T)})`,
-          transformOrigin: s < 0 ? '100% 50%' : '0% 50%',
-        }} />
-      ))}
-      <div style={{
-        position: 'absolute', left: 0, top: 0, width: 0, height: 0,
-        transform: `rotate(${flareSpin}deg) scale(${flare})`, opacity: flare * 0.95,
-      }}>
+    <div
+      ref={track((T, el) => {
+        const sway = Math.sin((T - C.Bloom) * 1.5) * swayAmp(T)
+        el.style.transform = `translate3d(0, ${riseA(T) + riseB(T)}px, 0) rotate(${sway}deg)`
+        el.style.opacity = 1 - fade(T)
+      })}
+      style={{
+        position: 'absolute', left: '50%', top: '50%', width: 0, height: 0,
+        transformOrigin: '50% 100%', ...LAYER,
+      }}
+    >
+      <div
+        ref={track((T, el) => { el.style.transform = `scaleY(${stemGrow(T)})` })}
+        style={{
+          position: 'absolute', left: -9, top: 0, width: 18, height: STEM_H,
+          background: CO.accentEdge, borderRadius: 9, transformOrigin: '50% 0%', ...LAYER,
+        }}
+      />
+      {[-1, 1].map(s => {
+        const leaf = MOTION.pop({ from: 0, to: 1, start: C.Bloom + 0.75 + (s < 0 ? 0 : 0.12), end: C.Bloom + 1.3 })
+        return (
+          <div
+            key={s}
+            ref={track((T, el) => { el.style.transform = `rotate(${s * 14}deg) scaleX(${leaf(T)})` })}
+            style={{
+              position: 'absolute', left: s < 0 ? -96 : 6, top: 96,
+              width: 94, height: 40, background: CO.accent,
+              border: `3px solid ${CO.accentBorder}`,
+              borderRadius: s < 0 ? '40px 6px 40px 6px' : '6px 40px 6px 40px',
+              transformOrigin: s < 0 ? '100% 50%' : '0% 50%', ...LAYER,
+            }}
+          />
+        )
+      })}
+      <div
+        ref={track((T, el) => {
+          const f = flare(T)
+          el.style.transform = `rotate(${(T - C.Bloom) * 9}deg) scale(${f})`
+          el.style.opacity = f * 0.95
+        })}
+        style={{ position: 'absolute', left: 0, top: 0, width: 0, height: 0, ...LAYER }}
+      >
         {Array.from({ length: 12 }).map((_, i) => (
           <div key={i} style={{
             position: 'absolute', left: -13, top: -366, width: 26, height: 350,
@@ -198,32 +242,38 @@ function Flower({ T, C, tier, seed }) {
           borderRadius: 999, border: `5px solid ${tier.petalLight}`, opacity: 0.85,
         }} />
       </div>
-      <div style={{ position: 'absolute', left: 0, top: 0, width: 0, height: 0, transform: `scale(${headPop})` }}>
+      <div
+        ref={track((T, el) => { el.style.transform = `scale(${headPop(T)})` })}
+        style={{ position: 'absolute', left: 0, top: 0, width: 0, height: 0, ...LAYER }}
+      >
         {Array.from({ length: petals }).map((_, i) => {
-          const p = MOTION.pop({
-            from: 0, to: 1,
-            start: C.Bloom + 0.6 + i * 0.075, end: C.Bloom + 1.25 + i * 0.075,
-          })(T)
+          const p = MOTION.pop({ from: 0, to: 1, start: C.Bloom + 0.6 + i * 0.075, end: C.Bloom + 1.25 + i * 0.075 })
+          const rot = i * (360 / petals)
           return (
-            <div key={i} style={{
-              position: 'absolute', left: '50%', top: '50%', width: 118, height: 212,
-              background: `linear-gradient(to top, ${tier.petal}, ${tier.petalLight})`,
-              border: `3px solid ${tier.petalEdge}`,
-              borderRadius: '52% 52% 40% 40% / 62% 62% 38% 38%',
-              transformOrigin: '50% 100%',
-              transform: `translate(-50%, -100%) rotate(${i * (360 / petals)}deg) scale(${p})`,
-            }} />
+            <div
+              key={i}
+              ref={track((T, el) => { el.style.transform = `translate(-50%, -100%) rotate(${rot}deg) scale(${p(T)})` })}
+              style={{
+                position: 'absolute', left: '50%', top: '50%', width: 118, height: 212,
+                background: `linear-gradient(to top, ${tier.petal}, ${tier.petalLight})`,
+                border: `3px solid ${tier.petalEdge}`,
+                borderRadius: '52% 52% 40% 40% / 62% 62% 38% 38%',
+                transformOrigin: '50% 100%', ...LAYER,
+              }}
+            />
           )
         })}
         {/* The design's core is a plain disc. The garden's flowers are known
             species, so the species sits in the middle of its own bloom — the
             reveal would otherwise be the same anonymous flower every time. */}
-        <div style={{
-          position: 'absolute', left: -70, top: -70, width: 140, height: 140,
-          borderRadius: 999, background: tier.core, border: `4px solid ${tier.coreEdge}`,
-          transform: `scale(${coreScale})`, display: 'grid', placeItems: 'center',
-          fontSize: 74, lineHeight: 1,
-        }}>
+        <div
+          ref={track((T, el) => { el.style.transform = `scale(${coreScale(T)})` })}
+          style={{
+            position: 'absolute', left: -70, top: -70, width: 140, height: 140,
+            borderRadius: 999, background: tier.core, border: `4px solid ${tier.coreEdge}`,
+            display: 'grid', placeItems: 'center', fontSize: 74, lineHeight: 1, ...LAYER,
+          }}
+        >
           <span>{seed.emoji}</span>
         </div>
       </div>
@@ -232,45 +282,60 @@ function Flower({ T, C, tier, seed }) {
 }
 
 /* ---- light burst + petal shower --------------------------------------- */
-function Burst({ T, C }) {
-  const s = MOTION.enter({ from: 0.15, to: 4.2, start: C.Tear + 0.15, end: C.Bloom + 0.5 })(T)
-  const o = MOTION.enter({ from: 0, to: 1, start: C.Tear + 0.1, end: C.Tear + 0.28 })(T)
-    - MOTION.enter({ from: 0, to: 1, start: C.Tear + 0.3, end: C.Bloom + 0.5 })(T)
+function Burst({ track, C }) {
+  const s = MOTION.enter({ from: 0.15, to: 4.2, start: C.Tear + 0.15, end: C.Bloom + 0.5 })
+  const up = MOTION.enter({ from: 0, to: 1, start: C.Tear + 0.1, end: C.Tear + 0.28 })
+  const down = MOTION.enter({ from: 0, to: 1, start: C.Tear + 0.3, end: C.Bloom + 0.5 })
   return (
-    <div style={{
-      position: 'absolute', left: '50%', top: '50%', width: 520, height: 520,
-      marginLeft: -260, marginTop: -300, borderRadius: 999,
-      background: 'radial-gradient(circle, rgba(254,252,247,0.95) 0%, rgba(254,252,247,0.55) 42%, rgba(254,252,247,0) 70%)',
-      transform: `scale(${s})`, opacity: Math.max(0, o),
-    }} />
+    <div
+      ref={track((T, el) => {
+        el.style.transform = `scale(${s(T)})`
+        el.style.opacity = Math.max(0, up(T) - down(T))
+      })}
+      style={{
+        position: 'absolute', left: '50%', top: '50%', width: 520, height: 520,
+        marginLeft: -260, marginTop: -300, borderRadius: 999,
+        background: 'radial-gradient(circle, rgba(254,252,247,0.95) 0%, rgba(254,252,247,0.55) 42%, rgba(254,252,247,0) 70%)',
+        ...LAYER,
+      }}
+    />
   )
 }
 
-function PetalShower({ T, C, tier }) {
-  const end = C.Return + 1.1
+// 26 petals, all mounted for the whole piece. The first cut returned null for
+// any petal outside its window, so React mounted and unmounted nodes mid-flight
+// — the reconciliation showed as a hitch right where the shower starts. They
+// now stay put at opacity 0 and only ever move by transform.
+function PetalShower({ track, C, tier }) {
+  const clear = MOTION.enter({ from: 0, to: 1, start: C.Return + 0.2, end: C.Return + 1 })
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       {Array.from({ length: 26 }).map((_, i) => {
         const t0 = C.Tear + 0.35 + rnd(i, 3) * 3.6
         const life = 3.4 + rnd(i, 7) * 2.4
-        const p = Math.min(1, Math.max(0, (T - t0) / life))
-        if (p <= 0 || T > end) return null
         const x = 120 + rnd(i, 1) * 1560
-        const y = -140 + p * 1320
-        const drift = Math.sin(p * 6 + i) * 90
-        const rot = (rnd(i, 5) - 0.5) * 900 * p + i * 27
         const w = 30 + rnd(i, 9) * 22
-        const fade = Math.min(1, p * 6) * (1 - Math.max(0, (p - 0.82) / 0.18))
-          * (1 - MOTION.enter({ from: 0, to: 1, start: C.Return + 0.2, end: C.Return + 1 })(T))
+        const spin = (rnd(i, 5) - 0.5) * 900
         return (
-          <div key={i} style={{
-            position: 'absolute', left: x, top: y, width: w, height: w * 1.5,
-            background: i % 3 === 0 ? tier.petalLight : tier.petal,
-            border: `2px solid ${tier.petalEdge}`,
-            borderRadius: '52% 52% 40% 40% / 62% 62% 38% 38%',
-            transform: `translateX(${drift}px) rotate(${rot}deg)`,
-            opacity: Math.max(0, fade),
-          }} />
+          <div
+            key={i}
+            ref={track((T, el) => {
+              const p = Math.min(1, Math.max(0, (T - t0) / life))
+              if (p <= 0) { el.style.opacity = 0; return }
+              const drift = Math.sin(p * 6 + i) * 90
+              el.style.transform =
+                `translate3d(${drift}px, ${-140 + p * 1320}px, 0) rotate(${spin * p + i * 27}deg)`
+              el.style.opacity = Math.max(0,
+                Math.min(1, p * 6) * (1 - Math.max(0, (p - 0.82) / 0.18)) * (1 - clear(T)))
+            })}
+            style={{
+              position: 'absolute', left: x, top: 0, width: w, height: w * 1.5,
+              background: i % 3 === 0 ? tier.petalLight : tier.petal,
+              border: `2px solid ${tier.petalEdge}`,
+              borderRadius: '52% 52% 40% 40% / 62% 62% 38% 38%',
+              opacity: 0, ...LAYER,
+            }}
+          />
         )
       })}
     </div>
@@ -278,80 +343,85 @@ function PetalShower({ T, C, tier }) {
 }
 
 /* ---- the name plaque -------------------------------------------------- */
-function NamePlaque({ T, C, tier, seed }) {
-  const pop = MOTION.pop({ from: 0.6, to: 1, start: C.Name + 0.15, end: C.Name + 0.8 })(T)
-  const lift = MOTION.enter({ from: 70, to: 0, start: C.Name + 0.15, end: C.Name + 0.9 })(T)
-  const o = MOTION.enter({ from: 0, to: 1, start: C.Name + 0.15, end: C.Name + 0.6 })(T)
-    - MOTION.enter({ from: 0, to: 1, start: C.Return + 0.2, end: C.Return + 0.9 })(T)
-  const chip = MOTION.pop({ from: 0, to: 1, start: C.Name + 0.55, end: C.Name + 1.15 })(T)
+function NamePlaque({ track, C, tier, seed }) {
+  const pop = MOTION.pop({ from: 0.6, to: 1, start: C.Name + 0.15, end: C.Name + 0.8 })
+  const lift = MOTION.enter({ from: 70, to: 0, start: C.Name + 0.15, end: C.Name + 0.9 })
+  const up = MOTION.enter({ from: 0, to: 1, start: C.Name + 0.15, end: C.Name + 0.6 })
+  const down = MOTION.enter({ from: 0, to: 1, start: C.Return + 0.2, end: C.Return + 0.9 })
+  const chip = MOTION.pop({ from: 0, to: 1, start: C.Name + 0.55, end: C.Name + 1.15 })
   return (
-    <div style={{
-      position: 'absolute', left: '50%', top: '50%', marginTop: 318,
-      transform: `translate(-50%, ${lift}px) scale(${pop})`,
-      opacity: Math.max(0, o), display: 'flex', flexDirection: 'column',
-      alignItems: 'center', gap: 16,
-    }}>
+    <div
+      ref={track((T, el) => {
+        el.style.transform = `translate(-50%, ${lift(T)}px) scale(${pop(T)})`
+        el.style.opacity = Math.max(0, up(T) - down(T))
+      })}
+      style={{
+        position: 'absolute', left: '50%', top: '50%', marginTop: 318,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+        opacity: 0, ...LAYER,
+      }}
+    >
       <div style={{
         background: CO.wood, color: CO.woodInk, borderRadius: 14,
         border: `3px solid ${CO.woodEdge}`, boxShadow: edge(5, CO.woodEdge),
         padding: '14px 44px', font: `600 52px/1.05 ${FONT_TOY}`,
         letterSpacing: '-0.015em', whiteSpace: 'nowrap',
       }}>{seed.name}</div>
-      <div style={{
-        background: tier.chipBg, color: tier.chipInk, borderRadius: 999,
-        padding: '8px 20px', font: `400 18px/1.35 ${FONT_NUM}`,
-        letterSpacing: '0.02em', textTransform: 'uppercase',
-        transform: `scale(${chip})`, opacity: chip,
-      }}>{RARITY_NAMES[seed.rarity]} seed</div>
+      <div
+        ref={track((T, el) => {
+          const c = chip(T)
+          el.style.transform = `scale(${c})`
+          el.style.opacity = Math.max(0, c)
+        })}
+        style={{
+          background: tier.chipBg, color: tier.chipInk, borderRadius: 999,
+          padding: '8px 20px', font: `400 18px/1.35 ${FONT_NUM}`,
+          letterSpacing: '0.02em', textTransform: 'uppercase', opacity: 0, ...LAYER,
+        }}
+      >{RARITY_NAMES[seed.rarity]} seed</div>
     </div>
   )
 }
 
 /* ---- the whole piece -------------------------------------------------- */
 export default function PackOpening({ packet, seed, onDone }) {
-  const [T, setT] = useState(0)
+  const [scale, setScale] = useState(() =>
+    Math.min(window.innerWidth / 1920, window.innerHeight / 1080))
   const done = useRef(false)
-  const stage = useRef(null)
-  // The timeline effect must not depend on `onDone`. Callers pass an inline
-  // arrow, so its identity changes on every render — and this component
-  // re-renders every frame. Depending on it tore the effect down and restarted
-  // the clock each frame, pinning T near zero and freezing the cinematic on the
-  // first thing it draws. Held in a ref, the effect mounts once and runs.
+  // Callers pass an inline arrow, so `onDone`'s identity changes on every
+  // render. Held in a ref, the timeline effect can mount once and stay mounted.
   const doneCb = useRef(onDone)
   doneCb.current = onDone
-  const [scale, setScale] = useState(1)
+
+  // Every animated element registers here during render; the loop writes to
+  // them directly. Rebuilt each render because the ref callbacks are fresh
+  // closures, so React re-invokes all of them.
+  const reg = useRef([])
+  reg.current = []
+  const track = apply => el => { if (el) reg.current.push([el, apply]) }
+
   const reduced = typeof matchMedia === 'function'
     && matchMedia('(prefers-reduced-motion: reduce)').matches
-
-  // The composition is authored at a fixed 1920x1080, so it's scaled to fit
-  // the viewport rather than reflowed — every offset in the design is in
-  // stage pixels and only holds at that aspect.
-  useEffect(() => {
-    const fit = () => setScale(Math.min(window.innerWidth / 1920, window.innerHeight / 1080))
-    fit()
-    window.addEventListener('resize', fit)
-    return () => window.removeEventListener('resize', fit)
-  }, [])
-
   // Reduced motion skips the drop, rattle and camera push and joins at the
   // reveal — the information still arrives, the theatre doesn't.
   const start = reduced ? CUES.Name : 0
 
+  // The composition is authored at a fixed 1920x1080, so it's scaled to fit
+  // the viewport rather than reflowed — every offset is in stage pixels.
   useEffect(() => {
-    let raf
-    const t0 = performance.now()
-    const tick = now => {
-      const t = start + (now - t0) / 1000
-      setT(t)
-      if (t >= PACK_DURATION) {
-        if (!done.current) { done.current = true; doneCb.current() }
-        return
-      }
-      raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [start])
+    const fit = () => setScale(Math.min(window.innerWidth / 1920, window.innerHeight / 1080))
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [])
+
+  const C = CUES
+  const cam = { up: MOTION.enter({ from: 0, to: 0.04, start: C.Shake + 0.1, end: C.Tear }),
+                down: MOTION.enter({ from: 0, to: 0.04, start: C.Name + 0.1, end: C.Name + 1.6 }) }
+  const liftF = MOTION.enter({ from: 0, to: 52, start: C.Name, end: C.Name + 1.5 })
+  const rewardUp = MOTION.enter({ from: 0, to: 0.2, start: C.Shake + 0.1, end: C.Tear + 0.4 })
+  const rewardDown = MOTION.enter({ from: 0, to: 0.16, start: C.Name, end: C.Name + 1.6 })
+  const scrimUp = MOTION.enter({ from: 0, to: 1, start: 0.15, end: 0.95 })
+  const scrimDown = MOTION.enter({ from: 0, to: 1, start: C.Return + 0.35, end: C.Return + 1.15 })
 
   function finish() {
     if (done.current) return
@@ -359,47 +429,67 @@ export default function PackOpening({ packet, seed, onDone }) {
     doneCb.current()
   }
 
-  // Escape skips, matching every other dismissable surface in the app — an
-  // 11-second non-interactive cinematic with no keyboard exit is a trap.
+  const paint = T => {
+    const list = reg.current
+    for (let i = 0; i < list.length; i++) list[i][1](T, list[i][0])
+  }
+
+  // Paint frame zero synchronously, before the browser shows anything —
+  // otherwise the first painted frame is whatever the static styles say, which
+  // flashes the pack at its resting position before it drops in.
+  useLayoutEffect(() => { paint(start) })
+
+  useEffect(() => {
+    let raf
+    const t0 = performance.now()
+    const tick = now => {
+      // Time comes from the wall clock, not from a frame counter, so a
+      // backgrounded tab resumes at the right point instead of playing back
+      // the frames it missed in fast-forward.
+      const T = start + (now - t0) / 1000
+      paint(Math.min(T, PACK_DURATION))
+      if (T >= PACK_DURATION) { finish(); return }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [start])
+
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') finish() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const C = CUES
-  const cam = 1
-    + MOTION.enter({ from: 0, to: 0.04, start: C.Shake + 0.1, end: C.Tear })(T)
-    - MOTION.enter({ from: 0, to: 0.04, start: C.Name + 0.1, end: C.Name + 1.6 })(T)
-  const lift = -MOTION.enter({ from: 0, to: 52, start: C.Name, end: C.Name + 1.5 })(T)
-  const reward = 0.92
-    + MOTION.enter({ from: 0, to: 0.2, start: C.Shake + 0.1, end: C.Tear + 0.4 })(T)
-    - MOTION.enter({ from: 0, to: 0.16, start: C.Name, end: C.Name + 1.6 })(T)
-  const scrim = MOTION.enter({ from: 0, to: 1, start: 0.15, end: 0.95 })(T)
-    - MOTION.enter({ from: 0, to: 1, start: C.Return + 0.35, end: C.Return + 1.15 })(T)
-
   const tier = TIERS[seed.rarity] || TIERS[3]
 
   return (
-    // The design scrims a mock board; here the real app is behind, so the
-    // scrim covers the viewport and the composition sits on top of it.
-    <div className="pack-overlay" onClick={finish} style={{ background: `rgba(23,17,13,${Math.max(0, scrim) * 0.72})` }}>
+    <div className="pack-overlay" onClick={finish}>
+      {/* A separate layer rather than a background-color on the overlay: an
+          animated colour on a full-viewport element repaints the whole screen
+          every frame, where an opacity change stays on the compositor. */}
       <div
-        ref={stage}
-        className="pack-stage"
-        style={{ transform: `translate(-50%, -50%) scale(${scale})` }}
-      >
-        <div style={{ position: 'absolute', inset: 0, transform: `scale(${cam})`, transformOrigin: '50% 48%' }}>
-          <div style={{
-            position: 'absolute', inset: 0,
-            transform: `translateY(${lift}px) scale(${reward})`, transformOrigin: '50% 46%',
-          }}>
-            <Burst T={T} C={C} />
-            <Flower T={T} C={C} tier={tier} seed={seed} />
-            <Pack T={T} C={C} tier={tier} packet={packet} />
-            <NamePlaque T={T} C={C} tier={tier} seed={seed} />
+        className="pack-scrim"
+        ref={track((T, el) => { el.style.opacity = Math.max(0, scrimUp(T) - scrimDown(T)) })}
+      />
+      <div className="pack-stage" style={{ transform: `translate(-50%, -50%) scale(${scale})` }}>
+        <div
+          ref={track((T, el) => { el.style.transform = `scale(${1 + cam.up(T) - cam.down(T)})` })}
+          style={{ position: 'absolute', inset: 0, transformOrigin: '50% 48%', ...LAYER }}
+        >
+          <div
+            ref={track((T, el) => {
+              el.style.transform =
+                `translate3d(0, ${-liftF(T)}px, 0) scale(${0.92 + rewardUp(T) - rewardDown(T)})`
+            })}
+            style={{ position: 'absolute', inset: 0, transformOrigin: '50% 46%', ...LAYER }}
+          >
+            <Burst track={track} C={C} />
+            <Flower track={track} C={C} tier={tier} seed={seed} />
+            <Pack track={track} C={C} tier={tier} packet={packet} />
+            <NamePlaque track={track} C={C} tier={tier} seed={seed} />
           </div>
-          <PetalShower T={T} C={C} tier={tier} />
+          <PetalShower track={track} C={C} tier={tier} />
         </div>
       </div>
       <button className="pack-skip" onClick={finish}>Skip</button>
