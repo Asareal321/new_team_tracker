@@ -2238,3 +2238,91 @@
 .td-action:hover { border-color: var(--text-4); color: var(--text-1); }
 .td-action.danger { color: var(--red-text); }
 .td-action.danger:hover { border-color: var(--prio-high); color: var(--red-text); }
+
+/* --- the quest strip ------------------------------------------------------ */
+
+/* One line, between the greenhouse and the bands. Same card language as the
+   greenhouse strip but untinted, so the two read as a pair without the board
+   growing a second green block. */
+.quest-strip {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.qs-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.qs-rabbit { font-size: 17px; line-height: 1; }
+.qs-title { font-size: var(--fs-sm); font-weight: 750; letter-spacing: -0.01em; color: var(--text-1); }
+.qs-head:hover .qs-title { color: var(--accent); }
+
+.qs-list { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 0; }
+
+.qs-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--bb-border);
+  border-radius: 9999px;
+  padding: 3px 11px;
+  font-size: 12px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+/* A finished quest is the only thing here asking to be clicked. */
+.qs-item.ready { border-color: var(--accent); background: var(--accent-bg); }
+.qs-item.done { opacity: 0.55; }
+
+.qs-icon { font-size: 13px; line-height: 1; }
+.qs-name { font-weight: 600; color: var(--text-1); }
+.qs-item.done .qs-name { text-decoration: line-through; }
+.qs-state { font-size: 11px; color: var(--text-4); }
+
+.qs-bar {
+  width: 46px;
+  height: 5px;
+  border-radius: 9999px;
+  background: var(--bg-subtle);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.qs-bar span { display: block; height: 100%; background: var(--accent); transition: width 180ms; }
+.qs-count { font-size: 11px; color: var(--text-4); font-variant-numeric: tabular-nums; }
+
+.qs-claim {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-on);
+  background: var(--accent);
+  border: none;
+  border-radius: 9999px;
+  padding: 2px 10px;
+  cursor: pointer;
+}
+.qs-claim:hover { filter: brightness(1.06); }
+.qs-claim:disabled { opacity: 0.6; cursor: default; }
+
+@media (max-width: 820px) {
+  /* Three pills and a heading don't fit one line on a phone; let the list
+     stack under the heading rather than squeezing the bars to nothing. */
+  .quest-strip { align-items: flex-start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qs-bar span { transition: none; }
+}

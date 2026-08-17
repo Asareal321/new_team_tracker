@@ -756,6 +756,8 @@ function PriorityBoard({
 
             <GreenhouseStrip doneToday={byStatus('done').length} />
 
+            <QuestStrip />
+
             {BANDS_DISPLAY.map(band => (
               <Band key={band.key} status={band.key} label={band.label}
                 isFull={isFull}
@@ -1567,8 +1569,6 @@ function GreenhouseStrip({ doneToday }) {
   // Only shown when there's something to collect. A permanent quest counter
   // would be one more number on a strip whose whole point is being short.
   const claimable = (quests || []).filter(q => q.claimable).length
-  const questsDone = (quests || []).filter(q => q.claimed).length
-  const questCount = (quests || []).length
 
   // Two lines: what's growing, then what today has paid out. The strip sits
   // above the bands, and the bands are the page — anything taller than this
@@ -1641,19 +1641,64 @@ function GreenhouseStrip({ doneToday }) {
         <span className="gh-chip" title="Tasks you've finished today">
           <span aria-hidden="true">✅</span>{doneToday} done today
         </span>
-        <button
-          className={`gh-chip quest-chip${claimable ? ' quest-ready' : ''}`}
-          onClick={() => navigate('/garden?tab=quests')}
-          title={claimable
-            ? 'Trak has a finished quest waiting — open his quests'
-            : `Trak’s quests for today — ${questsDone} of ${questCount} claimed`}
-        >
-          <span aria-hidden="true">🐇</span>
-          {claimable ? `${claimable} to claim` : `${questsDone}/${questCount} quests`}
-        </button>
         <span className="gh-chip-rule" aria-hidden="true" />
         <DailyCaps state={state} />
       </div>
+      </div>
+    </section>
+  )
+}
+
+// Trak's three quests, on the board rather than only in the garden. They are
+// the day's other scoreboard — what's left to do for the reward — so they
+// belong between the greenhouse and the bands, not two clicks away.
+function QuestStrip() {
+  const { quests, claimQuest, ready } = useGarden()
+  const navigate = useNavigate()
+  const [busy, setBusy] = useState(null)
+
+  if (!ready || !quests?.length) return null
+
+  async function claim(key) {
+    setBusy(key)
+    try { await claimQuest(key) } catch { /* the garden's toast says why */ }
+    finally { setBusy(null) }
+  }
+
+  return (
+    <section className="quest-strip">
+      <button
+        className="qs-head"
+        onClick={() => navigate('/garden?tab=quests')}
+        title="Open Trak’s quests in the garden"
+      >
+        <span className="qs-rabbit" aria-hidden="true">🐇</span>
+        <span className="qs-title">Quests</span>
+      </button>
+
+      <div className="qs-list">
+        {quests.map(q => (
+          <div
+            key={q.key}
+            className={`qs-item${q.claimed ? ' done' : ''}${q.claimable ? ' ready' : ''}`}
+            title={`${q.blurb} — ${q.reward.coins} coins${q.reward.seeds ? ` and ${q.reward.seeds} seeds` : ''}`}
+          >
+            <span className="qs-icon" aria-hidden="true">{q.icon}</span>
+            <span className="qs-name">{q.name}</span>
+            {q.claimed ? (
+              <span className="qs-state">claimed</span>
+            ) : q.claimable ? (
+              <button className="qs-claim" disabled={busy === q.key} onClick={() => claim(q.key)}>
+                {busy === q.key ? '…' : 'Claim'}
+              </button>
+            ) : (
+              <>
+                <span className="qs-bar"><span style={{ width: `${q.pct}%` }} /></span>
+                <span className="qs-count">{q.value}/{q.goal}</span>
+              </>
+            )}
+          </div>
+        ))}
       </div>
     </section>
   )
