@@ -128,3 +128,6 @@
 @media (max-width: 560px) {
   .devpanel { left: 12px; right: 12px; width: auto; bottom: 12px; }
 }
+
+/* Eight short labels read better four-up than two-up. */
+.dev-grid.four { grid-template-columns: repeat(4, 1fr); }

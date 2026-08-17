@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { CLOUD_TIERS, SEEDS, seedByKey, remainingSeconds, formatDuration } from '../lib/garden'
+import { STREAK_MILESTONES, streakCoins } from '../lib/streak'
 import Onboarding from './Onboarding'
 import './DevPanel.css'
 
@@ -7,6 +8,11 @@ import './DevPanel.css'
 // preview-only — they never write to Supabase — so animations can be inspected
 // without inflating a real garden. The garden shortcuts below DO write, because
 // there's no way to reach those states otherwise; they're marked as such.
+// Both ends of the curve, every milestone, and the day after the last one —
+// the payout flattens there, and a preview that never shows the flat part
+// hides the only surprising thing about the numbers.
+const STREAK_PREVIEWS = [1, 2, 3, 7, 12, 30, 100, 200]
+
 export default function DevPanel({
   state, cloud, log,
   onClose, onSpawn, onReplay,
@@ -119,12 +125,23 @@ export default function DevPanel({
       <section className="dev-section">
         <h4>Streak panel <span className="dev-note">preview · never saves</span></h4>
         <p className="dev-hint">
-          The celebration only fires on the first task you finish each day, so this is
-          the only way to look at it twice.
+          It fires on the first task you finish each day, so this is the only way to
+          watch it twice. Each day below rolls the odometer from the one before it;
+          the marked ones pay a packet.
         </p>
-        <div className="dev-row">
-          <button className="dev-btn" onClick={() => onShowStreak(false)}>Ordinary day</button>
-          <button className="dev-btn" onClick={() => onShowStreak(true)}>Milestone</button>
+        <div className="dev-grid four">
+          {STREAK_PREVIEWS.map(d => (
+            <button
+              key={d}
+              className="dev-btn"
+              onClick={() => onShowStreak(d)}
+              title={STREAK_MILESTONES[d]
+                ? `Day ${d} — milestone, pays the ${STREAK_MILESTONES[d]} packet`
+                : `Day ${d} — ordinary, pays ${streakCoins(d)} coins`}
+            >
+              day {d}{STREAK_MILESTONES[d] ? ' ★' : ''}
+            </button>
+          ))}
         </div>
       </section>
 

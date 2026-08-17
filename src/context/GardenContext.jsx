@@ -390,12 +390,11 @@ export function GardenProvider({ children }) {
 
   // Preview only — no coins, no packet, nothing written. The panel fires once
   // a day at most, so without this it can't be looked at on demand.
-  const devShowStreak = useCallback(milestone => {
-    const streak = milestone ? 7 : 12
-    const reward = streakReward(streak)
+  const devShowStreak = useCallback((days = 12) => {
+    const reward = streakReward(days)
     setStreakCue({
       ...reward,
-      prevStreak: streak - 1,
+      prevStreak: Math.max(0, days - 1),
       totalCoins: (stateRef.current?.coins || 0) + reward.coins,
       release: null,
     })
