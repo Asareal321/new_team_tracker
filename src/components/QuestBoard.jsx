@@ -37,7 +37,7 @@ export default function QuestBoard() {
   return (
     <div className="quest-board">
       <div className="quest-intro">
-        <Trak mood={anyClaimable ? 'happy' : 'think'} size={84} />
+        <Trak mood={anyClaimable ? 'happy' : 'think'} size={96} pettable />
         <div>
           <p className="quest-hello">Trak has work for you</p>
           <p className="quest-line">{line(quests)}</p>

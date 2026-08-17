@@ -1926,17 +1926,7 @@
    costs width and no height. */
 .gh-stack { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 
-.gh-trak {
-  flex: 0 0 auto;
-  position: relative;
-  display: block;
-  padding: 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  line-height: 0;
-}
-.gh-trak:hover { transform: translateY(-1px); }
+.gh-trak { flex: 0 0 auto; position: relative; display: block; line-height: 0; }
 /* One dot, only when something of his is waiting — the same signal the chip
    row deliberately doesn't spend a slot on. */
 .gh-trak-dot {

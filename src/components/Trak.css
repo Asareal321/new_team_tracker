@@ -25,3 +25,49 @@
 @media (prefers-reduced-motion: reduce) {
   .trak, .trak-ears { animation: none; }
 }
+
+/* Petting. */
+.trak-hug {
+  position: relative;
+  display: inline-flex;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  line-height: 0;
+}
+/* A squash and stretch, not a bounce: he's being pressed, so he gives and
+   comes back. */
+.trak.is-petted { animation: trak-pet 640ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes trak-pet {
+  0%   { transform: scale(1, 1) translateY(0); }
+  22%  { transform: scale(1.1, 0.86) translateY(4px); }
+  55%  { transform: scale(0.95, 1.07) translateY(-4px); }
+  100% { transform: scale(1, 1) translateY(0); }
+}
+
+.trak-heart {
+  position: absolute;
+  top: 4px;
+  right: -2px;
+  font-size: 14px;
+  color: var(--prio-high, #E0574B);
+  pointer-events: none;
+  animation: trak-heart 900ms ease-out forwards;
+}
+@keyframes trak-heart {
+  0%   { opacity: 0; transform: translateY(4px) scale(0.6); }
+  25%  { opacity: 1; transform: translateY(-4px) scale(1); }
+  100% { opacity: 0; transform: translateY(-26px) scale(0.9); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* He still acknowledges it — the heart appears and fades, it just doesn't
+     travel, and he doesn't squash. */
+  .trak.is-petted { animation: none; }
+  .trak-heart { animation: trak-heart-still 900ms ease-out forwards; }
+  @keyframes trak-heart-still {
+    0%, 70% { opacity: 1; }
+    100%    { opacity: 0; }
+  }
+}

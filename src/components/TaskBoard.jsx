@@ -1574,14 +1574,14 @@ function GreenhouseStrip({ doneToday }) {
 
   return (
     <section className="greenhouse-strip">
-      <button
-        className={`gh-trak${claimable ? ' has-quest' : ''}`}
-        onClick={() => navigate('/garden?tab=quests')}
-        title={`${say} — open Trak’s quests`}
-      >
-        <Trak mood={claimable ? 'happy' : isReady ? 'point' : growing ? 'idle' : 'think'} size={64} />
+      <div className={`gh-trak${claimable ? ' has-quest' : ''}`} title={say}>
+        <Trak
+          mood={claimable ? 'happy' : isReady ? 'point' : growing ? 'idle' : 'think'}
+          size={88}
+          pettable
+        />
         {claimable > 0 && <span className="gh-trak-dot" aria-hidden="true" />}
-      </button>
+      </div>
 
       <div className="gh-stack">
       <div className="gh-line">

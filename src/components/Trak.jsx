@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import './Trak.css'
 
 // Trak — the rabbit who shows you around.
@@ -48,13 +49,31 @@ function Eye({ kind, x }) {
   )
 }
 
-export default function Trak({ mood = 'idle', size = 96, className = '' }) {
-  const eyes = EYES[mood] || EYES.idle
-  const pointing = mood === 'point'
+// A drawn rabbit is a thing you want to touch, and a guide who never reacts to
+// being touched reads as a picture rather than as company. Petting changes
+// nothing in the game — it doesn't pay, and it isn't recorded. That's the
+// point: it's the one control in the app that exists only because it's nice.
+export default function Trak({ mood = 'idle', size = 96, className = '', pettable = false }) {
+  const [pets, setPets] = useState(0)
+  const [petting, setPetting] = useState(false)
+  const timer = useRef(null)
+  useEffect(() => () => clearTimeout(timer.current), [])
 
-  return (
+  function pet() {
+    setPets(n => n + 1)
+    setPetting(true)
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => setPetting(false), 640)
+  }
+
+  // Being petted overrides whatever he was doing, then hands the pose back.
+  const shown = petting ? 'happy' : mood
+  const eyes = EYES[shown] || EYES.idle
+  const pointing = shown === 'point'
+
+  const art = (
     <svg
-      className={`trak trak-${mood} ${className}`}
+      className={`trak trak-${shown}${petting ? ' is-petted' : ''} ${className}`}
       width={size}
       height={size}
       viewBox="0 0 100 100"
@@ -115,5 +134,16 @@ export default function Trak({ mood = 'idle', size = 96, className = '' }) {
         <ellipse cx="27" cy="66" rx="7" ry="5.5" fill={FUR} stroke={LINE} strokeWidth="2.2" transform="rotate(-30 27 66)" />
       )}
     </svg>
+  )
+
+  if (!pettable) return art
+
+  return (
+    <button type="button" className="trak-hug" onClick={pet} title="Pet Trak" aria-label="Pet Trak">
+      {art}
+      {/* Keyed on the count so a second pet restarts the animation rather than
+          being swallowed by the first one still running. */}
+      {pets > 0 && <span key={pets} className="trak-heart" aria-hidden="true">♥</span>}
+    </button>
   )
 }
