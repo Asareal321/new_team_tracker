@@ -1129,12 +1129,8 @@ function TaskRow({
   dragListeners, dragAttributes,
   draftText = '', onDraftChange, onTaskDone,
 }) {
-  const assigneeIds = (task.task_assignees || []).map(a => a.user_id)
-  const [showActions, setShowActions] = useState(false)
-  const [showHistory, setShowHistory] = useState(false)
-  const [composing, setComposing] = useState(() => draftText.length > 0)
+  const [detail, setDetail] = useState(false)
   const isArchived = task.status === 'archived'
-  const isDone = task.status === 'done'
   const isPending = isPendingApproval(task)
 
   const kind = rowKind(task)
@@ -1145,191 +1141,216 @@ function TaskRow({
         : (assignees[0].display_name || '?').split(/\s+/)[0].toLowerCase())
     : 'unassigned'
 
+  const next = NEXT_BAND[task.status]
+  const prev = PREV_BAND[task.status]
+
+  return (
+    <>
+      <div
+        className={`paper-row kind-${kind}${isArchived ? ' archived' : ''}${project ? ' has-sprint' : ''}`}
+        style={rowStyle(project)}
+      >
+        <div className="paper-main">
+          {/* The stripe doubles as the drag handle: it runs the full height of
+              the row and is the one part with nothing else to click. */}
+          <span
+            className="row-stripe"
+            {...(dragListeners || {})} {...(dragAttributes || {})}
+            aria-label={`Drag ${task.title}`}
+          />
+          {/* The row itself opens the task. Everything that used to unfold in
+              place — notes, the update history, the composer, the action bar —
+              lives in that panel now, so a band of four tasks stays four lines
+              tall however much has been written on them. */}
+          <button
+            type="button"
+            className="row-body"
+            onClick={() => setDetail(true)}
+            aria-label={`Open ${task.title}`}
+          >
+            <span className="row-title">
+              {isPending && <span className="pending-badge" title="Waiting on assignment acceptance">Pending</span>}
+              {task.recurrence && (
+                <span className="repeat-badge" title={`Repeats ${RECURRENCE_LABELS[task.recurrence]?.toLowerCase()}`}>
+                  🔁 {RECURRENCE_LABELS[task.recurrence]}
+                </span>
+              )}
+              {task.title}
+            </span>
+            {/* Date, then who has it, then which sprint — and each is simply
+                absent when there's nothing to say. A row that has to announce
+                "no date, unassigned" is spending two slots on nothing. */}
+            <span className="row-meta">
+              {chip && <span className="row-chip">{chip}</span>}
+              {assignees.length > 0 && <span>{owner}</span>}
+              {project && (
+                <span className={`row-sprint ${projectTintClass(project.id)}`}>{project.name}</span>
+              )}
+              {/* Not the update itself — just that there is one, so the row
+                  says whether it's worth opening. */}
+              {updates.length > 0 && (
+                <span className="row-count">{updates.length} update{updates.length === 1 ? '' : 's'}</span>
+              )}
+              {!updates.length && task.notes && <span className="row-count">notes</span>}
+            </span>
+          </button>
+          <span className="row-tail">
+            {!isArchived && (
+              <>
+                <button
+                  className="row-advance"
+                  disabled={!next}
+                  title={next ? `Move up to ${MOVE_LABELS[next]}` : 'Already done'}
+                  aria-label={next ? `Move ${task.title} up to ${MOVE_LABELS[next]}` : 'Already done'}
+                  onClick={() => next && onStatusChange(next)}
+                ><Chevron up /></button>
+                <button
+                  className="row-back"
+                  disabled={!prev}
+                  title={prev === BRAINDUMP ? 'Send down to the braindump' : `Move down to ${MOVE_LABELS[prev]}`}
+                  aria-label={prev === BRAINDUMP
+                    ? `Send ${task.title} down to the braindump`
+                    : `Move ${task.title} down to ${MOVE_LABELS[prev]}`}
+                  onClick={() => prev && onStatusChange(prev)}
+                ><Chevron /></button>
+              </>
+            )}
+          </span>
+        </div>
+      </div>
+
+      {detail && (
+        <TaskDetail
+          task={task} project={project} assignees={assignees} updates={updates}
+          teamMembers={teamMembers} onUpdateAssignees={onUpdateAssignees}
+          statuses={statuses} statusLabels={statusLabels}
+          onEdit={onEdit} onDelete={onDelete} onStatusChange={onStatusChange}
+          onAddUpdate={onAddUpdate} onDeleteUpdate={onDeleteUpdate}
+          draftText={draftText} onDraftChange={onDraftChange} onTaskDone={onTaskDone}
+          onClose={() => setDetail(false)}
+        />
+      )}
+    </>
+  )
+}
+
+// Everything about one task, in one place. This is where the writing happens:
+// the board shows a task's name and shape, and the moment you want to know
+// what has actually been going on you open it.
+function TaskDetail({
+  task, project, assignees, updates, teamMembers, onUpdateAssignees,
+  statuses, statusLabels, onEdit, onDelete, onStatusChange,
+  onAddUpdate, onDeleteUpdate, draftText = '', onDraftChange, onTaskDone, onClose,
+}) {
+  const assigneeIds = (task.task_assignees || []).map(a => a.user_id)
+  const isArchived = task.status === 'archived'
+  const isDone = task.status === 'done'
+
+  useEffect(() => {
+    function onKey(e) { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
   // Sorted here rather than trusted from the caller: `updatesForTask` hands
-  // these over oldest-first, which silently put the *first* update on the row
-  // as though it were the latest news.
+  // these over oldest-first.
   const recent = [...updates].sort((a, b) => b.created_at.localeCompare(a.created_at))
-  const latest = recent[0]
   const today = todayStr()
-  const historyByDate = recent.slice(1).reduce((acc, u) => {
+  const byDate = recent.reduce((acc, u) => {
     const d = u.created_at.slice(0, 10)
     if (!acc[d]) acc[d] = []
     acc[d].push(u)
     return acc
   }, {})
-  const historyDates = Object.keys(historyByDate).sort((a, b) => b.localeCompare(a))
+  const dates = Object.keys(byDate).sort((a, b) => b.localeCompare(a))
 
   function submitUpdate(newStatus) {
     const text = draftText.trim()
     if (!text) return
     onAddUpdate(text, newStatus)
     onDraftChange?.('')
-    setComposing(false)
     if (newStatus === 'done') onTaskDone?.(task)
+    onClose()
   }
 
-  const next = NEXT_BAND[task.status]
-  const prev = PREV_BAND[task.status]
-  const secondaryNext = statuses.filter(s => s !== task.status && s !== next)
-
   return (
-    <div
-      className={`paper-row kind-${kind}${isArchived ? ' archived' : ''}${project ? ' has-sprint' : ''}`}
-      style={rowStyle(project)}
-    >
-      <div className="paper-main">
-        {/* The stripe doubles as the drag handle: it runs the full height of
-            the row and is the one part with nothing else to click. */}
-        <span
-          className="row-stripe"
-          {...(dragListeners || {})} {...(dragAttributes || {})}
-          aria-label={`Drag ${task.title}`}
-        />
-        <div className="row-body">
-          <span className="row-title">
-            {isPending && <span className="pending-badge" title="Waiting on assignment acceptance">Pending</span>}
-            {task.recurrence && (
-              <span className="repeat-badge" title={`Repeats ${RECURRENCE_LABELS[task.recurrence]?.toLowerCase()}`}>
-                🔁 {RECURRENCE_LABELS[task.recurrence]}
-              </span>
-            )}
-            {task.title}
-          </span>
-          {/* Date, then who has it, then which sprint — and each is simply
-              absent when there's nothing to say. A row that has to announce
-              "no date, unassigned" is spending two slots on nothing. */}
-          <span className="row-meta">
-            {chip && <span className="row-chip">{chip}</span>}
-            {assignees.length > 0 && <span>{owner}</span>}
-            {project && (
-              <span className={`row-sprint ${projectTintClass(project.id)}`}>{project.name}</span>
-            )}
-          </span>
-
-          {/* The newest update, always visible. With none yet, the task's own
-              notes take the line — there's always something worth reading. */}
-          {latest ? (
-            <span className="row-glance">
-              <span className="glance-text">{latest.body}</span>
-              <span className="glance-when">
-                {latest.created_at.slice(0, 10) === today
-                  ? formatTime(latest.created_at)
-                  : formatHistoryDate(latest.created_at.slice(0, 10))}
-              </span>
-              {recent.length > 1 && (
-                <button
-                  className="glance-more"
-                  aria-expanded={showHistory}
-                  onClick={() => setShowHistory(h => !h)}
-                  title={showHistory ? 'Hide earlier updates' : 'Show earlier updates'}
-                >{showHistory ? '−' : '+'}{recent.length - 1}</button>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="task-detail" onClick={e => e.stopPropagation()}>
+        <header className="td-head">
+          <div className="td-headings">
+            <h3 className="td-title">{task.title}</h3>
+            <div className="td-facts">
+              <span className={`td-status s-${task.status}`}>{MOVE_LABELS[task.status]}</span>
+              {project && (
+                <span className={`row-sprint ${projectTintClass(project.id)}`}>{project.name}</span>
               )}
-            </span>
-          ) : task.notes ? (
-            <span className="row-notes">{task.notes}</span>
-          ) : null}
-
-          {/* Earlier updates, and the notes once an update has displaced them. */}
-          {showHistory && (
-            <span className="row-history">
-              {task.notes && <span className="row-notes">{task.notes}</span>}
-              {historyDates.map(date => (
-                <span key={date} className="history-day">
-                  <span className="history-date-label">
-                    {date === today ? 'Today' : formatHistoryDate(date)}
-                  </span>
-                  {historyByDate[date].map(u => (
-                    <span key={u.id} className="history-line">
-                      <span>{u.body}</span>
-                      <span className="glance-when">
-                        {u.profiles?.display_name ? `${u.profiles.display_name} · ` : ''}
-                        {formatTime(u.created_at)}
-                      </span>
-                      <button className="update-delete-btn" title="Delete update"
-                        onClick={() => onDeleteUpdate?.(u.id)}>×</button>
-                    </span>
-                  ))}
-                </span>
-              ))}
-            </span>
-          )}
-
-          {/* One click from typing, as it was before the row went compact. */}
-          {!isArchived && (composing ? (
-            <span className="row-composer open">
-              <textarea
-                autoFocus
-                rows={2}
-                value={draftText}
-                onChange={e => onDraftChange?.(e.target.value)}
-                placeholder="What happened? What's the status now?"
-              />
-              <span className="composer-actions">
-                <button type="button" className="btn-ghost btn-sm"
-                  onClick={() => { onDraftChange?.(''); setComposing(false) }}>Cancel</button>
-                <span className="m-spacer" />
-                <button type="button" className="status-submit-btn todo" disabled={!draftText.trim()}
-                  onClick={() => submitUpdate('todo')}>Up next</button>
-                <button type="button" className="status-submit-btn inprogress" disabled={!draftText.trim()}
-                  onClick={() => submitUpdate('in_progress')}>Doing</button>
-                <button type="button" className="status-submit-btn done" disabled={!draftText.trim()}
-                  onClick={() => submitUpdate('done')}>Done</button>
+              {task.due_date && (
+                <span className={`td-fact ${dueClass(task.due_date)}`}>due {formatDate(task.due_date)}</span>
+              )}
+              <span className="td-fact">{PRIORITY_LABELS[task.priority] || 'No'} priority</span>
+              <span className="td-fact">
+                {assignees.length
+                  ? assignees.map(a => a.display_name).join(', ')
+                  : 'Unassigned'}
               </span>
-            </span>
-          ) : (
-            <button
-              className={`row-composer${draftText ? ' has-draft' : ''}`}
-              onClick={() => setComposing(true)}
-            >{draftText || 'Add an update…'}</button>
-          ))}
-        </div>
-        <span className="row-tail">
-          <button
-            className={`row-menu${showActions ? ' active' : ''}`}
-            onClick={() => setShowActions(o => !o)}
-            aria-expanded={showActions}
-            aria-label="Actions"
-          >•••</button>
-          {!isArchived && (
-            <>
-              <button
-                className="row-advance"
-                disabled={!next}
-                title={next ? `Move up to ${MOVE_LABELS[next]}` : 'Already done'}
-                aria-label={next ? `Move ${task.title} up to ${MOVE_LABELS[next]}` : 'Already done'}
-                onClick={() => next && onStatusChange(next)}
-              ><Chevron up /></button>
-              <button
-                className="row-back"
-                disabled={!prev}
-                title={prev === BRAINDUMP ? 'Send down to the braindump' : `Move down to ${MOVE_LABELS[prev]}`}
-                aria-label={prev === BRAINDUMP
-                  ? `Send ${task.title} down to the braindump`
-                  : `Move ${task.title} down to ${MOVE_LABELS[prev]}`}
-                onClick={() => prev && onStatusChange(prev)}
-              ><Chevron /></button>
-            </>
-          )}
-        </span>
-      </div>
+            </div>
+          </div>
+          <button className="td-x" onClick={onClose} aria-label="Close">✕</button>
+        </header>
 
-      <div className={`task-action-bar${showActions ? ' open' : ''}`}>
-        {isArchived ? (
-          <>
-            <button className="action-btn action-primary" onClick={() => { onStatusChange('done'); setShowActions(false) }}>Unarchive</button>
-            <button className="action-btn action-danger" onClick={() => { onDelete(); setShowActions(false) }}>Delete</button>
-          </>
-        ) : (
-          <>
-            {secondaryNext.map(s => (
-              <button key={s} className="action-btn" onClick={() => { onStatusChange(s); setShowActions(false) }}>
-                → {statusLabels[s]}
-              </button>
-            ))}
-            {isDone && (
-              <button className="action-btn" onClick={() => { onStatusChange('archived'); setShowActions(false) }}>Archive</button>
+        <div className="td-scroll">
+          {task.notes && (
+            <section className="td-section">
+              <span className="td-label">Notes</span>
+              <p className="td-notes">{task.notes}</p>
+            </section>
+          )}
+
+          <section className="td-section">
+            <span className="td-label">Updates</span>
+            {!isArchived && (
+              <div className="td-composer">
+                <textarea
+                  autoFocus
+                  rows={3}
+                  value={draftText}
+                  onChange={e => onDraftChange?.(e.target.value)}
+                  placeholder="What happened? What's the status now?"
+                />
+                <div className="composer-actions">
+                  <span className="m-spacer" />
+                  <button type="button" className="status-submit-btn todo" disabled={!draftText.trim()}
+                    onClick={() => submitUpdate('todo')}>Up next</button>
+                  <button type="button" className="status-submit-btn inprogress" disabled={!draftText.trim()}
+                    onClick={() => submitUpdate('in_progress')}>Doing</button>
+                  <button type="button" className="status-submit-btn done" disabled={!draftText.trim()}
+                    onClick={() => submitUpdate('done')}>Done</button>
+                </div>
+              </div>
             )}
-            {teamMembers.length > 0 && (
+
+            {recent.length === 0 && <p className="td-empty">Nothing written down yet.</p>}
+            {dates.map(date => (
+              <div key={date} className="td-day">
+                <span className="td-date">{date === today ? 'Today' : formatHistoryDate(date)}</span>
+                {byDate[date].map(u => (
+                  <div key={u.id} className="td-update">
+                    <p className="td-update-body">{u.body}</p>
+                    <span className="td-update-when">
+                      {u.profiles?.display_name ? `${u.profiles.display_name} · ` : ''}
+                      {formatTime(u.created_at)}
+                    </span>
+                    <button className="update-delete-btn" title="Delete update"
+                      onClick={() => onDeleteUpdate?.(u.id)}>×</button>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </section>
+
+          {teamMembers.length > 0 && !isArchived && (
+            <section className="td-section">
+              <span className="td-label">Assigned to</span>
               <div className="action-assign">
                 {teamMembers.map(m => {
                   const assigned = assigneeIds.includes(m.id)
@@ -1344,11 +1365,33 @@ function TaskRow({
                   )
                 })}
               </div>
-            )}
-            <button className="action-btn" onClick={() => { onEdit(); setShowActions(false) }}>Edit</button>
-            <button className="action-btn action-danger" onClick={() => { onDelete(); setShowActions(false) }}>Delete</button>
-          </>
-        )}
+            </section>
+          )}
+        </div>
+
+        <footer className="td-foot">
+          {isArchived ? (
+            <>
+              <button className="action-btn action-primary" onClick={() => { onStatusChange('done'); onClose() }}>Unarchive</button>
+              <span className="m-spacer" />
+              <button className="action-btn action-danger" onClick={() => { onDelete(); onClose() }}>Delete</button>
+            </>
+          ) : (
+            <>
+              {statuses.filter(s => s !== task.status).map(s => (
+                <button key={s} className="action-btn" onClick={() => { onStatusChange(s); onClose() }}>
+                  → {statusLabels[s]}
+                </button>
+              ))}
+              {isDone && (
+                <button className="action-btn" onClick={() => { onStatusChange('archived'); onClose() }}>Archive</button>
+              )}
+              <span className="m-spacer" />
+              <button className="action-btn" onClick={() => { onEdit(); onClose() }}>Edit</button>
+              <button className="action-btn action-danger" onClick={() => { onDelete(); onClose() }}>Delete</button>
+            </>
+          )}
+        </footer>
       </div>
     </div>
   )
