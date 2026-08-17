@@ -9,7 +9,7 @@ import {
 import { useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { useNavigate } from 'react-router-dom'
-import { projectDotColor } from '../lib/projectColors'
+import { projectDotColor, projectTintClass } from '../lib/projectColors'
 import { useGarden } from '../context/GardenContext'
 import DailyCaps from './DailyCaps'
 import Trak from './Trak'
@@ -981,25 +981,6 @@ function AssignmentResponseForm({ mode, busy, onCancel, onSubmit }) {
 // Cluster a zone's tasks by sprint (project), preserving task order and putting
 // the "No sprint" bucket last. Returns null when there are no real sprints to
 // group by (e.g. a personal board), so the zone renders as a flat list.
-function groupTasksBySprint(tasks, projectName) {
-  const order = []
-  const map = new Map()
-  for (const t of tasks) {
-    const key = t.project_id || '__none__'
-    if (!map.has(key)) { map.set(key, []); order.push(key) }
-    map.get(key).push(t)
-  }
-  if (!order.some(k => k !== '__none__')) return null
-  const keys = order.filter(k => k !== '__none__')
-  if (map.has('__none__')) keys.push('__none__')
-  return keys.map(key => ({
-    key,
-    name: key === '__none__' ? 'No sprint' : (projectName(key) || 'Unknown sprint'),
-    color: key === '__none__' ? 'var(--prio-low)' : projectDotColor(key),
-    tasks: map.get(key),
-  }))
-}
-
 function Band({ status, label, tasks, limit, isFull, onBlocked, resolveAssignees, projectName, updatesForTask, teamMembers, onEdit, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, onUpdateAssignees, draftUpdates, setDraft, onTaskDone }) {
   const { setNodeRef, isOver } = useDroppable({ id: `col-${status}` })
   const atLimit = limit != null && tasks.length >= limit
@@ -1012,18 +993,16 @@ function Band({ status, label, tasks, limit, isFull, onBlocked, resolveAssignees
   const [open, setOpen] = useState(false)
   const collapsed = isTally && !open
 
-  // Up next is the long band, so it keeps the sprint clustering. Doing is
-  // capped and Done today is transient — grouping either would be noise. A
-  // grouped band drops to a single column: two columns of small groups reads
-  // as a broken grid rather than as two columns.
-  const groups = status === 'todo' ? groupTasksBySprint(tasks, projectName) : null
-  const orderedTasks = groups ? groups.flatMap(g => g.tasks) : tasks
-  const items = orderedTasks.map(t => t.id)
+  // Up next used to cluster under sprint headings. Every row now carries its
+  // sprint as a coloured pill and wears the same colour as its outline, which
+  // says the same thing without spending a heading on it — and keeps the band
+  // in two columns.
+  const items = tasks.map(t => t.id)
 
-  const renderRow = (task, showProject = true) => (
+  const renderRow = task => (
     <SortableTaskRow key={task.id} task={task}
       assignees={resolveAssignees(task)}
-      projectName={showProject ? (projectName(task.project_id) || 'unfiled') : null}
+      project={task.project_id ? { id: task.project_id, name: projectName(task.project_id) || 'Unknown sprint' } : null}
       updates={updatesForTask(task.id)}
       teamMembers={teamMembers}
       onEdit={() => onEdit(task)}
@@ -1067,7 +1046,7 @@ function Band({ status, label, tasks, limit, isFull, onBlocked, resolveAssignees
       <SortableContext items={items} strategy={verticalListSortingStrategy}>
         <div
           ref={setNodeRef}
-          className={`band-body${groups ? ' grouped' : ''}${collapsed ? ' tally' : ''}`}
+          className={`band-body${collapsed ? ' tally' : ''}`}
         >
           {collapsed ? (
             <div className="band-tally">
@@ -1076,20 +1055,7 @@ function Band({ status, label, tasks, limit, isFull, onBlocked, resolveAssignees
                 {tasks.length === 1 ? 'task finished today' : 'tasks finished today'}
               </span>
             </div>
-          ) : groups
-            ? groups.map(g => (
-                <div key={g.key} className="sprint-group">
-                  <div className="sprint-group-head">
-                    <span className="sprint-group-dot" style={{ background: g.color }} />
-                    <span className="sprint-group-name">{g.name}</span>
-                    <span className="sprint-group-count">{g.tasks.length}</span>
-                  </div>
-                  <div className="sprint-group-body">
-                    {g.tasks.map(task => renderRow(task, false))}
-                  </div>
-                </div>
-              ))
-            : tasks.map(task => renderRow(task))}
+          ) : tasks.map(task => renderRow(task))}
           {!collapsed && tasks.length === 0 && (
             <div className="band-empty">
               {status === 'done'
@@ -1135,11 +1101,20 @@ function rowKind(task) {
   return 'plain'
 }
 
+// Null for an ordinary row. "no date" was a slot spent saying nothing, and
+// the stripe is only coloured for the kinds that still return something here,
+// so the pairing between stripe and chip survives.
 function rowChip(task, kind) {
   if (kind === 'done') return `done ${formatTime(task.updated_at || task.created_at)}`
   if (kind === 'hi') return 'high'
   if (kind === 'due') return formatDate(task.due_date)
-  return 'no date'
+  return null
+}
+
+// A sprint is worth a colour, not a heading: the pill names it and the row
+// wears the same colour as its outline.
+function rowStyle(project) {
+  return project ? { '--sprint': projectDotColor(project.id) } : undefined
 }
 
 // A row: stripe, title, meta, and — permanently — the newest update. Folding
@@ -1147,7 +1122,7 @@ function rowChip(task, kind) {
 // it's the one line you come to the board to read. So the newest one is always
 // on the row, with the composer under it; only the history costs a click.
 function TaskRow({
-  task, assignees, projectName, updates,
+  task, assignees, project, updates,
   teamMembers = [], onUpdateAssignees,
   onEdit, onDelete, onStatusChange, onAddUpdate, onDeleteUpdate,
   statuses, statusLabels,
@@ -1198,7 +1173,10 @@ function TaskRow({
   const secondaryNext = statuses.filter(s => s !== task.status && s !== next)
 
   return (
-    <div className={`paper-row kind-${kind}${isArchived ? ' archived' : ''}`}>
+    <div
+      className={`paper-row kind-${kind}${isArchived ? ' archived' : ''}${project ? ' has-sprint' : ''}`}
+      style={rowStyle(project)}
+    >
       <div className="paper-main">
         {/* The stripe doubles as the drag handle: it runs the full height of
             the row and is the one part with nothing else to click. */}
@@ -1209,9 +1187,6 @@ function TaskRow({
         />
         <div className="row-body">
           <span className="row-title">
-            {/* Ahead of the title, with the other badges: on the right it was a
-                third thing competing with the two controls. */}
-            <span className="row-chip">{chip}</span>
             {isPending && <span className="pending-badge" title="Waiting on assignment acceptance">Pending</span>}
             {task.recurrence && (
               <span className="repeat-badge" title={`Repeats ${RECURRENCE_LABELS[task.recurrence]?.toLowerCase()}`}>
@@ -1220,11 +1195,14 @@ function TaskRow({
             )}
             {task.title}
           </span>
+          {/* Date, then who has it, then which sprint — and each is simply
+              absent when there's nothing to say. A row that has to announce
+              "no date, unassigned" is spending two slots on nothing. */}
           <span className="row-meta">
-            <span>{owner}</span>
-            {projectName && <span>{projectName}</span>}
-            {task.due_date && kind !== 'due' && (
-              <span className={dueClass(task.due_date)}>{formatDate(task.due_date)}</span>
+            {chip && <span className="row-chip">{chip}</span>}
+            {assignees.length > 0 && <span>{owner}</span>}
+            {project && (
+              <span className={`row-sprint ${projectTintClass(project.id)}`}>{project.name}</span>
             )}
           </span>
 
