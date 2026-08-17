@@ -112,6 +112,19 @@ export const RARITY_COLORS = {
 export const ADD_TASK_REWARD = { seeds: 1 }
 export const DOING_CLEAR_REWARD = { coins: 60 }
 
+// A clear is a *count of finished work*, not an empty column.
+//
+// It used to be "the last card left Doing", which paid the same 60 whether you
+// emptied a full column or kept a single task in there and finished it — and
+// the second is both easier and worth more per task. Counting instead means
+// two Doing → Done moves earn the payout however they're spread: two at once,
+// or one now and one tomorrow. The part-finished pair is banked, so work is
+// never lost to a reload or a midnight.
+//
+// Must equal MAX_DOING in components/TaskBoard.jsx — a clear should be a full
+// column's worth. scripts/check-progress.mjs asserts the two agree.
+export const DOING_CLEAR_TASKS = 2
+
 // A day's worth of each. Days are local, not UTC — a cap that rolls over at
 // 7pm local time would read as broken.
 export const DAILY_CAPS = {

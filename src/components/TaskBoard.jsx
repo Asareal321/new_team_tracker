@@ -10,6 +10,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { useNavigate } from 'react-router-dom'
 import { projectDotColor, projectTintClass } from '../lib/projectColors'
+import { MAX_DOING, MAX_UP_NEXT, BAND_LIMITS, bandFull } from '../lib/boardLimits'
 import { useGarden } from '../context/GardenContext'
 import DailyCaps from './DailyCaps'
 import Trak from './Trak'
@@ -66,22 +67,11 @@ const BANDS_DISPLAY = [...BANDS].reverse()
 // realtime — carrying a status the board deliberately doesn't render.
 const BRAINDUMP = 'braindump'
 
-// Work-in-progress limits. The point was always "only a few things at once",
-// and it now applies to the backlog as well: an Up next that grows without
-// bound is just a second braindump with more ceremony. The braindump is the
-// overflow — it exists precisely so a full board doesn't block capture.
-export const MAX_DOING = 2
-export const MAX_UP_NEXT = 4
-const BAND_LIMITS = { todo: MAX_UP_NEXT, in_progress: MAX_DOING }
-
-// One check, used by every route into a band: the form, drag-and-drop, the
-// ∧ / ∨ controls, the action bar, and the braindump tray. Each of those was
-// previously its own check, or no check at all.
-function bandFull(tasks, status, exceptId) {
-  const limit = BAND_LIMITS[status]
-  if (!limit) return false
-  return tasks.filter(t => t.status === status && t.id !== exceptId).length >= limit
-}
+// The limits and the one full-band check now live in lib/boardLimits.js — the
+// garden defines a Doing "clear" as a full column's worth of finished work and
+// needs to read MAX_DOING without importing JSX. Re-exported here because
+// BoardPage and others already import them from this module.
+export { MAX_DOING, MAX_UP_NEXT }
 
 // A capture that couldn't land where it was aimed. Said out loud rather than
 // silently: a task that isn't where you put it is worse than one that was
@@ -349,12 +339,15 @@ export default function TaskBoard({
     )
   }), [tasks, currentUserId])
 
-  // Capture drops a bare title into the pile. No priority, no date, no project —
-  // the whole point is that it costs one line and no decisions.
-  async function captureToDump(title) {
+  // Capture drops a bare title into the pile: no priority, no date. The project
+  // is the one exception, and it's optional — it costs a click you've usually
+  // already made (the pill stays selected between captures), and knowing which
+  // project a thought belongs to is the thing you forget first and can least
+  // reconstruct later. Everything else can still wait for triage.
+  async function captureToDump(title, projectId = null) {
     await onAdd({
       title, notes: '', status: BRAINDUMP, priority: 'medium',
-      due_date: null, project_id: null, recurrence: null, assigneeIds: [],
+      due_date: null, project_id: projectId, recurrence: null, assigneeIds: [],
     })
   }
 
@@ -770,6 +763,7 @@ function PriorityBoard({
             bands={BANDS}
             laneCounts={Object.fromEntries(BAND_KEYS.map(k => [k, byStatus(k).length]))}
             projectName={projectName}
+            projects={projects}
             onCapture={onCapture}
             onSort={onSortFromDump}
             onDelete={onDelete}
@@ -1428,11 +1422,45 @@ function ageOf(iso) {
   return `${Math.round(hrs / 24)}d`
 }
 
-function Braindump({ items, bands, laneCounts, projectName, onCapture, onSort, onDelete, onBack }) {
+// The pile, grouped by project, unfiled last.
+//
+// Order inside a group stays oldest-first — the age is the only pressure the
+// pile applies, and re-sorting by project shouldn't cost you that. Unfiled
+// sits at the bottom because it's the group you're trying to empty: anything
+// still there is a thought you haven't placed yet.
+function groupByProject(items, projectName) {
+  const groups = new Map()
+  for (const item of items) {
+    const key = item.project_id || ''
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(item)
+  }
+  const named = [...groups.entries()]
+    .filter(([key]) => key)
+    .map(([key, list]) => ({ key, name: projectName(key) || 'Unknown project', list }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+  const unfiled = groups.get('')
+  return unfiled ? [...named, { key: '', name: 'Unfiled', list: unfiled }] : named
+}
+
+function Braindump({ items, bands, laneCounts, projectName, projects = [], onCapture, onSort, onDelete, onBack }) {
   const [draft, setDraft] = useState('')
   const [selected, setSelected] = useState(null)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
+  // Which project the next capture lands in. Sticky across captures for the
+  // same reason the composer's chips are: a dump run is usually one project's
+  // worth of thinking, and re-picking it every line would be the friction the
+  // braindump exists to avoid.
+  const [captureProject, setCaptureProject] = useState(null)
+
+  const groups = useMemo(() => groupByProject(items, projectName), [items, projectName])
+
+  // A project that's been deleted shouldn't leave the next capture pointing at
+  // nothing.
+  useEffect(() => {
+    if (captureProject && !projects.some(p => p.id === captureProject)) setCaptureProject(null)
+  }, [projects, captureProject])
 
   // Selection follows the pile: if the selected item leaves, take the first
   // one that's left so a triage run never needs the mouse between items.
@@ -1470,7 +1498,7 @@ function Braindump({ items, bands, laneCounts, projectName, onCapture, onSort, o
     const title = draft.trim()
     if (!title || busy) return
     setBusy(true)
-    try { await onCapture(title); setDraft(''); setNotice('') }
+    try { await onCapture(title, captureProject); setDraft(''); setNotice('') }
     finally { setBusy(false) }
   }
 
@@ -1494,31 +1522,75 @@ function Braindump({ items, bands, laneCounts, projectName, onCapture, onSort, o
             />
             <button type="submit" className="bb-btn primary" disabled={!draft.trim() || busy}>Add</button>
           </form>
+
+          {/* Where the next capture lands. Directly under the field because
+              it's part of the same act — you pick it once and keep typing.
+              "Unfiled" is always offered and is the default, so the pile can
+              still take a thought that doesn't belong anywhere yet. */}
+          {projects.length > 0 && (
+            <div className="dump-projects" role="group" aria-label="File captures under">
+              <span className="dump-plabel">File under</span>
+              <div className="dump-pills">
+                <button
+                  type="button"
+                  className={`dump-pj${captureProject === null ? ' selected' : ''}`}
+                  aria-pressed={captureProject === null}
+                  onClick={() => setCaptureProject(null)}
+                >Unfiled</button>
+                {projects.map(p => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className={`dump-pj${captureProject === p.id ? ' selected' : ''}`}
+                    aria-pressed={captureProject === p.id}
+                    onClick={() => setCaptureProject(captureProject === p.id ? null : p.id)}
+                  >
+                    <span className="dump-pjdot" style={{ background: projectDotColor(p.id) }} />
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <p className="dump-hint">
             click an item, then press 1–{bands.length} or hit a tray slot · oldest first
           </p>
           {notice && <p className="form-notice">{notice}</p>}
 
+          {/* Grouped under project headers. The per-item chip goes with them —
+              it said the same thing on every row of a group, and the header
+              says it once. */}
           <div className="dump-list">
-            {items.map(item => (
-              <div
-                key={item.id}
-                className={`dump-item${item.id === selected ? ' on' : ''}`}
-                tabIndex={0}
-                role="button"
-                aria-pressed={item.id === selected}
-                onClick={() => setSelected(item.id)}
-                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(item.id) } }}
-              >
-                <span className="dump-grab" />
-                <span className="dump-body">
-                  <span className="dump-title">{item.title}</span>
-                  <span className="dump-meta">
-                    <span>{ageOf(item.created_at)}</span>
-                    <span>typed</span>
-                  </span>
-                </span>
-                <span className="dump-chip">{projectName(item.project_id) || 'unfiled'}</span>
+            {groups.map(group => (
+              <div className="dump-group" key={group.key || 'unfiled'}>
+                <div className={`dump-group-head${group.key ? '' : ' unfiled'}`}>
+                  {group.key && (
+                    <span className="dump-pjdot" style={{ background: projectDotColor(group.key) }} />
+                  )}
+                  <span className="dump-group-name">{group.name}</span>
+                  <span className="dump-group-count">{group.list.length}</span>
+                </div>
+                {group.list.map(item => (
+                  <div
+                    key={item.id}
+                    className={`dump-item${item.id === selected ? ' on' : ''}`}
+                    tabIndex={0}
+                    role="button"
+                    aria-pressed={item.id === selected}
+                    onClick={() => setSelected(item.id)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(item.id) } }}
+                  >
+                    <span className="dump-grab" />
+                    <span className="dump-body">
+                      <span className="dump-title">{item.title}</span>
+                      <span className="dump-meta">
+                        <span>{ageOf(item.created_at)}</span>
+                        <span>typed</span>
+                      </span>
+                    </span>
+                  </div>
+                ))}
               </div>
             ))}
             {items.length === 0 && (

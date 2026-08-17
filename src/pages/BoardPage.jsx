@@ -118,7 +118,7 @@ export default function BoardPage() {
   const [projectMembers, setProjectMembers] = useState([])
   const [taskUpdates, setTaskUpdates] = useState([])
   const [loading, setLoading] = useState(true)
-  // { task, clearedDoing } — the completion being celebrated.
+  // { task, fromDoing } — the completion being celebrated.
   const [doneTask, setDoneTask] = useState(null)
   const [showProjectsManager, setShowProjectsManager] = useState(false)
 
@@ -301,7 +301,7 @@ export default function BoardPage() {
   // the centre of the screen to itself. Both pay on every board — the garden
   // belongs to the account, so work done on a team board counts the same.
   function dismissDoneTask() {
-    const cleared = doneTask?.clearedDoing
+    const cleared = doneTask?.fromDoing
     setDoneTask(null)
     rewardTaskDone()
     if (cleared) rewardDoingCleared()
@@ -416,12 +416,14 @@ export default function BoardPage() {
         onRespondToAssignment={respondToAssignment}
         onResolveChangeRequest={resolveChangeRequest}
         onTaskDone={task => {
-          // Decided here, not from the refreshed list: this task was the last
-          // one in Doing, and it's leaving because it was finished. Moving a
-          // card back to To-do also empties the column but earns nothing.
-          const clearedDoing = task.status === 'in_progress'
-            && !tasks.some(t => t.status === 'in_progress' && t.id !== task.id)
-          setDoneTask({ task, clearedDoing })
+          // Every task finished out of Doing counts toward a clear, not just
+          // the one that happens to empty the column — the payout is per
+          // DOING_CLEAR_TASKS finished, and GardenContext keeps the tally.
+          // Read from the task's pre-move status rather than the refreshed
+          // list: it's leaving Doing *because* it was finished, and a card
+          // dragged back to Up next also empties the column but earns nothing.
+          const fromDoing = task.status === 'in_progress'
+          setDoneTask({ task, fromDoing })
           respawnRecurring(task)
         }}
       />

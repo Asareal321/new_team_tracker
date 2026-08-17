@@ -4,7 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import {
   SEEDS, seedByKey, cloudShaveSeconds, cloudIdleCoins, remainingSeconds,
   nextExpansion, STARTING_PLOTS, packetByKey, rollPacket,
-  ADD_TASK_REWARD, DOING_CLEAR_REWARD, DAILY_CAPS, CLOUD_EXPECTED_COINS,
+  ADD_TASK_REWARD, DOING_CLEAR_REWARD, DOING_CLEAR_TASKS, DAILY_CAPS, CLOUD_EXPECTED_COINS,
   localDay, todayBucket, advanceStreak,
 } from '../lib/garden'
 import { newlyUnlocked } from '../lib/achievements'
@@ -446,22 +446,45 @@ export function GardenProvider({ children }) {
     return { gain, capped: gain === 0 }
   }, [commit, bumpStats, notify])
 
-  // Emptying the Doing column is the board's only route to real money. It can't
-  // be farmed the way adding a task can — you have to have actually finished
-  // everything in flight.
+  // Clearing Doing is the board's only route to real money, and it's counted
+  // rather than observed: called once for every task that goes from Doing to
+  // Done, it banks the move and pays out on every DOING_CLEAR_TASKS-th one.
+  //
+  // The old version fired when the column happened to be empty, which paid the
+  // same 60 for finishing one task out of one as for two out of two — so the
+  // cheapest way to play was to keep Doing at a single card. Counting removes
+  // that entirely: the payout is per two finished, however you arrange them.
+  //
+  // The partial pair lives in stats (already a jsonb, so no migration) and is
+  // deliberately not in the daily bucket — one finished at 11pm should still
+  // count toward the pair at nine the next morning. The *payout* is still
+  // capped daily; only the tally carries over.
   const rewardDoingCleared = useCallback(async () => {
     const cur = stateRef.current
     if (!cur) return null
+
+    const pending = (cur.stats?.doingPending || 0) + 1
+
+    // Half a pair: bank it and say nothing. A toast for "one more to go" on
+    // every other completion would be noise on top of the cloud that finishing
+    // a task already brings.
+    if (pending < DOING_CLEAR_TASKS) {
+      await commit({ stats: { ...bumpStats({ doingDone: 1 }), doingPending: pending } })
+      return { gain: 0, paid: false, pending, needed: DOING_CLEAR_TASKS }
+    }
+
     const daily = todayBucket(cur.daily)
     const room = DAILY_CAPS.coins - daily.coins
     const gain = Math.min(DOING_CLEAR_REWARD.coins, Math.max(0, room))
     await commit({
       ...(gain > 0 ? { coins: (cur.coins || 0) + gain } : {}),
       daily: { ...daily, coins: daily.coins + gain, clears: (daily.clears || 0) + 1 },
-      stats: bumpStats({ doingClears: 1 }),
+      // The pair resets even when the cap swallowed the coins — otherwise the
+      // tally would run away while capped and pay out repeatedly at midnight.
+      stats: { ...bumpStats({ doingClears: 1, doingDone: 1 }), doingPending: 0 },
     })
-    if (gain > 0) notify(`🧹 Doing cleared — +${gain} 🪙`)
-    return { gain, capped: gain === 0 }
+    if (gain > 0) notify(`🧹 ${DOING_CLEAR_TASKS} out of Doing — +${gain} 🪙`)
+    return { gain, paid: true, capped: gain === 0, pending: 0, needed: DOING_CLEAR_TASKS }
   }, [commit, bumpStats, notify])
 
   // Finishing a task earns a cloud rather than a flat payout, so what it's

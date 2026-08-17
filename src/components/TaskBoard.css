@@ -1818,15 +1818,85 @@
   font-variant-numeric: tabular-nums;
   color: var(--bb-muted);
 }
-.dump-chip {
+/* --- braindump: where the next capture lands ----------------------------- */
+
+/* Sits directly under the capture field, so picking a project reads as part
+   of typing the line rather than a separate act of filing. */
+.dump-projects {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: -4px;
+}
+.dump-plabel {
   font-family: var(--bb-num);
-  font-size: 10px;
-  line-height: 1.5;
-  border-radius: 9999px;
-  padding: 2px 9px;
-  background: var(--bb-sunk);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--bb-muted);
+  flex-shrink: 0;
+}
+.dump-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.dump-pj {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--bb-border);
+  background: var(--bb-surface);
   color: var(--bb-on-surface);
-  white-space: nowrap;
+  border-radius: 9999px;
+  padding: 4px 11px;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: transform 90ms, border-color 90ms;
+}
+.dump-pj:hover { border-color: var(--bb-wood); }
+.dump-pj:active { transform: translateY(1px); }
+/* The selected one is filled rather than outlined — at this size a border
+   change alone is easy to miss against a row of ten. */
+.dump-pj.selected {
+  background: var(--bb-wood);
+  color: var(--bb-wood-ink);
+  border-color: var(--bb-wood-edge);
+}
+.dump-pjdot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* --- braindump: the pile, under project headers --------------------------- */
+
+.dump-group { display: flex; flex-direction: column; gap: 8px; }
+/* Groups need more air between them than items inside one, or the headers
+   stop reading as headers. */
+.dump-group + .dump-group { margin-top: 10px; }
+.dump-group-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 2px 2px;
+  border-bottom: 1px solid var(--bb-border);
+}
+.dump-group-name {
+  font-family: var(--bb-num);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bb-on-surface);
+}
+/* Unfiled is the group you're trying to empty, so it's stated more quietly
+   than a real project — it's a gap, not a place. */
+.dump-group-head.unfiled .dump-group-name { color: var(--bb-muted); }
+.dump-group-count {
+  font-family: var(--bb-num);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--bb-muted);
+  margin-left: auto;
 }
 .dump-empty {
   border: 1px solid var(--bb-border);
