@@ -530,6 +530,7 @@ export default function TaskBoard({
           onEveryone: () => setPeopleEveryone(true),
         }}
         projectName={projectName}
+        projects={projects}
         updatesForTask={updatesForTask}
         resolveAssignees={resolveAssignees}
         teamMembers={teamMembers}
@@ -554,7 +555,7 @@ function PriorityBoard({
   tasks, pendingTasks, currentUserId, onRespondToAssignment, onResolveChangeRequest,
   activeTab, setActiveTab, byStatus, peopleFilter,
   dumpTasks, onCapture, onSortFromDump,
-  projectName, updatesForTask, resolveAssignees, teamMembers,
+  projectName, projects, updatesForTask, resolveAssignees, teamMembers,
   onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onStartEdit, onOpenForm, onTaskDone, onManageProjects,
 }) {
   const [activeId, setActiveId] = useState(null)
