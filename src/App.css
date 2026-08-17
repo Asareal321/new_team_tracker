@@ -272,3 +272,23 @@ html[data-theme="dark"] .board-hero-title {
   border-radius: 4px;
   font-size: 0.85rem;
 }
+
+/* The crash report. Left-aligned and monospaced — this is output to be read,
+   not a message to be reassured by. */
+.error-box .error-stack {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.7rem;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--text-3);
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 9rem;
+  overflow-y: auto;
+}
+.error-box .error-note { font-size: 0.78rem; color: var(--text-4); }
