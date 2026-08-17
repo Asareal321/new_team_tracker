@@ -1557,6 +1557,8 @@ function GreenhouseStrip({ doneToday }) {
   // Only shown when there's something to collect. A permanent quest counter
   // would be one more number on a strip whose whole point is being short.
   const claimable = (quests || []).filter(q => q.claimable).length
+  const questsDone = (quests || []).filter(q => q.claimed).length
+  const questCount = (quests || []).length
 
   // Two lines: what's growing, then what today has paid out. The strip sits
   // above the bands, and the bands are the page — anything taller than this
@@ -1629,6 +1631,16 @@ function GreenhouseStrip({ doneToday }) {
         <span className="gh-chip" title="Tasks you've finished today">
           <span aria-hidden="true">✅</span>{doneToday} done today
         </span>
+        <button
+          className={`gh-chip quest-chip${claimable ? ' quest-ready' : ''}`}
+          onClick={() => navigate('/garden?tab=quests')}
+          title={claimable
+            ? 'Trak has a finished quest waiting — open his quests'
+            : `Trak’s quests for today — ${questsDone} of ${questCount} claimed`}
+        >
+          <span aria-hidden="true">🐇</span>
+          {claimable ? `${claimable} to claim` : `${questsDone}/${questCount} quests`}
+        </button>
         <span className="gh-chip-rule" aria-hidden="true" />
         <DailyCaps state={state} />
       </div>

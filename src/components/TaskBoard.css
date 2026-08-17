@@ -2076,3 +2076,19 @@
 }
 .tally-toggle.hide { grid-column: 1 / -1; justify-self: start; margin-top: 4px; }
 
+
+/* Trak's quests are always on the strip — it's the board's only one-click
+   route to them. A button, so it gets a pointer where the rest of the chip
+   row gets a help cursor. */
+.gh-chip.quest-chip { cursor: pointer; font-family: inherit; }
+.gh-chip.quest-chip:hover { border-color: var(--accent); }
+
+/* Only when something is actually waiting does it take the accent that the
+   rest of the row deliberately doesn't. */
+.gh-chip.quest-ready {
+  color: var(--accent-on);
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 700;
+}
+.gh-chip.quest-ready:hover { filter: brightness(1.06); border-color: var(--accent); }
