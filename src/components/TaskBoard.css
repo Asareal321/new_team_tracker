@@ -879,20 +879,8 @@
   font-weight: 500;
 }
 
-/* ••• button */
-.menu-btn {
-  background: none;
-  border: none;
-  color: var(--text-4);
-  font-size: 0.75rem;
-  padding: 0.15rem 0.35rem;
-  border-radius: 5px;
-  line-height: 1;
-  flex-shrink: 0;
-  letter-spacing: 0.05em;
-}
-.menu-btn:hover { background: var(--bg-muted); color: var(--text-2); }
-.menu-btn.active { background: var(--accent); color: var(--accent-on); }
+/* The ••• button's styles lived here. It was removed when clicking the row
+   became the way into the editor; nothing has rendered .menu-btn since. */
 
 /* Inline action bar — shown when .open */
 .task-action-bar {
@@ -1178,25 +1166,31 @@
 
 /* ── Mobile (≤640px) ── */
 @media (max-width: 640px) {
-  /* Tabs: let the status tabs scroll horizontally; drop the add button below */
+  /* Tabs: three of them, so they share the width rather than scrolling.
+     The horizontal scroller here dated from when each tab carried a count and
+     the labels were longer; with the counts gone, Board / Braindump / Archived
+     fit a phone comfortably, and an even split gives each one a target that
+     spans a third of the screen instead of hugging its text. */
   .tabs { flex-wrap: wrap; }
-  .tabs-left {
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+  .tabs-left { width: 100%; }
+  .tab {
+    flex: 1 1 0;
+    justify-content: center;
+    white-space: nowrap;
+    /* 44px, the smallest target a thumb hits reliably. */
+    min-height: 44px;
+    padding: 0.55rem 0.15rem;
+    font-size: 0.82rem;
   }
-  .tabs-left::-webkit-scrollbar { display: none; }
-  .tab { white-space: nowrap; padding: 0.55rem 0.15rem; font-size: 0.82rem; }
   .tabs-actions { width: 100%; justify-content: flex-end; padding: 0.4rem 0 0.1rem; }
 
-  /* Task rows: stack title over meta, menu pinned top-right, no drag handle */
+  /* Task rows: stack title over meta, no drag handle.
+     The right-hand gutter these used to reserve was for the ellipsis menu,
+     which is gone — clicking the row opens the editor now. Reserving space
+     for a button that no longer renders just narrowed every title. */
   .task-row { padding: 0.6rem 0.7rem; }
   .task-row-main { flex-direction: column; align-items: stretch; gap: 0.4rem; position: relative; }
   .drag-handle { display: none; }
-  .task-row-info { padding-right: 1.9rem; }
-  .task-row-tags { padding-right: 1.9rem; }
-  .menu-btn { position: absolute; top: 0; right: 0; padding: 0.25rem 0.4rem; }
 
   /* Task-create form: comfortable full-width modal */
   .task-form { padding: 1.15rem; gap: 0.75rem; }
@@ -2015,6 +2009,28 @@
   /* Trak keeps his place at the left — he's the strip's anchor, and stacking
      him above it would give back the height this layout exists to save. */
   .gh-trak { align-self: flex-start; }
+
+  /* On a phone these two are the only way to move a task: the drag handle is
+     hidden below 640px and the drag stripe is a few pixels wide, so a 30px
+     circle was the sole reorder control and it sat under both Apple's 44px
+     minimum and Android's 48. The circle stays 30px so the row doesn't grow
+     — the *target* is what gets bigger, padded out past the paint. */
+  .row-advance, .row-back {
+    position: relative;
+    width: 30px;
+  }
+  .row-advance::after, .row-back::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+  /* Which puts two 44px targets 7px apart, so they'd overlap and the wrong
+     one would win. The gap opens to match. */
+  .row-tail { gap: 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

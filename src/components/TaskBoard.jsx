@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import {
-  DndContext, DragOverlay, PointerSensor,
+  DndContext, DragOverlay, MouseSensor, TouchSensor,
   useSensor, useSensors, closestCenter,
 } from '@dnd-kit/core'
 import {
@@ -578,8 +578,14 @@ function PriorityBoard({
     })
   }
 
+  // Mouse and touch split apart rather than one PointerSensor, matching the
+  // garden. A pointer sensor treats a finger like a mouse: 5px of movement
+  // starts a drag, and 5px is inside the slop of an ordinary tap, so on a
+  // phone tapping a task to open it could pick it up instead. Touch gets a
+  // deliberate press-and-hold; the mouse keeps its instant 5px.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 6 } })
   )
 
   useEffect(() => {
