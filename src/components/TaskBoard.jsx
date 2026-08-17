@@ -1578,7 +1578,7 @@ function GreenhouseStrip({ doneToday }) {
   // spoken for, so he costs width and no height. What he says is whatever is
   // most actionable right now, and he's the way through to his quests.
   const say = claimable
-    ? `${claimable === 1 ? 'A quest is' : `${claimable} quests are`} finished — come and claim`
+    ? `${claimable === 1 ? 'A quest is' : `${claimable} quests are`} finished — claim it below`
     : isReady ? `Your ${growing.name.toLowerCase()} is done — keep it or sell it`
     : !growing ? 'Nothing growing. Plant a seed and I’ll watch it'
     : streak > 0 ? `${streak}-day streak. Finish one today to keep it`
@@ -1649,57 +1649,81 @@ function GreenhouseStrip({ doneToday }) {
   )
 }
 
-// Trak's three quests, on the board rather than only in the garden. They are
-// the day's other scoreboard — what's left to do for the reward — so they
-// belong between the greenhouse and the bands, not two clicks away.
+// Trak's three quests. They live here and nowhere else: they're earned by
+// working the board, so making you visit the garden to read them put the rules
+// in a different room from the work that satisfies them.
+//
+// Because this is the only place they appear, it has to explain them — what
+// each one asks, what it pays, when they change, and why the payout doesn't
+// count against the day's caps.
+function questLine(quests) {
+  const claimable = quests.filter(q => q.claimable).length
+  const claimed = quests.filter(q => q.claimed).length
+  if (claimable) return `${claimable === 1 ? 'One is' : `${claimable} are`} finished — collect below.`
+  if (claimed === quests.length) return 'All three done and paid. New ones at midnight.'
+  if (claimed) return 'Good. Here’s what’s left of today’s three.'
+  return 'Three a day, drawn from the date — everyone gets the same three.'
+}
+
 function QuestStrip() {
   const { quests, claimQuest, ready } = useGarden()
-  const navigate = useNavigate()
   const [busy, setBusy] = useState(null)
+  const [error, setError] = useState('')
 
   if (!ready || !quests?.length) return null
 
   async function claim(key) {
     setBusy(key)
-    try { await claimQuest(key) } catch { /* the garden's toast says why */ }
+    setError('')
+    try { await claimQuest(key) }
+    catch (e) { setError(e?.message || String(e)) }
     finally { setBusy(null) }
   }
 
   return (
     <section className="quest-strip">
-      <button
-        className="qs-head"
-        onClick={() => navigate('/garden?tab=quests')}
-        title="Open Trak’s quests in the garden"
-      >
+      <div className="qs-head">
         <span className="qs-rabbit" aria-hidden="true">🐇</span>
-        <span className="qs-title">Quests</span>
-      </button>
+        <span className="qs-title">Trak’s quests</span>
+        <span className="qs-line">{questLine(quests)}</span>
+      </div>
+
+      {error && <p className="qs-error">{error}</p>}
 
       <div className="qs-list">
         {quests.map(q => (
-          <div
-            key={q.key}
-            className={`qs-item${q.claimed ? ' done' : ''}${q.claimable ? ' ready' : ''}`}
-            title={`${q.blurb} — ${q.reward.coins} coins${q.reward.seeds ? ` and ${q.reward.seeds} seeds` : ''}`}
-          >
+          <div key={q.key} className={`qs-item${q.claimed ? ' done' : ''}${q.claimable ? ' ready' : ''}`}>
             <span className="qs-icon" aria-hidden="true">{q.icon}</span>
-            <span className="qs-name">{q.name}</span>
-            {q.claimed ? (
-              <span className="qs-state">claimed</span>
-            ) : q.claimable ? (
-              <button className="qs-claim" disabled={busy === q.key} onClick={() => claim(q.key)}>
-                {busy === q.key ? '…' : 'Claim'}
-              </button>
-            ) : (
-              <>
+            <div className="qs-body">
+              <p className="qs-name">{q.name}</p>
+              {/* The rule, stated. A quest you have to infer from a name and a
+                  fraction is a puzzle rather than a task. */}
+              <p className="qs-blurb">{q.blurb}</p>
+              <div className="qs-track">
                 <span className="qs-bar"><span style={{ width: `${q.pct}%` }} /></span>
                 <span className="qs-count">{q.value}/{q.goal}</span>
-              </>
-            )}
+              </div>
+            </div>
+            <div className="qs-pay">
+              <span className="qs-reward">
+                {q.reward.coins} 🪙{q.reward.seeds ? ` · ${q.reward.seeds} 🌱` : ''}
+              </span>
+              {q.claimed ? (
+                <span className="qs-state">Claimed</span>
+              ) : (
+                <button className="qs-claim" disabled={!q.claimable || busy === q.key} onClick={() => claim(q.key)}>
+                  {busy === q.key ? '…' : 'Claim'}
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>
+
+      <p className="qs-foot">
+        All three change at midnight and nothing carries over. What they pay is on top of
+        your daily caps — a quest can only be done once a day, so there’s nothing to farm.
+      </p>
     </section>
   )
 }

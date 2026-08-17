@@ -15,14 +15,12 @@ import PackOpening from '../components/PackOpening'
 import FlowerGrown from '../components/FlowerGrown'
 import PacketArt from '../components/PacketArt'
 import useDaylight from '../lib/useDaylight'
-import QuestBoard from '../components/QuestBoard'
 import './GardenPage.css'
 
 const TABS = [
   { key: 'greenhouse', label: 'Greenhouse' },
   { key: 'garden', label: 'Garden' },
   { key: 'herbarium', label: 'Herbarium' },
-  { key: 'quests', label: 'Quests' },
   { key: 'awards', label: 'Awards' },
   { key: 'shop', label: 'Shop' },
 ]
@@ -38,8 +36,7 @@ export default function GardenPage() {
     state, flowers, ready,
     plantSeed, placeFlower, moveFlower, sellGrown, sellPlanted, buyPacket, openPacket, expandGarden,
   } = useGarden()
-  // ?tab= lets the board link straight to a room — Trak's chip on the
-  // greenhouse strip points at his quests, not at the garden's front door.
+  // ?tab= lets anything link straight to a room rather than the front door.
   const [tab, setTab] = useState(() => {
     const want = new URLSearchParams(window.location.search).get('tab')
     return TABS.some(t => t.key === want) ? want : 'garden'
@@ -506,12 +503,6 @@ export default function GardenPage() {
         )}
 
         {/* --- awards shelf --- */}
-        {tab === 'quests' && (
-        <section className="garden-panel tabbed quests-panel">
-          <QuestBoard />
-        </section>
-        )}
-
         {tab === 'awards' && (
         <section className="garden-panel tabbed awards-panel">
           <span className="panel-label">Awards · {earnedCount} of {awards.length}</span>
