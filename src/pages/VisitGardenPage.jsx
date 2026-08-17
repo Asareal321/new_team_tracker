@@ -6,6 +6,7 @@ import {
   remainingSeconds, formatDuration, growthStage, GROWTH_STAGES, liveStreak,
 } from '../lib/garden'
 import { evaluate, GROUPS } from '../lib/achievements'
+import useDaylight from '../lib/useDaylight'
 import './GardenPage.css'
 
 // Someone else's garden, read-only.
@@ -34,6 +35,9 @@ export default function VisitGardenPage() {
   const [garden, setGarden] = useState(null)
   const [status, setStatus] = useState('loading')
   const [tab, setTab] = useState('garden')
+  // Their garden, your clock — the alternative is asking the server what time
+  // it is where they are, for a sky.
+  const phase = useDaylight()
 
   useEffect(() => {
     let cancelled = false
@@ -80,7 +84,7 @@ export default function VisitGardenPage() {
   const streak = liveStreak(garden?.streak)
 
   return (
-    <div className="garden-scene">
+    <div className={`garden-scene tod-${phase.key}`}>
       <div className="garden-sky">
         <span className="sky-sun" />
         <span className="sky-cloud sky-cloud-1" />

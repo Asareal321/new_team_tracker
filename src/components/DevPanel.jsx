@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CLOUD_TIERS, SEEDS, seedByKey, remainingSeconds, formatDuration } from '../lib/garden'
 import { STREAK_MILESTONES, streakCoins } from '../lib/streak'
+import { PHASES } from '../lib/daylight'
 import Onboarding from './Onboarding'
 import './DevPanel.css'
 
@@ -119,6 +120,27 @@ export default function DevPanel({
           }}
         >
           Reset garden
+        </button>
+      </section>
+
+      <section className="dev-section">
+        <h4>Garden sky <span className="dev-note">preview · never saves</span></h4>
+        <p className="dev-hint">
+          The garden lights itself from the local clock. These pin it with ?sky= so the
+          other three can be seen without waiting for evening.
+        </p>
+        <div className="dev-grid four">
+          {PHASES.map(p => (
+            <button
+              key={p.key}
+              className="dev-btn"
+              onClick={() => window.location.assign(`/garden?sky=${p.key}`)}
+              title={`${p.label} — ${p.from}:00 to ${p.to}:00`}
+            >{p.label}</button>
+          ))}
+        </div>
+        <button className="dev-btn subtle" onClick={() => window.location.assign('/garden')}>
+          Back to the real hour
         </button>
       </section>
 

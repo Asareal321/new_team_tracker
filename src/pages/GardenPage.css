@@ -8,9 +8,9 @@
   --grass:      #7cc35c;
   --grass-dark: #63a847;
   --grass-deep: #4d8c37;
-  --soil:       #9c6b43;
-  --soil-dark:  #7d5433;
-  --soil-deep:  #64432a;
+  --soil:       #C4936A;
+  --soil-dark:  #AE7C4C;
+  --soil-deep:  #8E6039;
   --wood:       #c99764;
   --wood-dark:  #a2764a;
   --panel:      #fffaf0;
@@ -467,7 +467,7 @@ html[data-theme="dark"] .coin-count {
   padding: 0.4rem;
   /* Tilled soil: furrow stripes over a warm brown base. */
   background:
-    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.07) 0 3px, transparent 3px 14px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.045) 0 3px, transparent 3px 14px),
     linear-gradient(180deg, var(--soil) 0%, var(--soil-dark) 100%);
   border: 3px solid var(--soil-deep);
   box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.22), 0 2px 0 rgba(0, 0, 0, 0.12);
@@ -542,9 +542,9 @@ html[data-theme="dark"] .garden-scene {
   --grass:      #3c6b3f;
   --grass-dark: #2e5432;
   --grass-deep: #234226;
-  --soil:       #6b4a30;
-  --soil-dark:  #543a26;
-  --soil-deep:  #3f2b1c;
+  --soil:       #8A6242;
+  --soil-dark:  #6E4C33;
+  --soil-deep:  #513825;
   --wood:       #8a6540;
   --wood-dark:  #6a4c30;
   --panel:      #262a2c;
@@ -1203,3 +1203,104 @@ html[data-theme="dark"] .seed-overflow {
 .award-card:not(.earned) .award-when { color: var(--ink-soft); opacity: 0.75; }
 
 html[data-theme="dark"] .award-card { background: rgba(255, 255, 255, 0.04); }
+
+/* --- time of day --------------------------------------------------------- */
+
+/* The sky follows the local clock (see lib/daylight.js). These come after the
+   dark-theme block deliberately: the theme decides what the panels and text
+   look like, but what the sky is doing is a fact about the hour, not a
+   preference — a garden at noon shouldn't be dark because the app is. */
+
+/* Daytime is the base palette, named here so the class is never a no-op. */
+.garden-scene.tod-day {
+  --sky-top:    #8FD6F0;
+  --sky-bottom: #CDEEB8;
+}
+
+.garden-scene.tod-dawn {
+  --sky-top:    #F5B58C;
+  --sky-bottom: #FCE3B8;
+  --grass:      #74B558;
+  --grass-dark: #5C9B43;
+}
+/* Low and warm, and sitting on the other side of the sky. */
+.tod-dawn .sky-sun {
+  top: auto;
+  bottom: 52%;
+  right: auto;
+  left: 44px;
+  width: 54px;
+  height: 54px;
+  background: radial-gradient(circle at 35% 35%, #FFF1D0, #FFC978 60%, #FB9B4B);
+  box-shadow: 0 0 0 14px rgba(251, 155, 75, 0.22), 0 0 44px rgba(251, 155, 75, 0.45);
+}
+.tod-dawn .sky-cloud {
+  background: rgba(255, 236, 214, 0.92);
+  box-shadow: 20px 6px 0 -4px rgba(255, 236, 214, 0.92), 44px 0 0 -2px rgba(255, 236, 214, 0.92);
+}
+
+.garden-scene.tod-dusk {
+  --sky-top:    #6B5A9E;
+  --sky-bottom: #F0956B;
+  --grass:      #5E9647;
+  --grass-dark: #4A7A38;
+}
+.tod-dusk .sky-sun {
+  top: auto;
+  bottom: 48%;
+  right: 56px;
+  width: 60px;
+  height: 60px;
+  background: radial-gradient(circle at 40% 40%, #FFE0A8, #FF9E5C 58%, #E86A42);
+  box-shadow: 0 0 0 16px rgba(232, 106, 66, 0.22), 0 0 52px rgba(232, 106, 66, 0.5);
+}
+.tod-dusk .sky-cloud {
+  background: rgba(255, 214, 196, 0.72);
+  box-shadow: 20px 6px 0 -4px rgba(255, 214, 196, 0.72), 44px 0 0 -2px rgba(255, 214, 196, 0.72);
+}
+
+.garden-scene.tod-night {
+  --sky-top:    #16224A;
+  --sky-bottom: #2C3D6B;
+  --grass:      #46774A;
+  --grass-dark: #35603A;
+  --grass-deep: #27492C;
+}
+/* The sun is the moon after dark — same element, so nothing has to mount. */
+.tod-night .sky-sun {
+  top: 30px;
+  right: 56px;
+  width: 52px;
+  height: 52px;
+  background: radial-gradient(circle at 38% 34%, #FDFBE8, #E2E0C8 62%, #C9C6AB);
+  box-shadow: 0 0 0 12px rgba(226, 224, 200, 0.12), 0 0 40px rgba(226, 224, 200, 0.36);
+}
+.tod-night .sky-cloud {
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: 20px 6px 0 -4px rgba(255, 255, 255, 0.14), 44px 0 0 -2px rgba(255, 255, 255, 0.14);
+}
+/* Stars, as a background rather than elements: forty spans for something you
+   are not meant to look at directly is forty spans too many. Confined to the
+   sky's own half so none of them land in the grass. */
+.tod-night .garden-sky::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 54% 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 22%, rgba(255,255,255,0.9), transparent),
+    radial-gradient(1.5px 1.5px at 28% 12%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(2px 2px   at 41% 32%, rgba(255,255,255,0.85), transparent),
+    radial-gradient(1.5px 1.5px at 57% 16%, rgba(255,255,255,0.65), transparent),
+    radial-gradient(1.5px 1.5px at 68% 38%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(2px 2px   at 79% 24%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1.5px 1.5px at 88% 44%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1.5px 1.5px at 19% 46%, rgba(255,255,255,0.55), transparent),
+    radial-gradient(1.5px 1.5px at 50% 48%, rgba(255,255,255,0.5), transparent);
+  animation: twinkle 5s ease-in-out infinite alternate;
+}
+@keyframes twinkle { from { opacity: 0.55 } to { opacity: 1 } }
+
+@media (prefers-reduced-motion: reduce) {
+  .tod-night .garden-sky::after { animation: none; opacity: 0.85; }
+}

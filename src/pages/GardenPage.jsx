@@ -14,6 +14,7 @@ import PlotCluster from '../components/PlotCluster'
 import PackOpening from '../components/PackOpening'
 import FlowerGrown from '../components/FlowerGrown'
 import PacketArt from '../components/PacketArt'
+import useDaylight from '../lib/useDaylight'
 import QuestBoard from '../components/QuestBoard'
 import './GardenPage.css'
 
@@ -43,6 +44,9 @@ export default function GardenPage() {
     const want = new URLSearchParams(window.location.search).get('tab')
     return TABS.some(t => t.key === want) ? want : 'garden'
   })
+  // The sky follows the local clock, and keeps following it while the tab
+  // stays open.
+  const phase = useDaylight()
   // Which flower is in hand, so the overlay can render it and the grid can
   // light up its drop targets.
   const [dragging, setDragging] = useState(null)
@@ -90,7 +94,7 @@ export default function GardenPage() {
 
   if (!ready) {
     return (
-      <div className="garden-scene">
+      <div className={`garden-scene tod-${phase.key}`}>
         <div className="garden-sky" />
         <p className="garden-loading">Waking up the garden…</p>
       </div>
@@ -155,7 +159,7 @@ export default function GardenPage() {
   }
 
   return (
-    <div className="garden-scene" data-tick={tick}>
+    <div className={`garden-scene tod-${phase.key}`} data-tick={tick}>
       <div className="garden-sky">
         <span className="sky-sun" />
         <span className="sky-cloud sky-cloud-1" />
