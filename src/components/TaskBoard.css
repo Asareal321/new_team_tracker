@@ -2037,19 +2037,18 @@
 /* Done today is a tally, not a list — finished work only needs to be countable,
    and listing it pushed the live bands off the screen. */
 .band-body.tally { grid-template-columns: 1fr; }
-/* The count is centred in the band, and the toggle is taken out of flow so a
-   two-character label can't shift it off centre. */
+/* Centred, and stacked: the number is the headline and the words underneath
+   are its caption. */
 .band-tally {
-  position: relative;
   display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 10px;
-  padding: 8px 4px 10px;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 4px 12px;
 }
 .tally-num {
   font-family: var(--bb-num);
-  font-size: 26px;
+  font-size: 34px;
   line-height: 1.1;
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
@@ -2068,13 +2067,7 @@
   color: var(--bb-on-surface);
 }
 .tally-toggle:hover { border-color: var(--bb-wood); }
-.band-tally .tally-toggle {
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-}
-.tally-toggle.hide { grid-column: 1 / -1; justify-self: start; margin-top: 4px; }
+
 
 
 /* Trak's quests are always on the strip — it's the board's only one-click

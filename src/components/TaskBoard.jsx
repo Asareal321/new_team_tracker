@@ -1048,14 +1048,21 @@ function Band({ status, label, tasks, limit, isFull, onBlocked, resolveAssignees
     <section className={`band band-${status}${isOver ? ' band-over' : ''}${atLimit ? ' band-full' : ''}`}>
       <header className="band-head">
         <span className="band-pill">{label}</span>
-        {/* With a limit shown the noun agrees with the limit, not the count:
-            "1/2 task" is wrong. */}
-{/* Only where there's a limit: "2/2 tasks" is what explains a band
-            refusing a task. A bare count is decoration. */}
+        {/* Only where there's a limit: "2/2 tasks" is what explains a band
+            refusing a task, and with one shown the noun agrees with the limit
+            rather than the count. A bare count is decoration. */}
         {limit != null && (
           <span className="band-count">{tasks.length}/{limit} tasks</span>
         )}
         <span className="band-rule" />
+        {/* One toggle, on the header line beside the band's own name — it acts
+            on the whole band, so it belongs to the band and not to the tally
+            that happens to be showing. */}
+        {isTally && tasks.length > 0 && (
+          <button className="tally-toggle" onClick={() => setOpen(o => !o)}>
+            {open ? 'Hide' : 'Show'}
+          </button>
+        )}
       </header>
       <SortableContext items={items} strategy={verticalListSortingStrategy}>
         <div
@@ -1068,9 +1075,6 @@ function Band({ status, label, tasks, limit, isFull, onBlocked, resolveAssignees
               <span className="tally-label">
                 {tasks.length === 1 ? 'task finished today' : 'tasks finished today'}
               </span>
-              {tasks.length > 0 && (
-                <button className="tally-toggle" onClick={() => setOpen(true)}>Show</button>
-              )}
             </div>
           ) : groups
             ? groups.map(g => (
@@ -1086,9 +1090,6 @@ function Band({ status, label, tasks, limit, isFull, onBlocked, resolveAssignees
                 </div>
               ))
             : tasks.map(task => renderRow(task))}
-          {!collapsed && isTally && (
-            <button className="tally-toggle hide" onClick={() => setOpen(false)}>Hide</button>
-          )}
           {!collapsed && tasks.length === 0 && (
             <div className="band-empty">
               {status === 'done'
