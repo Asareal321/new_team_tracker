@@ -1223,7 +1223,6 @@ function TaskRow({
         <TaskDetail
           task={task} project={project} assignees={assignees} updates={updates}
           teamMembers={teamMembers} onUpdateAssignees={onUpdateAssignees}
-          statuses={statuses} statusLabels={statusLabels}
           onEdit={onEdit} onDelete={onDelete} onStatusChange={onStatusChange}
           onAddUpdate={onAddUpdate} onDeleteUpdate={onDeleteUpdate}
           draftText={draftText} onDraftChange={onDraftChange} onTaskDone={onTaskDone}
@@ -1239,12 +1238,11 @@ function TaskRow({
 // what has actually been going on you open it.
 function TaskDetail({
   task, project, assignees, updates, teamMembers, onUpdateAssignees,
-  statuses, statusLabels, onEdit, onDelete, onStatusChange,
+  onEdit, onDelete, onStatusChange,
   onAddUpdate, onDeleteUpdate, draftText = '', onDraftChange, onTaskDone, onClose,
 }) {
   const assigneeIds = (task.task_assignees || []).map(a => a.user_id)
   const isArchived = task.status === 'archived'
-  const isDone = task.status === 'done'
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose() }
@@ -1293,6 +1291,16 @@ function TaskDetail({
                   ? assignees.map(a => a.display_name).join(', ')
                   : 'Unassigned'}
               </span>
+              {/* Up here with the pills rather than in a footer. Moving the
+                  task is what the composer's buttons and the row's chevrons
+                  are for, so only the two that change the task itself are
+                  left — and Edit is the only route to its due date, priority
+                  and sprint. */}
+              {isArchived && (
+                <button className="td-action" onClick={() => { onStatusChange('done'); onClose() }}>Unarchive</button>
+              )}
+              {!isArchived && <button className="td-action" onClick={() => { onEdit(); onClose() }}>Edit</button>}
+              <button className="td-action danger" onClick={() => { onDelete(); onClose() }}>Delete</button>
             </div>
           </div>
           <button className="td-x" onClick={onClose} aria-label="Close">✕</button>
@@ -1369,29 +1377,6 @@ function TaskDetail({
           )}
         </div>
 
-        <footer className="td-foot">
-          {isArchived ? (
-            <>
-              <button className="action-btn action-primary" onClick={() => { onStatusChange('done'); onClose() }}>Unarchive</button>
-              <span className="m-spacer" />
-              <button className="action-btn action-danger" onClick={() => { onDelete(); onClose() }}>Delete</button>
-            </>
-          ) : (
-            <>
-              {statuses.filter(s => s !== task.status).map(s => (
-                <button key={s} className="action-btn" onClick={() => { onStatusChange(s); onClose() }}>
-                  → {statusLabels[s]}
-                </button>
-              ))}
-              {isDone && (
-                <button className="action-btn" onClick={() => { onStatusChange('archived'); onClose() }}>Archive</button>
-              )}
-              <span className="m-spacer" />
-              <button className="action-btn" onClick={() => { onEdit(); onClose() }}>Edit</button>
-              <button className="action-btn action-danger" onClick={() => { onDelete(); onClose() }}>Delete</button>
-            </>
-          )}
-        </footer>
       </div>
     </div>
   )
