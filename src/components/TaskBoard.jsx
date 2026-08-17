@@ -733,17 +733,6 @@ function PriorityBoard({
           <div className="board-bands">
             {zoneNotice && <div className="zone-notice">{zoneNotice}</div>}
 
-            {/* Plaque, summary, and the two ways into new work. "Add task"
-                opens the full drawer; "Braindump" is the one-line pile. */}
-            <div className="board-head">
-              <span className="board-plaque">Board</span>
-              <div className="board-head-spacer" />
-              <button className="bb-btn" onClick={() => setActiveTab('braindump')}>
-                Braindump
-              </button>
-              <button className="bb-btn primary" onClick={onOpenForm}>Add task</button>
-            </div>
-
             <GreenhouseStrip doneToday={byStatus('done').length} />
 
             {BANDS_DISPLAY.map(band => (
