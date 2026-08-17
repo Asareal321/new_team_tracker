@@ -11,7 +11,7 @@ export default function DevPanel({
   state, cloud, log,
   onClose, onSpawn, onReplay,
   onAddCoins, onUnlockAll, onFinishGrowth, onReset, onClearLog,
-  onResetOnboarding, onResetQuests, onCompleteQuests,
+  onResetOnboarding, onResetQuests, onCompleteQuests, onShowStreak,
 }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -114,6 +114,18 @@ export default function DevPanel({
         >
           Reset garden
         </button>
+      </section>
+
+      <section className="dev-section">
+        <h4>Streak panel <span className="dev-note">preview · never saves</span></h4>
+        <p className="dev-hint">
+          The celebration only fires on the first task you finish each day, so this is
+          the only way to look at it twice.
+        </p>
+        <div className="dev-row">
+          <button className="dev-btn" onClick={() => onShowStreak(false)}>Ordinary day</button>
+          <button className="dev-btn" onClick={() => onShowStreak(true)}>Milestone</button>
+        </div>
       </section>
 
       <section className="dev-section">

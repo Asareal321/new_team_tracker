@@ -9,10 +9,12 @@ import {
 } from '../lib/garden'
 import { newlyUnlocked } from '../lib/achievements'
 import { questView } from '../lib/quests'
+import { streakReward } from '../lib/streak'
 import { isDevUser } from '../lib/devMode'
 import CloudLayer from '../components/CloudLayer'
 import DevPanel from '../components/DevPanel'
 import RewardToasts from '../components/RewardToasts'
+import StreakPanel from '../components/StreakPanel'
 
 export const GardenContext = createContext(null)
 
@@ -169,6 +171,8 @@ export function GardenProvider({ children }) {
   // adding a task, clearing Doing, unlocking an achievement. Without these the
   // board would silently change numbers on another page.
   const [notices, setNotices] = useState([])
+  // The streak celebration waiting to be shown, or null.
+  const [streakCue, setStreakCue] = useState(null)
   const notify = useCallback((text, kind = 'reward') => {
     const id = crypto.randomUUID()
     setNotices(prev => [...prev, { id, text, kind }])
@@ -384,6 +388,19 @@ export function GardenProvider({ children }) {
     quests: { day: localDay(), claimed: [] },
   }), [save])
 
+  // Preview only — no coins, no packet, nothing written. The panel fires once
+  // a day at most, so without this it can't be looked at on demand.
+  const devShowStreak = useCallback(milestone => {
+    const streak = milestone ? 7 : 12
+    const reward = streakReward(streak)
+    setStreakCue({
+      ...reward,
+      prevStreak: streak - 1,
+      totalCoins: (stateRef.current?.coins || 0) + reward.coins,
+      release: null,
+    })
+  }, [])
+
   const devResetGarden = useCallback(async () => {
     if (!user) return
     const { error } = await supabase.from('garden_flowers').delete().eq('user_id', user.id)
@@ -456,25 +473,54 @@ export function GardenProvider({ children }) {
     if (!cur) return null
     const daily = todayBucket(cur.daily)
     const day = localDay()
+    // The streak advances on the day's FIRST finished task, and only then, so
+    // this is the one completion in the day that has something extra to say.
+    const streakAdvanced = cur.streak?.lastDay !== day
     const underCap = daily.clouds < DAILY_CAPS.clouds
     // Quiet mode trades the interruption for its cash value — it used to just
     // drop the cloud, which now would mean finishing a task paid nothing.
     const quiet = !!cur.quiet_mode
     const paidQuiet = underCap && quiet ? CLOUD_EXPECTED_COINS : 0
 
+    const nextStreak = advanceStreak(cur.streak, day)
+    // Paid outside the daily cap, like a quest: once a day, amount fixed by the
+    // run's own length. See lib/streak.js.
+    const reward = streakAdvanced ? streakReward(nextStreak.current) : null
+    const packets = { ...(cur.packet_inventory || {}) }
+    if (reward?.packetKey) packets[reward.packetKey] = (packets[reward.packetKey] || 0) + 1
+
     await commit({
-      ...(paidQuiet ? { coins: (cur.coins || 0) + paidQuiet } : {}),
+      coins: (cur.coins || 0) + paidQuiet + (reward?.coins || 0),
+      ...(reward?.packetKey ? { packet_inventory: packets } : {}),
       daily: { ...daily, clouds: daily.clouds + (underCap ? 1 : 0), done: (daily.done || 0) + 1 },
-      streak: advanceStreak(cur.streak, day),
+      streak: nextStreak,
       stats: bumpStats({ tasksDone: 1 }),
     })
 
-    if (!underCap) {
-      notify(`☁️ That's all ${DAILY_CAPS.clouds} clouds for today — back tomorrow`, 'capped')
-      return { cloud: false, capped: true }
+    // The panel holds the screen, so the cloud waits behind it rather than
+    // arriving underneath it. Dismissing the panel releases the cloud.
+    const releaseCloud = () => {
+      if (!underCap) {
+        notify(`☁️ That's all ${DAILY_CAPS.clouds} clouds for today — back tomorrow`, 'capped')
+        return
+      }
+      if (quiet) { notify(`+${paidQuiet} 🪙 (quiet mode)`); return }
+      spawnCloud()
     }
-    if (quiet) { notify(`+${paidQuiet} 🪙 (quiet mode)`); return { cloud: false, quiet: true } }
-    spawnCloud()
+
+    if (reward) {
+      setStreakCue({
+        ...reward,
+        prevStreak: Math.max(0, nextStreak.current - 1),
+        totalCoins: (cur.coins || 0) + paidQuiet + reward.coins,
+        release: releaseCloud,
+      })
+      return { cloud: underCap && !quiet, streak: nextStreak.current }
+    }
+
+    releaseCloud()
+    if (!underCap) return { cloud: false, capped: true }
+    if (quiet) return { cloud: false, quiet: true }
     return { cloud: true }
   }, [commit, bumpStats, notify, spawnCloud])
 
@@ -677,7 +723,7 @@ export function GardenProvider({ children }) {
     state, flowers, ready, seeds: SEEDS,
     quests: questView(state, todayBucket(state?.daily)),
     claimQuest,
-    devResetOnboarding, devResetQuests, devCompleteQuests,
+    devResetOnboarding, devResetQuests, devCompleteQuests, devShowStreak,
     spawnCloud, rewardTaskAdded, rewardTaskDone, rewardDoingCleared, notify, setQuietMode, completeOnboarding, buyPacket, openPacket, plantSeed, placeFlower, moveFlower, sellGrown, sellPlanted, unlockSeed, expandGarden,
     isDev, devOpen, openDevPanel: () => setDevOpen(true),
   }
@@ -686,6 +732,16 @@ export function GardenProvider({ children }) {
     <GardenContext.Provider value={value}>
       {children}
       <RewardToasts notices={notices} />
+      {streakCue && (
+        <StreakPanel
+          streak={streakCue.streak}
+          prevStreak={streakCue.prevStreak}
+          coins={streakCue.coins}
+          totalCoins={streakCue.totalCoins}
+          packet={streakCue.packet}
+          onDismiss={() => { setStreakCue(null); streakCue.release?.() }}
+        />
+      )}
       <CloudLayer
         clouds={clouds}
         onPop={popCloud}
@@ -707,6 +763,7 @@ export function GardenProvider({ children }) {
           onResetOnboarding={devResetOnboarding}
           onResetQuests={devResetQuests}
           onCompleteQuests={devCompleteQuests}
+          onShowStreak={devShowStreak}
           onClearLog={() => setDevLog([])}
         />
       )}

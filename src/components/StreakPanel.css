@@ -1,0 +1,343 @@
+/* Streak Continued.
+   Ported from the design's own keyframes. The palette is the design's literal
+   Beech & Baize values rather than app tokens: this is a lit flame on a card,
+   and a flame that changes colour with the theme stops being a flame. */
+
+.sp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow: hidden;
+}
+.sp-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(23, 17, 13, 0.5);
+  animation: sp-scrim 180ms linear both;
+}
+
+.sp-card {
+  position: relative;
+  z-index: 2;
+  width: 460px;
+  max-width: 100%;
+  background: #FEFCF7;
+  color: #18110C;
+  border: 2px solid #D9D0C1;
+  box-shadow: 0 4px 0 #653C1F;
+  border-radius: 8px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+  animation: sp-drop 460ms cubic-bezier(.2, 1.4, .4, 1) both;
+}
+
+/* A single pass of light across the card, once, as it lands. */
+.sp-sheen {
+  position: absolute;
+  top: 0; left: 0;
+  width: 70px; height: 100%;
+  background: rgba(254, 252, 247, 0.55);
+  transform: translateX(-120%);
+  animation: sp-sheen 900ms cubic-bezier(.4, 0, .5, 1) 420ms both;
+  pointer-events: none;
+}
+
+.sp-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6A6258;
+  animation: sp-rise 300ms ease-out 320ms both;
+}
+
+.sp-headline { display: flex; align-items: flex-end; gap: 14px; position: relative; z-index: 2; }
+
+/* --- the flame ----------------------------------------------------------- */
+
+.sp-flame { position: relative; width: 72px; height: 86px; flex-shrink: 0; }
+.sp-flame span { position: absolute; left: 50%; }
+
+/* Teardrop: a square with three of its four corners rounded, turned 45°. */
+.sp-flame-outer, .sp-flame-mid, .sp-flame-core {
+  border-radius: 0 50% 50% 50%;
+  transform: rotate(45deg);
+}
+.sp-flame-outer {
+  bottom: 8px; width: 56px; height: 56px; margin-left: -28px;
+  background: #CD493C; border: 2px solid #8E2B26;
+  animation: sp-ignite 560ms cubic-bezier(.2, 1.5, .4, 1) 560ms both,
+             sp-flick-a 900ms ease-in-out 1120ms infinite;
+}
+.sp-flame-mid {
+  bottom: 8px; width: 38px; height: 38px; margin-left: -19px;
+  background: #DC8818;
+  animation: sp-ignite 560ms cubic-bezier(.2, 1.5, .4, 1) 640ms both,
+             sp-flick-b 760ms ease-in-out 1200ms infinite;
+}
+.sp-flame-core {
+  bottom: 10px; width: 18px; height: 18px; margin-left: -9px;
+  background: #FBE9CA;
+  animation: sp-ignite 520ms cubic-bezier(.2, 1.5, .4, 1) 720ms both,
+             sp-flick-a 620ms ease-in-out 1240ms infinite;
+}
+.sp-flame-ring {
+  bottom: -2px; width: 76px; height: 76px; margin-left: -38px;
+  border-radius: 9999px; border: 3px solid #DC8818;
+  animation: sp-ring 640ms cubic-bezier(.2, .7, .3, 1) 620ms both;
+  pointer-events: none;
+}
+.sp-spark { border-radius: 9999px; }
+.sp-spark-1 {
+  bottom: 44px; width: 10px; height: 10px; margin-left: -22px;
+  background: #DC8818; --sx: -14px;
+  animation: sp-spark 1100ms ease-out 900ms infinite;
+}
+.sp-spark-2 {
+  bottom: 40px; width: 7px; height: 7px; margin-left: 12px;
+  background: #CD493C; --sx: 16px;
+  animation: sp-spark 1300ms ease-out 1250ms infinite;
+}
+
+/* --- the number ---------------------------------------------------------- */
+
+.sp-odometer { height: 86px; overflow: hidden; animation: sp-pop 380ms cubic-bezier(.2, 1.5, .4, 1) 720ms both; }
+.sp-roll {
+  display: flex;
+  flex-direction: column;
+  animation: sp-roll 620ms cubic-bezier(.3, 1.3, .4, 1) 900ms both;
+}
+.sp-num {
+  display: block;
+  font-size: 76px;
+  line-height: 86px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: #18110C;
+}
+.sp-days { font-size: 21px; font-weight: 700; padding-bottom: 14px; animation: sp-rise 320ms ease-out 980ms both; }
+
+.sp-blurb {
+  font-size: 15px;
+  line-height: 1.55;
+  color: #6A6258;
+  max-width: 34em;
+  animation: sp-rise 320ms ease-out 1040ms both;
+}
+
+/* --- the week ------------------------------------------------------------ */
+
+.sp-week { display: flex; gap: 8px; position: relative; }
+.sp-day {
+  position: relative;
+  flex: 1;
+  height: 52px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: #0C511A;
+  background: #EDE7DC;
+  border: 2px solid #D9D0C1;
+  box-shadow: 0 3px 0 #C9BEA9;
+  animation: sp-snap 320ms cubic-bezier(.2, 1.5, .4, 1) both;
+}
+.sp-day.on { background: #D3EEB4; border-color: #C0E39A; box-shadow: 0 3px 0 #9FCC77; }
+/* Today is stamped rather than snapped — it's the one that just happened. */
+.sp-day.today.on {
+  background: #90D94F;
+  border-color: #63B739;
+  box-shadow: 0 3px 0 #3E8637;
+  animation: sp-stamp 520ms cubic-bezier(.2, 1.5, .4, 1) both;
+}
+.sp-day-letter { font-size: 11px; letter-spacing: 0.02em; opacity: 0.75; }
+.sp-day-mark { font-size: 15px; font-weight: 700; line-height: 1; }
+.sp-day:not(.on) .sp-day-mark { color: #A79C8B; }
+.sp-day-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 12px;
+  border: 3px solid #90D94F;
+  animation: sp-ring 620ms cubic-bezier(.2, .7, .3, 1) both;
+  pointer-events: none;
+}
+
+/* --- coins and milestone -------------------------------------------------- */
+
+.sp-coins {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #EDE7DC;
+  border-radius: 8px;
+  padding: 10px 12px;
+  animation: sp-rise 340ms ease-out 1500ms both;
+}
+.sp-coin {
+  width: 26px; height: 26px;
+  border-radius: 9999px;
+  background: #DC8818;
+  border: 2px solid #894C06;
+  box-shadow: 0 2px 0 #894C06;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: #894C06;
+  animation: sp-nudge 1200ms ease-in-out 1600ms 2;
+}
+.sp-coin-amount { font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sp-coin-total {
+  margin-left: auto;
+  min-width: 0;
+  font-size: 11px;
+  color: #6A6258;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sp-milestone {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #FBE9CA;
+  border: 2px solid #DC8818;
+  box-shadow: 0 3px 0 #894C06;
+  border-radius: 8px;
+  padding: 12px;
+  animation: sp-snap 460ms cubic-bezier(.2, 1.5, .4, 1) 1700ms both;
+}
+.sp-milestone-icon { font-size: 26px; line-height: 1; flex-shrink: 0; }
+.sp-milestone-text { display: flex; flex-direction: column; }
+.sp-milestone-title { font-size: 17px; font-weight: 700; color: #894C06; }
+.sp-milestone-sub { font-size: 13px; color: #894C06; }
+
+.sp-actions { display: flex; gap: 10px; align-items: center; animation: sp-rise 340ms ease-out 1620ms both; }
+.sp-btn {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 9999px;
+  padding: 11px 18px;
+  cursor: pointer;
+  background: #FEFCF7;
+  color: #89582C;
+  border: 2px solid #D9D0C1;
+  box-shadow: 0 3px 0 #D9D0C1;
+  transition: transform 90ms, box-shadow 90ms;
+}
+.sp-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 0 #D9D0C1; }
+.sp-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #D9D0C1; }
+.sp-btn.primary {
+  background: #90D94F;
+  color: #0C511A;
+  border-color: #63B739;
+  box-shadow: 0 3px 0 #3E8637;
+}
+.sp-btn.primary:hover { box-shadow: 0 4px 0 #3E8637; }
+.sp-btn.primary:active { box-shadow: 0 1px 0 #3E8637; }
+
+/* --- the burst ----------------------------------------------------------- */
+
+.sp-burst { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
+.sp-chip {
+  position: absolute;
+  left: 50%; top: 46%;
+  animation-name: sp-fly;
+  animation-timing-function: cubic-bezier(.16, .7, .3, 1);
+  animation-fill-mode: both;
+}
+.sp-coin-fly {
+  position: absolute;
+  left: 50%; top: 46%;
+  width: 20px; height: 20px;
+  border-radius: 9999px;
+  background: #DC8818;
+  border: 2px solid #894C06;
+  box-shadow: 0 2px 0 #894C06;
+  animation: sp-coin 1000ms cubic-bezier(.3, .5, .2, 1) both;
+}
+
+/* --- keyframes ----------------------------------------------------------- */
+
+@keyframes sp-scrim { from { opacity: 0 } to { opacity: 1 } }
+@keyframes sp-drop {
+  0%   { transform: translateY(-56px) scale(.86); opacity: 0 }
+  55%  { transform: translateY(8px) scale(1.03); opacity: 1 }
+  75%  { transform: translateY(-3px) scale(.995) }
+  100% { transform: translateY(0) scale(1); opacity: 1 }
+}
+@keyframes sp-snap {
+  0%   { transform: scale(.3) rotate(-14deg); opacity: 0 }
+  70%  { transform: scale(1.14) rotate(3deg); opacity: 1 }
+  100% { transform: scale(1) rotate(0); opacity: 1 }
+}
+@keyframes sp-stamp {
+  0%   { transform: scale(2.1) rotate(-18deg); opacity: 0 }
+  40%  { transform: scale(.9) rotate(3deg); opacity: 1 }
+  62%  { transform: scale(1.08) rotate(-1deg) }
+  100% { transform: scale(1) rotate(0); opacity: 1 }
+}
+@keyframes sp-ring { 0% { transform: scale(.5); opacity: .9 } 100% { transform: scale(2.6); opacity: 0 } }
+@keyframes sp-fly {
+  0%   { transform: translate(-50%, -50%) rotate(0); opacity: 0 }
+  8%   { opacity: 1 }
+  100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0 }
+}
+@keyframes sp-coin {
+  0%   { transform: translate(-50%, -50%) scale(.4); opacity: 0 }
+  15%  { opacity: 1; transform: translate(calc(-50% + var(--mx)), calc(-50% + var(--my))) scale(1.1) }
+  100% { transform: translate(var(--dx), var(--dy)) scale(.55); opacity: 0 }
+}
+@keyframes sp-roll {
+  0%   { transform: translateY(0) }
+  62%  { transform: translateY(-52.5%) }
+  100% { transform: translateY(-50%) }
+}
+@keyframes sp-pop { 0% { transform: scale(.7); opacity: 0 } 70% { transform: scale(1.06); opacity: 1 } 100% { transform: scale(1); opacity: 1 } }
+@keyframes sp-rise { 0% { transform: translateY(14px); opacity: 0 } 100% { transform: translateY(0); opacity: 1 } }
+@keyframes sp-sheen { 0% { transform: translateX(-120%) } 100% { transform: translateX(220%) } }
+@keyframes sp-nudge { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-2px) } }
+@keyframes sp-ignite {
+  0%   { transform: rotate(45deg) scale(.2); opacity: 0 }
+  55%  { transform: rotate(45deg) scale(1.18); opacity: 1 }
+  78%  { transform: rotate(45deg) scale(.94) }
+  100% { transform: rotate(45deg) scale(1); opacity: 1 }
+}
+@keyframes sp-flick-a {
+  0%, 100% { transform: rotate(45deg) scale(1, 1) }
+  28%      { transform: rotate(45deg) scale(1.05, .95) }
+  54%      { transform: rotate(45deg) scale(.96, 1.07) }
+  76%      { transform: rotate(45deg) scale(1.03, .98) }
+}
+@keyframes sp-flick-b {
+  0%, 100% { transform: rotate(45deg) scale(1, 1) }
+  34%      { transform: rotate(45deg) scale(.94, 1.09) }
+  68%      { transform: rotate(45deg) scale(1.07, .94) }
+}
+@keyframes sp-spark {
+  0%   { transform: translate(0, 0) scale(1); opacity: 0 }
+  20%  { opacity: 1 }
+  100% { transform: translate(var(--sx), -30px) scale(.4); opacity: 0 }
+}
+
+/* The design's own concession: everything still arrives, none of it travels. */
+@media (prefers-reduced-motion: reduce) {
+  .sp-overlay *, .sp-overlay *::before, .sp-overlay *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition: none !important;
+  }
+  .sp-burst { display: none; }
+}
