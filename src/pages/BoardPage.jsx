@@ -426,16 +426,6 @@ export default function BoardPage() {
     if (error) { fetchProjects(); throw error }
   }
 
-  async function archiveDoneTasks() {
-    const done = tasks.filter(t => t.status === 'done')
-    if (!done.length) return
-    await Promise.all(done.map(t =>
-      supabase.from('tasks')
-        .update({ status: 'archived', archived_at: t.updated_at || t.created_at })
-        .eq('id', t.id)
-    ))
-  }
-
   if (loading) return <div className="loading">Loading tasks…</div>
 
   const teamName = currentTeamId ? (teams.find(t => t.id === currentTeamId)?.name || 'Team') : 'Personal'
@@ -475,7 +465,6 @@ export default function BoardPage() {
           setDoneTask({ task, clearedDoing })
           respawnRecurring(task)
         }}
-        onArchiveAll={archiveDoneTasks}
       />
       {doneTask && (
         <DoneTaskModal

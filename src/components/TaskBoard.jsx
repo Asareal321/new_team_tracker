@@ -140,7 +140,7 @@ export default function TaskBoard({
   tasks, teamMembers, projects, projectMembers, taskUpdates,
   currentUserId, currentTeamId,
   onAdd, onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees,
-  onRespondToAssignment, onResolveChangeRequest, onTaskDone, onArchiveAll,
+  onRespondToAssignment, onResolveChangeRequest, onTaskDone,
 }) {
   const [showForm, setShowForm]   = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -298,7 +298,6 @@ export default function TaskBoard({
       .sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
     [tasks],
   )
-  const openCount = byStatus('todo').length + byStatus('in_progress').length
 
   // Tasks needing attention in the Pending tab:
   //  • pending-approval tasks that involve me (I created them and am waiting on
@@ -491,7 +490,6 @@ export default function TaskBoard({
         setActiveTab={setActiveTab}
         byStatus={byStatus}
         dumpTasks={dumpTasks}
-        openCount={openCount}
         onCapture={captureToDump}
         onSortFromDump={sortFromDump}
         peopleFilter={{
@@ -516,7 +514,6 @@ export default function TaskBoard({
         onUpdateAssignees={onUpdateAssignees}
         onStartEdit={startEdit}
         onTaskDone={onTaskDone}
-        onArchiveAll={onArchiveAll}
         onOpenForm={() => { setShowForm(true); setEditingId(null); setForm(defaultForm()) }}
       />
     </div>
@@ -528,9 +525,9 @@ export default function TaskBoard({
 function PriorityBoard({
   tasks, pendingTasks, currentUserId, onRespondToAssignment, onResolveChangeRequest,
   activeTab, setActiveTab, byStatus, peopleFilter,
-  dumpTasks, openCount, onCapture, onSortFromDump,
+  dumpTasks, onCapture, onSortFromDump,
   projectName, updatesForTask, resolveAssignees, teamMembers,
-  onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onStartEdit, onOpenForm, onTaskDone, onArchiveAll,
+  onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onStartEdit, onOpenForm, onTaskDone,
 }) {
   const [activeId, setActiveId] = useState(null)
   const [zoneNotice, setZoneNotice] = useState('')
@@ -700,13 +697,6 @@ function PriorityBoard({
             </button>
           </div>
           <div className="tabs-actions">
-            {activeTab === 'board' && byStatus('done').length > 0 && (
-              <button className="btn-ghost btn-sm" onClick={() => {
-                if (window.confirm(`Archive all ${byStatus('done').length} completed task(s)?`)) onArchiveAll()
-              }}>
-                Archive all
-              </button>
-            )}
             <button className="btn-primary btn-sm" onClick={onOpenForm}>+ Add Task</button>
           </div>
         </div>
@@ -747,9 +737,6 @@ function PriorityBoard({
                 opens the full drawer; "Braindump" is the one-line pile. */}
             <div className="board-head">
               <span className="board-plaque">Board</span>
-              <span className="board-summary">
-                {openCount} open · {byStatus('done').length} done today
-              </span>
               <div className="board-head-spacer" />
               <button className="bb-btn" onClick={() => setActiveTab('braindump')}>
                 Braindump
@@ -1059,11 +1046,11 @@ function Band({ status, label, tasks, limit, isFull, onBlocked, resolveAssignees
         <span className="band-pill">{label}</span>
         {/* With a limit shown the noun agrees with the limit, not the count:
             "1/2 task" is wrong. */}
-        <span className="band-count">
-          {limit != null
-            ? `${tasks.length}/${limit} tasks`
-            : `${tasks.length} ${tasks.length === 1 ? 'task' : 'tasks'}`}
-        </span>
+{/* Only where there's a limit: "2/2 tasks" is what explains a band
+            refusing a task. A bare count is decoration. */}
+        {limit != null && (
+          <span className="band-count">{tasks.length}/{limit} tasks</span>
+        )}
         <span className="band-rule" />
       </header>
       <SortableContext items={items} strategy={verticalListSortingStrategy}>
