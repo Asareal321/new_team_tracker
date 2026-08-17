@@ -196,6 +196,15 @@ export default function BoardPage() {
     setProjects(data || [])
   }, [currentTeamId, user])
 
+  const fetchProjectMembers = useCallback(async () => {
+    if (!currentTeamId) { setProjectMembers([]); return }
+    const { data } = await supabase
+      .from('project_members')
+      .select('project_id, user_id, projects!inner(team_id)')
+      .eq('projects.team_id', currentTeamId)
+    setProjectMembers((data || []).map(r => ({ project_id: r.project_id, user_id: r.user_id })))
+  }, [currentTeamId])
+
   useEffect(() => {
     setLoading(true)
     Promise.all([fetchTasks(), fetchTeamMembers(), fetchProjects(), fetchProjectMembers()]).then(() => setLoading(false))
