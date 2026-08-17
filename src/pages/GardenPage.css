@@ -8,9 +8,9 @@
   --grass:      #7cc35c;
   --grass-dark: #63a847;
   --grass-deep: #4d8c37;
-  --soil:       #C4936A;
-  --soil-dark:  #AE7C4C;
-  --soil-deep:  #8E6039;
+  --soil:       #7A5334;
+  --soil-dark:  #5E3F27;
+  --soil-deep:  #45301E;
   --wood:       #c99764;
   --wood-dark:  #a2764a;
   --panel:      #fffaf0;
@@ -467,7 +467,7 @@ html[data-theme="dark"] .coin-count {
   padding: 0.4rem;
   /* Tilled soil: furrow stripes over a warm brown base. */
   background:
-    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.045) 0 3px, transparent 3px 14px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.09) 0 3px, transparent 3px 14px),
     linear-gradient(180deg, var(--soil) 0%, var(--soil-dark) 100%);
   border: 3px solid var(--soil-deep);
   box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.22), 0 2px 0 rgba(0, 0, 0, 0.12);
@@ -542,9 +542,9 @@ html[data-theme="dark"] .garden-scene {
   --grass:      #3c6b3f;
   --grass-dark: #2e5432;
   --grass-deep: #234226;
-  --soil:       #8A6242;
-  --soil-dark:  #6E4C33;
-  --soil-deep:  #513825;
+  --soil:       #533722;
+  --soil-dark:  #3F2A1A;
+  --soil-deep:  #2A1C11;
   --wood:       #8a6540;
   --wood-dark:  #6a4c30;
   --panel:      #262a2c;
