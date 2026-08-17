@@ -107,7 +107,7 @@ function DoneTaskModal({ task, tasks = [], projects, onAdd, onUpdateProject, onP
 
 export default function BoardPage() {
   const { user } = useAuth()
-  const { currentTeamId, teams } = useTeam()
+  const { currentTeamId } = useTeam()
   const {
     rewardTaskAdded, rewardTaskDone, rewardDoingCleared,
     state: garden, ready: gardenReady, completeOnboarding,
@@ -391,19 +391,11 @@ export default function BoardPage() {
 
   if (loading) return <div className="loading">Loading tasks…</div>
 
-  const teamName = currentTeamId ? (teams.find(t => t.id === currentTeamId)?.name || 'Team') : 'Personal'
 
   return (
     <div>
-      <div className="board-hero">
-        <h1 className="board-hero-title">{teamName} Taskboard</h1>
-        {!currentTeamId && (
-          <button className="btn-ghost btn-sm" onClick={() => setShowProjectsManager(true)}>
-            Projects
-          </button>
-        )}
-      </div>
       <TaskBoard
+        onManageProjects={!currentTeamId ? () => setShowProjectsManager(true) : null}
         tasks={tasks}
         teamMembers={teamMembers}
         projects={projects}

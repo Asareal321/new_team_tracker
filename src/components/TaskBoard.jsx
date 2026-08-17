@@ -155,7 +155,7 @@ export default function TaskBoard({
   tasks, teamMembers, projects, projectMembers, taskUpdates,
   currentUserId, currentTeamId,
   onAdd, onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees,
-  onRespondToAssignment, onResolveChangeRequest, onTaskDone,
+  onRespondToAssignment, onResolveChangeRequest, onTaskDone, onManageProjects,
 }) {
   const [showForm, setShowForm]   = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -530,6 +530,7 @@ export default function TaskBoard({
         onStartEdit={startEdit}
         onTaskDone={onTaskDone}
         onOpenForm={() => { setShowForm(true); setEditingId(null); setForm(defaultForm()) }}
+        onManageProjects={onManageProjects}
       />
     </div>
   )
@@ -542,7 +543,7 @@ function PriorityBoard({
   activeTab, setActiveTab, byStatus, peopleFilter,
   dumpTasks, onCapture, onSortFromDump,
   projectName, updatesForTask, resolveAssignees, teamMembers,
-  onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onStartEdit, onOpenForm, onTaskDone,
+  onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onStartEdit, onOpenForm, onTaskDone, onManageProjects,
 }) {
   const [activeId, setActiveId] = useState(null)
   const [zoneNotice, setZoneNotice] = useState('')
@@ -712,6 +713,11 @@ function PriorityBoard({
             </button>
           </div>
           <div className="tabs-actions">
+            {/* Personal boards only — a team's projects are managed from the
+                community page, which has room for the two-column version. */}
+            {onManageProjects && (
+              <button className="btn-ghost btn-sm" onClick={onManageProjects}>Projects</button>
+            )}
             <button className="btn-primary btn-sm" onClick={onOpenForm}>+ Add Task</button>
           </div>
         </div>
