@@ -95,7 +95,7 @@ function bandFullNotice(status) {
 // different weights and baselines across platforms.
 function Chevron({ up }) {
   return (
-    <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+    <svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
       <path
         d={up ? 'M3 7.5 L6 4.5 L9 7.5' : 'M3 4.5 L6 7.5 L9 4.5'}
         fill="none" stroke="currentColor" strokeWidth="2"
@@ -1208,6 +1208,9 @@ function TaskRow({
         />
         <div className="row-body">
           <span className="row-title">
+            {/* Ahead of the title, with the other badges: on the right it was a
+                third thing competing with the two controls. */}
+            <span className="row-chip">{chip}</span>
             {isPending && <span className="pending-badge" title="Waiting on assignment acceptance">Pending</span>}
             {task.recurrence && (
               <span className="repeat-badge" title={`Repeats ${RECURRENCE_LABELS[task.recurrence]?.toLowerCase()}`}>
@@ -1302,7 +1305,6 @@ function TaskRow({
           ))}
         </div>
         <span className="row-tail">
-          <span className="row-chip">{chip}</span>
           <button
             className={`row-menu${showActions ? ' active' : ''}`}
             onClick={() => setShowActions(o => !o)}

@@ -1617,7 +1617,7 @@
 /* Centred in the row rather than pinned to its top: the row grows downward as
    updates and the composer fill in, and a cluster stuck at the top of a tall
    card reads as having come loose from it. */
-.row-tail { display: flex; align-items: center; align-self: center; gap: 6px; }
+.row-tail { display: flex; align-items: center; align-self: center; gap: 7px; }
 .row-chip {
   font-family: var(--bb-num);
   font-size: 10px;
@@ -1639,17 +1639,17 @@
   color: var(--bb-wood);
   border: 1px solid var(--bb-border);
   border-radius: 9999px;
-  height: 24px;
+  height: 30px;
   line-height: 1;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: transform 90ms;
 }
-.row-advance, .row-back { width: 24px; }
-.row-menu { padding: 0 7px; font-size: 11px; letter-spacing: 0.08em; }
+.row-advance, .row-back { width: 30px; }
+.row-menu { padding: 0 10px; font-size: 13px; letter-spacing: 0.08em; }
 .row-menu:hover, .row-advance:hover:not(:disabled), .row-back:hover:not(:disabled) { transform: translateY(-1px); }
 .row-menu:active, .row-advance:active:not(:disabled), .row-back:active:not(:disabled) { transform: translateY(2px); }
 .row-menu.active { background: var(--bb-wood); color: var(--bb-wood-ink); border-color: var(--bb-wood-edge); }
