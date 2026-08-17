@@ -31,7 +31,12 @@ const EYES = {
   alert: { left: 'look', right: 'look', brow: -1 },
 }
 
-function Eye({ kind, x }) {
+function Eye({ kind, x, blinking }) {
+  // A blink shuts an open eye. The squint moods are already closed, so they
+  // sit it out rather than flickering between two kinds of shut.
+  if (blinking && kind !== 'arc') {
+    return <path d={`M ${x - 5} 40 q 5 3 10 0`} stroke={LINE} strokeWidth="2.6" fill="none" strokeLinecap="round" />
+  }
   if (kind === 'arc') {
     return <path d={`M ${x - 5} 40 q 5 -6 10 0`} stroke={LINE} strokeWidth="2.6" fill="none" strokeLinecap="round" />
   }
@@ -55,12 +60,34 @@ function Eye({ kind, x }) {
 // being touched reads as a picture rather than as company. Petting changes
 // nothing in the game — it doesn't pay, and it isn't recorded. That's the
 // point: it's the one control in the app that exists only because it's nice.
+// Blinking. A timeout chain rather than a fixed interval, because a rabbit
+// that blinks exactly every four seconds reads as a machine — the gap is
+// re-rolled after each one. Reduced motion holds his eyes open.
+function useBlink() {
+  const [blinking, setBlinking] = useState(false)
+  useEffect(() => {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    let shut = null
+    let open = null
+    const schedule = () => {
+      open = setTimeout(() => {
+        setBlinking(true)
+        shut = setTimeout(() => { setBlinking(false); schedule() }, 130)
+      }, 2400 + Math.random() * 4200)
+    }
+    schedule()
+    return () => { clearTimeout(open); clearTimeout(shut) }
+  }, [])
+  return blinking
+}
+
 export default function Trak({ mood = 'idle', size = 96, className = '', pettable = false }) {
   const [pets, setPets] = useState(0)
   const [petting, setPetting] = useState(false)
   // Keyboard focus counts as noticing you — otherwise he only ever reacts to
   // a mouse, and the pet button is reachable by tab.
   const [near, setNear] = useState(false)
+  const blinking = useBlink()
   const timer = useRef(null)
   useEffect(() => () => clearTimeout(timer.current), [])
 
@@ -117,8 +144,8 @@ export default function Trak({ mood = 'idle', size = 96, className = '', pettabl
       <circle cx="50" cy="44" r="24" fill={FUR} stroke={LINE} strokeWidth="2.4" />
 
       <g transform={`translate(0 ${eyes.brow})`}>
-        <Eye kind={eyes.left} x={41} />
-        <Eye kind={eyes.right} x={59} />
+        <Eye kind={eyes.left} x={41} blinking={blinking} />
+        <Eye kind={eyes.right} x={59} blinking={blinking} />
       </g>
 
       {/* nose and mouth */}
