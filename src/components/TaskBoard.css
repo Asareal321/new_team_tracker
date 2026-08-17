@@ -2027,17 +2027,22 @@
 .band-body.tally { grid-template-columns: 1fr; }
 /* Centred, and stacked: the number is the headline and the words underneath
    are its caption. */
+/* Equal padding top and bottom, and the number's own line box trimmed to 1:
+   at 34px, a 1.1 line-height puts ~3px of leading under the digits that the
+   13px label below doesn't match, which tips the pair off centre. */
 .band-tally {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 10px 4px 12px;
+  justify-content: center;
+  text-align: center;
+  gap: 4px;
+  padding: 12px 4px;
 }
 .tally-num {
   font-family: var(--bb-num);
   font-size: 34px;
-  line-height: 1.1;
+  line-height: 1;
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
   color: var(--bb-on-surface);
