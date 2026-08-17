@@ -2,21 +2,22 @@ import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
 import { isIsolatedSession, isolatedSessionLabel } from '../supabase'
+import {
+  IconBoard, IconDeadlines, IconCommunity, IconDashboard, IconGarden, IconAccount,
+} from './NavIcons'
 import '../App.css'
 
 const navClass = ({ isActive }) => (isActive ? 'nav-btn active' : 'nav-btn')
 
-// Each destination's icon, picked for what the page *is* rather than for a
-// generic category: a board of cards, a clock for what's due, people for the
-// community, a chart for the numbers, a seedling for the garden.
+// Each destination's icon, drawn in components/NavIcons.jsx.
 const NAV = [
-  { to: '/',          label: 'Taskboard',  icon: '🗂️', end: true },
-  { to: '/deadlines', label: 'Deadlines',  icon: '⏰' },
-  { to: '/community', label: 'Community',  icon: '👥' },
-  { to: '/dashboard', label: 'Dashboard',  icon: '📊', admin: true },
+  { to: '/',          label: 'Taskboard', Icon: IconBoard,     end: true },
+  { to: '/deadlines', label: 'Deadlines', Icon: IconDeadlines },
+  { to: '/community', label: 'Community', Icon: IconCommunity },
+  { to: '/dashboard', label: 'Dashboard', Icon: IconDashboard, admin: true },
   // Personal-only: the garden belongs to you, not to a team.
-  { to: '/garden',    label: 'Garden',     icon: '🌱', personal: true },
-  { to: '/account',   label: 'Account',    icon: '⚙️' },
+  { to: '/garden',    label: 'Garden',    Icon: IconGarden,    personal: true },
+  { to: '/account',   label: 'Account',   Icon: IconAccount },
 ]
 
 function getInitialTheme() {
@@ -57,7 +58,7 @@ export default function Layout() {
             if (item.personal && currentTeamId) return null
             return (
               <NavLink key={item.to} to={item.to} className={navClass} end={item.end} title={item.label}>
-                <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+                <span className="nav-icon" aria-hidden="true"><item.Icon /></span>
                 <span className="nav-label">{item.label}</span>
               </NavLink>
             )
