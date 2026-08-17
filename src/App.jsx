@@ -49,6 +49,8 @@ export default function App() {
                 <Route path="dashboard" element={<DashboardPage />} />
                 <Route path="account" element={<AccountPage />} />
                 <Route path="garden" element={<GardenPage />} />
+                {/* By code first — "visit" can never be a user id. */}
+                <Route path="garden/visit/:code" element={<VisitGardenPage />} />
                 <Route path="garden/:userId" element={<VisitGardenPage />} />
                 <Route path="projects/:projectId" element={<ProjectPage />} />
               </Route>

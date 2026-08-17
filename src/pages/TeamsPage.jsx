@@ -4,6 +4,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../auth/AuthContext'
 import { useTeam } from '../context/TeamContext'
 import { projectColorIndex, projectDotColor } from '../lib/projectColors'
+import GardenShareCard from '../components/GardenShareCard'
 import './TeamsPage.css'
 
 const PROJECT_STATUSES = ['active', 'on_hold', 'completed']
@@ -311,6 +312,10 @@ export default function TeamsPage() {
       </div>
 
       <div className="team-detail-col">
+        {/* Above the community itself: a garden is yours, not a community's,
+            and the code works on people you share nothing else with. */}
+        <GardenShareCard />
+
         {!currentTeam ? (
           <p className="empty-hint">Create a community or pick one from the list to see its members and projects.</p>
         ) : (
