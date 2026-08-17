@@ -1614,7 +1614,10 @@
 .row-meta .overdue { color: var(--bb-flag-ink); font-weight: 700; }
 .row-updated { color: var(--bb-accent-ink); }
 
-.row-tail { display: flex; align-items: center; gap: 6px; padding-top: 1px; }
+/* Centred in the row rather than pinned to its top: the row grows downward as
+   updates and the composer fill in, and a cluster stuck at the top of a tall
+   card reads as having come loose from it. */
+.row-tail { display: flex; align-items: center; align-self: center; gap: 6px; }
 .row-chip {
   font-family: var(--bb-num);
   font-size: 10px;

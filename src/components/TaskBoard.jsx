@@ -54,7 +54,7 @@ const MOVE_LABELS = {
   done: 'Done today', archived: 'Archived',
 }
 
-// BANDS above is the *canonical* order: it drives which way ‹ and › move a
+// BANDS above is the *canonical* order: it drives which way ∧ and ∨ move a
 // task, and the braindump tray's 1–3 keys. The board is *displayed* bottom-up —
 // greenhouse, then Done today, Doing, Up next — so the freshest state is at the
 // top and the backlog is what you scroll down into.
@@ -75,7 +75,7 @@ export const MAX_UP_NEXT = 4
 const BAND_LIMITS = { todo: MAX_UP_NEXT, in_progress: MAX_DOING }
 
 // One check, used by every route into a band: the form, drag-and-drop, the
-// ‹ / › controls, the action bar, and the braindump tray. Each of those was
+// ∧ / ∨ controls, the action bar, and the braindump tray. Each of those was
 // previously its own check, or no check at all.
 function bandFull(tasks, status, exceptId) {
   const limit = BAND_LIMITS[status]
@@ -88,6 +88,21 @@ function bandFullNotice(status) {
     + (status === 'todo'
       ? ' Finish something, or send this to the braindump.'
       : ' Finish one to free a slot.')
+}
+
+// The move controls' arrow. Drawn rather than typed: ‹ and › are ordinary
+// punctuation, but their vertical counterparts (⌃ ⌄ ∧ ∨) render at wildly
+// different weights and baselines across platforms.
+function Chevron({ up }) {
+  return (
+    <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+      <path
+        d={up ? 'M3 7.5 L6 4.5 L9 7.5' : 'M3 4.5 L6 7.5 L9 4.5'}
+        fill="none" stroke="currentColor" strokeWidth="2"
+        strokeLinecap="round" strokeLinejoin="round"
+      />
+    </svg>
+  )
 }
 
 function initials(name) {
@@ -612,7 +627,7 @@ function PriorityBoard({
   }
 
   const activeTask = activeId ? tasks.find(t => t.id === activeId) : null
-  // Dragging already enforced this; the ‹ / › controls and the action bar were
+  // Dragging already enforced this; the ∧ / ∨ controls and the action bar were
   // routes around it.
   const isFull = status => bandFull(tasks, status)
 
@@ -992,7 +1007,7 @@ function Band({ status, label, tasks, limit, isFull, onBlocked, resolveAssignees
   // Done today is a tally, not a list. Finished work is the one thing you never
   // need to read — it just needs to be countable — and listing it pushed the
   // live bands off the screen. It still opens, because a mis-clicked task has
-  // to be recoverable and each row's ‹ is the way back.
+  // to be recoverable and each row's ∨ is the way back.
   const isTally = status === 'done'
   const [open, setOpen] = useState(false)
   const collapsed = isTally && !open
@@ -1297,21 +1312,21 @@ function TaskRow({
           {!isArchived && (
             <>
               <button
-                className="row-back"
-                disabled={!prev}
-                title={prev === BRAINDUMP ? 'Send back to the braindump' : `Move back to ${MOVE_LABELS[prev]}`}
-                aria-label={prev === BRAINDUMP
-                  ? `Send ${task.title} back to the braindump`
-                  : `Move ${task.title} back to ${MOVE_LABELS[prev]}`}
-                onClick={() => prev && onStatusChange(prev)}
-              >‹</button>
-              <button
                 className="row-advance"
                 disabled={!next}
-                title={next ? `Move to ${MOVE_LABELS[next]}` : 'Already done'}
-                aria-label={next ? `Move ${task.title} to ${MOVE_LABELS[next]}` : 'Already done'}
+                title={next ? `Move up to ${MOVE_LABELS[next]}` : 'Already done'}
+                aria-label={next ? `Move ${task.title} up to ${MOVE_LABELS[next]}` : 'Already done'}
                 onClick={() => next && onStatusChange(next)}
-              >›</button>
+              ><Chevron up /></button>
+              <button
+                className="row-back"
+                disabled={!prev}
+                title={prev === BRAINDUMP ? 'Send down to the braindump' : `Move down to ${MOVE_LABELS[prev]}`}
+                aria-label={prev === BRAINDUMP
+                  ? `Send ${task.title} down to the braindump`
+                  : `Move ${task.title} down to ${MOVE_LABELS[prev]}`}
+                onClick={() => prev && onStatusChange(prev)}
+              ><Chevron /></button>
             </>
           )}
         </span>
