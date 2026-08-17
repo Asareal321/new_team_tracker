@@ -56,7 +56,7 @@ export default function VisitGardenPage() {
             </div>
             <span className="garden-sign-post" />
           </div>
-          <Link className="garden-btn" to="/teams">← Back to team</Link>
+          <Link className="garden-btn" to="/community">← Back to the community</Link>
         </header>
 
         {status === 'loading' && <p className="garden-loading">Walking over…</p>}

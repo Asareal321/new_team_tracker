@@ -276,8 +276,8 @@ export default function TeamsPage() {
   return (
     <div className="teams-page">
       <div className="teams-list-col">
-        <h2>Your Teams</h2>
-        {teams.length === 0 && <p className="empty-hint">You're not on any teams yet.</p>}
+        <h2>Your communities</h2>
+        {teams.length === 0 && <p className="empty-hint">You’re not in any communities yet.</p>}
         {teams.map(t => (
           <button
             key={t.id}
@@ -294,7 +294,7 @@ export default function TeamsPage() {
             <input
               value={newTeamName}
               onChange={e => setNewTeamName(e.target.value)}
-              placeholder="New team name"
+              placeholder="New community name"
             />
             <button type="submit" className="btn-primary">Create</button>
           </form>
@@ -312,7 +312,7 @@ export default function TeamsPage() {
 
       <div className="team-detail-col">
         {!currentTeam ? (
-          <p className="empty-hint">Create a team or select one from the list to see its members and projects.</p>
+          <p className="empty-hint">Create a community or pick one from the list to see its members and projects.</p>
         ) : (
           <>
             <h2>{currentTeam.name}</h2>
@@ -351,7 +351,7 @@ export default function TeamsPage() {
                     <span className="invite-code-value">{currentTeam.invite_code}</span>
                     <button className="btn-copy" onClick={copyInvite}>{copied ? '✓ Copied' : 'Copy'}</button>
                   </div>
-                  <p className="invite-code-hint">Share this code with teammates — it never changes.</p>
+                  <p className="invite-code-hint">Share this code with the people you want in — it never changes.</p>
                 </div>
               )}
             </section>
@@ -469,7 +469,7 @@ export default function TeamsPage() {
                     }
                     {projectFilter === 'mine' && sprintsInView.length > 0 &&
                       !sprintsInView.some(p => projectMembers.some(pm => pm.project_id === p.id && pm.user_id === user.id)) && (
-                      <p className="empty-hint">You're not assigned to any sprints here yet — switch to "All Sprints" to see the team's.</p>
+                      <p className="empty-hint">You're not assigned to any sprints here yet — switch to "All Sprints" to see the community’s.</p>
                     )}
                   </div>
                 </>
@@ -670,7 +670,7 @@ function AddSprintsModal({ group, projects, onToggle, onClose }) {
         </div>
         <div className="assign-body">
           {projects.length === 0 ? (
-            <p className="empty-hint">No sprints on this team yet.</p>
+            <p className="empty-hint">No sprints in this community yet.</p>
           ) : (
             projects.map(p => {
               const inGroup = p.group_id === group.id
@@ -783,7 +783,7 @@ function ProjectModal({ project, members = [], initialMemberIds = [], onCancel, 
         </div>
         {members.length > 0 && (
           <div className="assignee-field">
-            <span className="assignee-field-label">Team</span>
+            <span className="assignee-field-label">Community</span>
             <div className="assignee-picker">
               {members.map(m => (
                 <button

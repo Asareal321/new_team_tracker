@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { isConfigured } from './supabase'
 import { AuthProvider } from './auth/AuthContext'
 import AuthGate from './auth/AuthGate'
@@ -9,7 +9,6 @@ import BoardPage from './pages/BoardPage'
 import DeadlinesPage from './pages/DeadlinesPage'
 import TeamsPage from './pages/TeamsPage'
 import DashboardPage from './pages/DashboardPage'
-import SummaryPage from './pages/SummaryPage'
 import AccountPage from './pages/AccountPage'
 import ProjectPage from './pages/ProjectPage'
 import GardenPage from './pages/GardenPage'
@@ -44,9 +43,10 @@ export default function App() {
               <Route element={<Layout />}>
                 <Route index element={<BoardPage />} />
                 <Route path="deadlines" element={<DeadlinesPage />} />
-                <Route path="teams" element={<TeamsPage />} />
+                <Route path="community" element={<TeamsPage />} />
+                {/* The section was called Teams until it was renamed; old links still land. */}
+                <Route path="teams" element={<Navigate to="/community" replace />} />
                 <Route path="dashboard" element={<DashboardPage />} />
-                <Route path="summary" element={<SummaryPage />} />
                 <Route path="account" element={<AccountPage />} />
                 <Route path="garden" element={<GardenPage />} />
                 <Route path="garden/:userId" element={<VisitGardenPage />} />

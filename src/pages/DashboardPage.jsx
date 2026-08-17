@@ -178,7 +178,7 @@ export default function DashboardPage() {
     return (
       <div className="dashboard-page">
         <h1 className="dash-title">Dashboard</h1>
-        <p className="empty-hint">Select a team from the switcher to see its dashboard.</p>
+        <p className="empty-hint">Select a community from the switcher to see its dashboard.</p>
       </div>
     )
   }
@@ -187,7 +187,7 @@ export default function DashboardPage() {
     return (
       <div className="dashboard-page">
         <h1 className="dash-title">Dashboard</h1>
-        <p className="empty-hint">The dashboard is only available to team admins and owners.</p>
+        <p className="empty-hint">The dashboard is only available to community admins and owners.</p>
       </div>
     )
   }
@@ -196,7 +196,7 @@ export default function DashboardPage() {
     return (
       <div className="dashboard-page">
         <h1 className="dash-title">Dashboard</h1>
-        <p className="empty-hint">Loading team stats…</p>
+        <p className="empty-hint">Loading community stats…</p>
       </div>
     )
   }

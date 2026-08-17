@@ -92,7 +92,7 @@ export default function LandingPage({ onSignIn, onSignUp }) {
 
       <section className="l-features">
         <div className="l-inner">
-          <h2 className="l-feat-heading">Task tracking built for teams</h2>
+          <h2 className="l-feat-heading">Task tracking built for communities</h2>
           <div className="l-feat-grid">
             <div className="l-feat">
               <div className="l-feat-icon"><FeatureBars /></div>
@@ -111,8 +111,8 @@ export default function LandingPage({ onSignIn, onSignUp }) {
             </div>
             <div className="l-feat">
               <div className="l-feat-icon"><FeatureTeams /></div>
-              <h3>Built for teams</h3>
-              <p>Switch between personal and team boards — everyone works from the same source of truth.</p>
+              <h3>Built for communities</h3>
+              <p>Switch between personal and community boards — everyone works from the same source of truth.</p>
             </div>
           </div>
         </div>
