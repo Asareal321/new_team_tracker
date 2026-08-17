@@ -756,8 +756,6 @@ function PriorityBoard({
 
             <GreenhouseStrip doneToday={byStatus('done').length} />
 
-            <QuestStrip />
-
             {BANDS_DISPLAY.map(band => (
               <Band key={band.key} status={band.key} label={band.label}
                 isFull={isFull}
@@ -779,6 +777,11 @@ function PriorityBoard({
                 onTaskDone={onTaskDone}
               />
             ))}
+
+            {/* Under Up next, which is the bottom of the board: the bands are
+                what you came for, and the quests are what to do once you've
+                read them. */}
+            <QuestStrip />
           </div>
         )}
       </div>
