@@ -6,6 +6,19 @@ import '../App.css'
 
 const navClass = ({ isActive }) => (isActive ? 'nav-btn active' : 'nav-btn')
 
+// Each destination's icon, picked for what the page *is* rather than for a
+// generic category: a board of cards, a clock for what's due, people for the
+// community, a chart for the numbers, a seedling for the garden.
+const NAV = [
+  { to: '/',          label: 'Taskboard',  icon: '🗂️', end: true },
+  { to: '/deadlines', label: 'Deadlines',  icon: '⏰' },
+  { to: '/community', label: 'Community',  icon: '👥' },
+  { to: '/dashboard', label: 'Dashboard',  icon: '📊', admin: true },
+  // Personal-only: the garden belongs to you, not to a team.
+  { to: '/garden',    label: 'Garden',     icon: '🌱', personal: true },
+  { to: '/account',   label: 'Account',    icon: '⚙️' },
+]
+
 function getInitialTheme() {
   return localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'
 }
@@ -34,14 +47,21 @@ export default function Layout() {
             </span>
           )}
         </div>
+        {/* One list, two shapes: labelled rows in the rail, and icons only in
+            the bottom bar on a phone. The label is still in the DOM there —
+            hidden visually, read aloud — because an icon on its own tells a
+            screen reader nothing. */}
         <nav className="sidebar-nav">
-          <NavLink to="/" className={navClass} end>Taskboard</NavLink>
-          <NavLink to="/deadlines" className={navClass}>Deadlines</NavLink>
-          <NavLink to="/community" className={navClass}>Community</NavLink>
-          {isAdmin && <NavLink to="/dashboard" className={navClass}>Dashboard</NavLink>}
-          {/* Personal-only: the garden belongs to you, not to a team. */}
-          {!currentTeamId && <NavLink to="/garden" className={navClass}>🌱 Grow a Garden</NavLink>}
-          <NavLink to="/account" className={navClass}>Account</NavLink>
+          {NAV.map(item => {
+            if (item.admin && !isAdmin) return null
+            if (item.personal && currentTeamId) return null
+            return (
+              <NavLink key={item.to} to={item.to} className={navClass} end={item.end} title={item.label}>
+                <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+                <span className="nav-label">{item.label}</span>
+              </NavLink>
+            )
+          })}
         </nav>
         <div className="sidebar-foot">
           <select

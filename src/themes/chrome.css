@@ -218,21 +218,31 @@ html[data-theme="dark"] .board-hero-title {
     width: 100%;
     justify-content: space-around;
   }
+  /* Icons only down here. Six labels at 0.7rem across a phone were each
+     ellipsised to a word and a half — an icon at a thumb-sized target says
+     more than "Comm…" does. */
   .nav-btn {
     flex: 1 1 0;
     min-width: 0;
-    min-height: 44px;
+    min-height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
-    text-align: center;
-    padding: 0.35rem 0.3rem;
-    font-size: 0.7rem;
-    line-height: 1.15;
+    padding: 0.35rem 0.2rem;
     border-radius: 10px;
-    white-space: nowrap;
+  }
+  .nav-btn .nav-icon { font-size: 1.45rem; width: auto; }
+  /* Still in the DOM, still read aloud — an icon alone tells a screen reader
+     nothing, and every one of these is also the link's title. */
+  .nav-btn .nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
     overflow: hidden;
-    text-overflow: ellipsis;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   .nav-btn.active { transform: none; }
 

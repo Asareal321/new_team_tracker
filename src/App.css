@@ -107,6 +107,7 @@ html[data-theme="dark"] .app-sidebar {
 .nav-btn {
   display: flex;
   align-items: center;
+  gap: 0.55rem;
   padding: 0.5rem 0.7rem;
   border-radius: var(--r-sm);
   border: none;
@@ -117,6 +118,7 @@ html[data-theme="dark"] .app-sidebar {
   text-decoration: none;
   transition: background 0.15s, color 0.15s;
 }
+.nav-icon { font-size: 1rem; line-height: 1; width: 1.2rem; text-align: center; flex-shrink: 0; }
 .nav-btn:hover { background: var(--rail-nav-hover-bg); color: var(--rail-active-text); }
 .nav-btn.active {
   background: var(--rail-active-bg);
