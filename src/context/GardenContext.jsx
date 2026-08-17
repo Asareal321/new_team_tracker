@@ -20,6 +20,47 @@ export const GardenContext = createContext(null)
 
 export const useGarden = () => useContext(GardenContext)
 
+// PostgREST reports an unknown column as PGRST204, with the name quoted in the
+// message: "Could not find the 'quests' column of 'garden_state' in the schema
+// cache". The code is checked as well as the text so a future rewording of the
+// message downgrades this to a plain error rather than a wrong guess.
+function missingColumnFrom(error) {
+  if (!error) return null
+  const m = /Could not find the '([^']+)' column/.exec(error.message || '')
+  if (!m) return null
+  if (error.code && error.code !== 'PGRST204') return null
+  return m[1]
+}
+
+// Which migration adds each column, so the message can name the file to run
+// rather than leaving the user to guess.
+const COLUMN_MIGRATIONS = {
+  quests: 'migration-garden-quests.sql',
+  share_code: 'migration-garden-share.sql',
+  daily: 'migration-garden-progress.sql',
+  streak: 'migration-garden-progress.sql',
+  stats: 'migration-garden-progress.sql',
+  achievements: 'migration-garden-progress.sql',
+}
+
+export class MissingColumnError extends Error {
+  constructor(column) {
+    const file = COLUMN_MIGRATIONS[column]
+    super(
+      `The database is missing its '${column}' column`
+      + (file ? `. Run ${file} in the Supabase SQL editor.` : '.')
+    )
+    this.name = 'MissingColumnError'
+    this.column = column
+    this.migration = file || null
+  }
+}
+
+// An upper bound on the retry loop in `save`. There are only a handful of
+// columns a migration can add, and a loop that can't terminate is worse than a
+// write that gives up.
+const MAX_MISSING_COLUMNS = 8
+
 const DEFAULT_STATE = {
   coins: 0,
   seeds: 0,
@@ -115,6 +156,10 @@ export function GardenProvider({ children }) {
   const [flowers, setFlowers] = useState([])
   const [clouds, setClouds] = useState([])
   const [ready, setReady] = useState(false)
+  // Columns this database turned out not to have, learned from failed writes.
+  // Lets the rest of the garden keep working against a schema that's behind,
+  // and lets the features that need those columns say so plainly.
+  const [missingColumns, setMissingColumns] = useState([])
   const isDev = isDevUser(user?.email)
   const [devOpen, setDevOpen] = useState(false)
   // Signals the on-screen cloud to replay an animation, and records what each
@@ -133,6 +178,22 @@ export function GardenProvider({ children }) {
       supabase.from('garden_flowers').select('*').eq('user_id', user.id),
     ])
     const base = rows || { user_id: user.id, ...DEFAULT_STATE }
+
+    // A select('*') against a table that's behind on migrations simply returns
+    // a row without those keys, so the gap can be spotted on load rather than
+    // waiting for a write to fail. That's what lets the quest strip explain
+    // itself before you press Claim instead of after.
+    if (rows) {
+      const absent = Object.keys(DEFAULT_STATE).filter(k => !(k in rows))
+      if (absent.length) {
+        setMissingColumns(prev => [...new Set([...prev, ...absent])])
+        console.warn(
+          `[trakkit] garden_state is missing: ${absent.join(', ')}. `
+          + 'Run the outstanding migration-garden-*.sql in the Supabase SQL editor.'
+        )
+      }
+    }
+
     const backfilled = backfillDiscovered(base, flowerRows)
     setState(backfilled ? { ...base, discovered: backfilled } : base)
     setFlowers(await rescueParked(flowerRows || []))
@@ -155,15 +216,51 @@ export function GardenProvider({ children }) {
     const next = { ...(stateRef.current || DEFAULT_STATE), ...patch, user_id: user.id }
     setState(next)
     const { user_id, ...fields } = next
-    const { error } = await supabase
-      .from('garden_state')
-      .upsert({ user_id, ...fields, updated_at: new Date().toISOString() })
-    if (error) {
+
+    // Drop columns this database doesn't have yet, but only ones this write
+    // isn't actually changing.
+    //
+    // The upsert sends the whole row, so a single un-run migration used to
+    // fail *every* garden write — finishing a task, earning coins, the streak,
+    // all of it — because the row happened to carry one unknown field. Those
+    // writes weren't touching the new column; it was just along for the ride.
+    //
+    // A write that really does change a missing column is a different matter
+    // and still fails. Dropping it would be worse than the error: claiming a
+    // quest would pay the coins (that column exists) without recording the
+    // claim, so the same quest could be claimed again after a reload.
+    const payload = { ...fields }
+    for (const col of missingColumns) {
+      if (!(col in patch)) delete payload[col]
+    }
+
+    // Each attempt can only learn about one missing column — PostgREST reports
+    // the first it hits — so this loops rather than trying once.
+    for (let attempt = 0; attempt <= MAX_MISSING_COLUMNS; attempt++) {
+      const { error } = await supabase
+        .from('garden_state')
+        .upsert({ user_id, ...payload, updated_at: new Date().toISOString() })
+      if (!error) return
+
+      const column = missingColumnFrom(error)
+      if (column && !(column in patch) && column in payload) {
+        delete payload[column]
+        setMissingColumns(prev => (prev.includes(column) ? prev : [...prev, column]))
+        console.warn(
+          `[trakkit] garden_state has no '${column}' column — skipping it. `
+          + 'Run the matching migration-garden-*.sql in the Supabase SQL editor.'
+        )
+        continue
+      }
+
+      // `setState` above was optimistic, so a write that isn't going to happen
+      // has to be pulled back to what the database actually holds — otherwise
+      // a failed claim leaves the coins on screen until the next reload.
       console.error('[trakkit] garden save failed', error.message)
       load()
-      throw error
+      throw column ? new MissingColumnError(column) : error
     }
-  }, [user, load])
+  }, [user, load, missingColumns])
 
   // --- progress: caps, streak, stats, achievements -------------------------
 
@@ -744,7 +841,7 @@ export function GardenProvider({ children }) {
   const value = {
     state, flowers, ready, seeds: SEEDS,
     quests: questView(state, todayBucket(state?.daily)),
-    claimQuest,
+    claimQuest, missingColumns,
     devResetOnboarding, devResetQuests, devCompleteQuests, devShowStreak,
     spawnCloud, rewardTaskAdded, rewardTaskDone, rewardDoingCleared, notify, setQuietMode, completeOnboarding, buyPacket, openPacket, plantSeed, placeFlower, moveFlower, sellGrown, sellPlanted, unlockSeed, expandGarden,
     isDev, devOpen, openDevPanel: () => setDevOpen(true),

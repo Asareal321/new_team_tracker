@@ -1766,11 +1766,18 @@ function questLine(quests) {
 }
 
 function QuestStrip() {
-  const { quests, claimQuest, ready } = useGarden()
+  const { quests, claimQuest, ready, missingColumns } = useGarden()
   const [busy, setBusy] = useState(null)
   const [error, setError] = useState('')
 
   if (!ready || !quests?.length) return null
+
+  // Claims are recorded in garden_state.quests. Without that column a claim
+  // would pay out and not be recorded, so the button is off rather than
+  // failing on press — and the strip says what to run, since "could not find
+  // the 'quests' column in the schema cache" is a message for whoever owns the
+  // database, not for whoever is looking at a rabbit.
+  const unmigrated = missingColumns?.includes('quests')
 
   async function claim(key) {
     setBusy(key)
@@ -1788,7 +1795,15 @@ function QuestStrip() {
         <span className="qs-line">{questLine(quests)}</span>
       </div>
 
-      {error && <p className="qs-error">{error}</p>}
+      {unmigrated ? (
+        <p className="qs-error">
+          Quests can’t be collected yet — the garden’s database is missing its
+          <code> quests </code> column. Run <code>migration-garden-quests.sql</code> in the
+          Supabase SQL editor, then reload. Progress below still counts.
+        </p>
+      ) : error ? (
+        <p className="qs-error">{error}</p>
+      ) : null}
 
       <div className="qs-list">
         {quests.map(q => (
@@ -1811,7 +1826,12 @@ function QuestStrip() {
               {q.claimed ? (
                 <span className="qs-state">Claimed</span>
               ) : (
-                <button className="qs-claim" disabled={!q.claimable || busy === q.key} onClick={() => claim(q.key)}>
+                <button
+                  className="qs-claim"
+                  disabled={!q.claimable || unmigrated || busy === q.key}
+                  title={unmigrated ? 'Needs migration-garden-quests.sql' : undefined}
+                  onClick={() => claim(q.key)}
+                >
                   {busy === q.key ? '…' : 'Claim'}
                 </button>
               )}

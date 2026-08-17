@@ -2413,6 +2413,16 @@
   background: var(--red-bg);
   border-radius: var(--r-sm);
   padding: 5px 8px;
+  line-height: 1.5;
+}
+/* A filename in running prose. Set apart so the thing to go and run is the
+   thing the eye lands on. */
+.qs-error code {
+  font-family: var(--bb-num);
+  font-size: 0.95em;
+  background: var(--bb-surface);
+  border-radius: 3px;
+  padding: 0 4px;
 }
 
 @media (prefers-reduced-motion: reduce) {
