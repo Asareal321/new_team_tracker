@@ -71,3 +71,23 @@
     100%    { opacity: 0; }
   }
 }
+
+/* Noticing you. A held pose rather than a loop — he perks up and stays there
+   while the cursor is on him, so it reads as attention and not as a fidget.
+   `forwards` is what holds it; the idle breathe resumes when the class goes. */
+.trak.is-alert { animation: trak-perk 260ms ease-out forwards; }
+@keyframes trak-perk {
+  from { transform: translateY(0) scale(1); }
+  to   { transform: translateY(-3px) scale(1.035); }
+}
+.trak.is-alert .trak-ears { animation: trak-ears-perk 260ms ease-out forwards; }
+@keyframes trak-ears-perk {
+  from { transform: rotate(0deg) scaleY(1); }
+  to   { transform: rotate(-3deg) scaleY(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The eyes still come up to meet you — that part is markup, not motion —
+     but he doesn't lift or stretch. */
+  .trak.is-alert, .trak.is-alert .trak-ears { animation: none; }
+}

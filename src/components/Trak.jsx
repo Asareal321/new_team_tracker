@@ -27,6 +27,8 @@ const EYES = {
   point: { left: 'dot',  right: 'dot',  brow: -2 },
   think: { left: 'look', right: 'look', brow: -3 },
   wink:  { left: 'arc',  right: 'dot',  brow: 0 },
+  // Noticing you. Eyes up, and the ears go with them (see Trak.css).
+  alert: { left: 'look', right: 'look', brow: -1 },
 }
 
 function Eye({ kind, x }) {
@@ -56,6 +58,9 @@ function Eye({ kind, x }) {
 export default function Trak({ mood = 'idle', size = 96, className = '', pettable = false }) {
   const [pets, setPets] = useState(0)
   const [petting, setPetting] = useState(false)
+  // Keyboard focus counts as noticing you — otherwise he only ever reacts to
+  // a mouse, and the pet button is reachable by tab.
+  const [near, setNear] = useState(false)
   const timer = useRef(null)
   useEffect(() => () => clearTimeout(timer.current), [])
 
@@ -66,14 +71,15 @@ export default function Trak({ mood = 'idle', size = 96, className = '', pettabl
     timer.current = setTimeout(() => setPetting(false), 640)
   }
 
-  // Being petted overrides whatever he was doing, then hands the pose back.
-  const shown = petting ? 'happy' : mood
+  // Being petted beats noticing you, which beats whatever he was doing. Each
+  // hands the pose back when it's over.
+  const shown = petting ? 'happy' : near ? 'alert' : mood
   const eyes = EYES[shown] || EYES.idle
   const pointing = shown === 'point'
 
   const art = (
     <svg
-      className={`trak trak-${shown}${petting ? ' is-petted' : ''} ${className}`}
+      className={`trak trak-${shown}${petting ? ' is-petted' : near ? ' is-alert' : ''} ${className}`}
       width={size}
       height={size}
       viewBox="0 0 100 100"
@@ -139,7 +145,17 @@ export default function Trak({ mood = 'idle', size = 96, className = '', pettabl
   if (!pettable) return art
 
   return (
-    <button type="button" className="trak-hug" onClick={pet} title="Pet Trak" aria-label="Pet Trak">
+    <button
+      type="button"
+      className="trak-hug"
+      onClick={pet}
+      onMouseEnter={() => setNear(true)}
+      onMouseLeave={() => setNear(false)}
+      onFocus={() => setNear(true)}
+      onBlur={() => setNear(false)}
+      title="Pet Trak"
+      aria-label="Pet Trak"
+    >
       {art}
       {/* Keyed on the count so a second pet restarts the animation rather than
           being swallowed by the first one still running. */}
