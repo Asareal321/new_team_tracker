@@ -83,6 +83,13 @@ function bandFull(tasks, status, exceptId) {
   return tasks.filter(t => t.status === status && t.id !== exceptId).length >= limit
 }
 
+// A capture that couldn't land where it was aimed. Said out loud rather than
+// silently: a task that isn't where you put it is worse than one that was
+// refused, unless you're told.
+function divertNotice(status) {
+  return `${MOVE_LABELS[status]} is full — filed to the braindump instead.`
+}
+
 function bandFullNotice(status) {
   return `${MOVE_LABELS[status]} holds ${BAND_LIMITS[status]}.`
     + (status === 'todo'
@@ -164,6 +171,9 @@ export default function TaskBoard({
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [formNotice, setFormNotice] = useState('')
   const titleRef = useRef(null)
+  // The garden's toast layer, so a diverted capture is still announced once the
+  // drawer has closed behind it.
+  const { notify } = useGarden() || {}
 
   // People filter: which teammates' tasks to show. Default = only me (tasks
   // I'm assigned to). "Everyone" shows the whole team board.
@@ -199,10 +209,19 @@ export default function TaskBoard({
     if (!form.title.trim()) return
     const { assigneeIds, ...rest } = { ...form, ...overrides }
     const payload = { ...rest, priority: rest.priority || 'medium', due_date: rest.due_date || null, project_id: rest.project_id || null }
-    // The limits hold on create and edit too, or the form is the way around them.
+    // The limits hold on create and edit too, or the form is the way around
+    // them — but a full board must never refuse a capture. Editing a task into
+    // a full band is a deliberate move and still gets stopped; a NEW task with
+    // nowhere to land goes to the braindump, which exists for exactly this.
+    let divertedTo = null
     if (bandFull(tasks, payload.status, editingId)) {
-      setFormNotice(bandFullNotice(payload.status))
-      return
+      if (editingId) {
+        setFormNotice(bandFullNotice(payload.status))
+        return
+      }
+      divertedTo = payload.status
+      payload.status = BRAINDUMP
+      notify?.(divertNotice(divertedTo), 'capped')
     }
     if (editingId) {
       await onUpdate(editingId, payload)
@@ -215,7 +234,7 @@ export default function TaskBoard({
     if (keepGoing && !editingId) {
       setForm(f => ({ ...defaultForm(), priority: f.priority, status: f.status, project_id: f.project_id, recurrence: f.recurrence }))
       setDatePickerOpen(false)
-      setFormNotice('Added — keep typing.')
+      setFormNotice(divertedTo ? divertNotice(divertedTo) : 'Added — keep typing.')
       titleRef.current?.focus()
       return
     }

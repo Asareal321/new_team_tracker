@@ -3,7 +3,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../auth/AuthContext'
 import { useTeam } from '../context/TeamContext'
 import { useGarden } from '../context/GardenContext'
-import TaskBoard from '../components/TaskBoard'
+import TaskBoard, { MAX_UP_NEXT } from '../components/TaskBoard'
 import PersonalProjectsModal from '../components/PersonalProjectsModal'
 import Onboarding from '../components/Onboarding'
 
@@ -261,11 +261,15 @@ export default function BoardPage() {
   const respawnRecurring = useCallback(async (task) => {
     if (!task?.recurrence) return
     const id = crypto.randomUUID()
+    // The next occurrence lands in Up next unless Up next is full, in which
+    // case it waits in the braindump — the same rule a typed task follows. A
+    // repeat that quietly overfilled the band would make the limit a lie.
+    const upNextFull = tasks.filter(t => t.status === 'todo').length >= MAX_UP_NEXT
     const { error } = await supabase.from('tasks').insert({
       id,
       title: task.title,
       notes: task.notes || '',
-      status: 'todo',
+      status: upNextFull ? 'braindump' : 'todo',
       priority: task.priority,
       due_date: nextDueDate(task),
       project_id: task.project_id,
@@ -285,7 +289,7 @@ export default function BoardPage() {
       )
     }
     await fetchTasks()
-  }, [nextDueDate, fetchTasks])
+  }, [nextDueDate, fetchTasks, tasks])
 
   // Finishing a task banks its seed and coins, and on a personal board also
   // earns a rain cloud. Both wait until the completion modal is out of the way
