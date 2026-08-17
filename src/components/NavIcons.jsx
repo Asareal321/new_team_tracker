@@ -24,46 +24,46 @@ function Icon({ children, label }) {
   )
 }
 
-// Taskboard — an easel holding a checklist.
+// Taskboard — a clipboard with its list.
 export function IconBoard() {
   return (
     <Icon label="Taskboard">
-      <rect x="2.6" y="2.6" width="18.8" height="2.6" rx="1.3" />
-      <path d="M4.4 5.2 v9.1 h15.2 v-9.1" />
-      <rect x="2.6" y="14.3" width="18.8" height="2.6" rx="1.3" />
-      {/* Legs: two splayed, one centre, with the braces the reference draws. */}
-      <path d="M7.4 16.9 L5.4 21.6 M16.6 16.9 L18.6 21.6 M12 16.9 v3.1" />
-      <path d="M12 20 L6.2 22 M12 20 L17.8 22" />
-      {/* Two ticked rows. */}
-      <path d="M6.6 8.6 l1.3 1.3 l2.4-2.9" />
-      <path d="M12.6 7.6 h5.2 M12.6 10 h5.2" />
-      <path d="M6.6 12.4 l1.3 1.3 l2.4-2.9" />
-      <path d="M12.6 11.4 h5.2 M12.6 13.8 h5.2" />
+      {/* The board's top edge breaks either side of the clip. */}
+      <path d="M8.7 4.4 H4.5 V20.6 H19.5 V4.4 H15.3" />
+      {/* The clip: a pill with a bump, and the rivet in it. */}
+      <path d="M9.2 6.2 a1.8 1.8 0 0 1 0-3.6 a2.9 2.9 0 0 1 5.6 0 a1.8 1.8 0 0 1 0 3.6 Z" />
+      <circle cx="12" cy="3.3" r="0.75" />
+      {/* Four bulleted lines. */}
+      <circle cx="7.7" cy="9.6" r="0.85" fill="currentColor" stroke="none" />
+      <path d="M10 9.6 h6.6" />
+      <circle cx="7.7" cy="12.6" r="0.85" fill="currentColor" stroke="none" />
+      <path d="M10 12.6 h6.6" />
+      <circle cx="7.7" cy="15.6" r="0.85" fill="currentColor" stroke="none" />
+      <path d="M10 15.6 h6.6" />
+      <circle cx="7.7" cy="18.1" r="0.85" fill="currentColor" stroke="none" />
+      <path d="M10 18.1 h6.6" />
     </Icon>
   )
 }
 
-// Deadlines — a wire-bound calendar with something the matter.
+// Deadlines — a clock, with something the matter.
 export function IconDeadlines() {
   return (
     <Icon label="Deadlines">
-      {/* The badge overlaps the calendar, so the calendar is masked where the
-          badge sits — the alternative is two outlines crossing each other. */}
+      {/* The badge sits over the clock's lower right, so the clock is masked
+          where it lands rather than the two outlines crossing. */}
       <mask id="ni-deadline-cut">
         <rect x="0" y="0" width="24" height="24" fill="#fff" />
-        <circle cx="18.1" cy="17.9" r="5.6" fill="#000" />
+        <circle cx="16.8" cy="16.8" r="6.4" fill="#000" />
       </mask>
       <g mask="url(#ni-deadline-cut)">
-        <rect x="2.4" y="5" width="16" height="15.4" rx="1.6" />
-        <path d="M5 5 V3.4 a1.3 1.3 0 1 0-2.6 0 M9 5 V3.4 a1.3 1.3 0 1 0-2.6 0 M13 5 V3.4 a1.3 1.3 0 1 0-2.6 0 M17 5 V3.4 a1.3 1.3 0 1 0-2.6 0" />
-        <rect x="4.6" y="7.6" width="11.6" height="2" rx="0.6" />
-        <path d="M5 12.2 h1.9 M8.6 12.2 h1.9 M12.2 12.2 h1.9 M15.8 12.2 h0.6" />
-        <path d="M5 15.6 h1.9 M8.6 15.6 h1.9 M12.2 15.6 h1.9" />
-        <path d="M5 18.4 h1.9 M8.6 18.4 h1.9" />
+        <circle cx="10" cy="10" r="7.4" />
       </g>
-      <circle cx="18.1" cy="17.9" r="4.3" />
-      <path d="M18.1 15.7 v2.4" />
-      <circle cx="18.1" cy="20.2" r="0.5" fill="currentColor" stroke="none" />
+      {/* One bent stroke: down from twelve, then out to the left. */}
+      <path d="M10 5.2 V10 H6.3" />
+      <circle cx="16.8" cy="16.8" r="5" />
+      <path d="M16.8 14.4 v2.6" />
+      <circle cx="16.8" cy="19.3" r="0.6" fill="currentColor" stroke="none" />
     </Icon>
   )
 }
