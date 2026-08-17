@@ -2175,8 +2175,10 @@
 .td-notes { font-size: var(--fs-sm); line-height: 1.55; color: var(--text-2); white-space: pre-wrap; }
 .td-empty { font-size: var(--fs-sm); color: var(--text-4); }
 
+/* No border of its own: the tinted panel is enough to say "type here", and a
+   hard rectangle around a rounded panel read as a box inside a box. */
 .td-composer {
-  border: 1px solid var(--accent);
+  border: none;
   border-radius: var(--r-sm);
   padding: 8px;
   display: flex;
@@ -2193,6 +2195,14 @@
   font-family: inherit;
   font-size: var(--fs-sm);
   color: var(--text-1);
+}
+/* The field is autofocused when the panel opens, so the browser's own focus
+   ring would greet you every time — square-cornered, and drawn around the
+   textarea rather than around the panel it sits in. */
+.td-composer textarea:focus,
+.td-composer textarea:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .td-day { display: flex; flex-direction: column; gap: 4px; }
