@@ -2241,10 +2241,10 @@
 
 /* --- the quest strip ------------------------------------------------------ */
 
-/* One card between the greenhouse and the bands. This is the only place quests
-   appear, so it carries the whole explanation: what each asks, what it pays,
-   and the two rules underneath. Untinted — the greenhouse strip is the board's
-   one green card, and a second directly under it reads as one tall block. */
+/* One card at the foot of the board, under Up next. This is the only place
+   quests appear, so it carries the whole explanation: what each asks, what it
+   pays, and the two rules underneath. Untinted — the greenhouse strip is the
+   board's one green card. */
 .quest-strip {
   background: var(--bg-surface);
   border: 1px solid var(--border);
