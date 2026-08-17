@@ -1714,7 +1714,6 @@
   display: block;
   width: 100%;
   text-align: left;
-  margin-top: 4px;
   padding: 5px 8px;
   border: 1px dashed var(--border);
   border-radius: var(--r-sm);
