@@ -189,10 +189,10 @@ export default function TaskBoard({
   }
 
   // Quick capture: keeping the drawer open after an add lets you type the next
-  // task straight away. The chips (priority, sprint, due date) deliberately
+  // task straight away. The chips (priority, project, due date) deliberately
   // survive — a capture run is usually several tasks of the same shape.
   // `overrides` lets a control commit a value *and* submit in the same click —
-  // the sprint pills do exactly that, and reading `form` here would still see
+  // the project pills do exactly that, and reading `form` here would still see
   // the pre-click state.
   async function handleSubmit(e, keepGoing = false, overrides = {}) {
     e.preventDefault()
@@ -330,7 +330,7 @@ export default function TaskBoard({
     )
   }), [tasks, currentUserId])
 
-  // Capture drops a bare title into the pile. No priority, no date, no sprint —
+  // Capture drops a bare title into the pile. No priority, no date, no project —
   // the whole point is that it costs one line and no decisions.
   async function captureToDump(title) {
     await onAdd({
@@ -444,14 +444,14 @@ export default function TaskBoard({
                 onChange={e => { setForm(f => ({ ...f, due_date: e.target.value })); setDatePickerOpen(false) }} />
             )}
 
-            {/* On a new task the sprint pills ARE the submit: picking where it
+            {/* On a new task the project pills ARE the submit: picking where it
                 goes is the last decision, so it may as well be the one that
-                files the card. "No sprint" is always offered — including when
-                there are no sprints at all, which is otherwise a dead end.
+                files the card. "No project" is always offered — including when
+                there are no projects at all, which is otherwise a dead end.
                 While editing they stay a plain selector, because saving an
                 edit shouldn't be a side effect of retagging it. */}
             <div className="qc-projects">
-              <span className="qc-plabel">{editingId ? 'Sprint' : 'Add to'}</span>
+              <span className="qc-plabel">{editingId ? 'Project' : 'Add to'}</span>
               <div className="qc-pills">
                 {projects.map(p => (
                   <button
@@ -481,7 +481,7 @@ export default function TaskBoard({
                     if (editingId) setForm(f => ({ ...f, project_id: null }))
                     else handleSubmit(e, false, { project_id: null })
                   }}
-                >No sprint</button>
+                >No project</button>
               </div>
             </div>
             {formNotice && <p className="form-notice">{formNotice}</p>}
@@ -489,7 +489,7 @@ export default function TaskBoard({
               <button type="button" className="btn-ghost" onClick={cancelForm}>Cancel</button>
               {editingId
                 ? <button type="submit" className="btn-primary">Save</button>
-                : <span className="form-actions-hint">Pick a sprint above to add it</span>}
+                : <span className="form-actions-hint">Pick a project above to add it</span>}
             </div>
           </form>
         </div>
@@ -978,9 +978,6 @@ function AssignmentResponseForm({ mode, busy, onCancel, onSubmit }) {
 
 // ─── Priority zone ───────────────────────────────────────────────────────────
 
-// Cluster a zone's tasks by sprint (project), preserving task order and putting
-// the "No sprint" bucket last. Returns null when there are no real sprints to
-// group by (e.g. a personal board), so the zone renders as a flat list.
 function Band({ status, label, tasks, limit, isFull, onBlocked, resolveAssignees, projectName, updatesForTask, teamMembers, onEdit, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, onUpdateAssignees, draftUpdates, setDraft, onTaskDone }) {
   const { setNodeRef, isOver } = useDroppable({ id: `col-${status}` })
   const atLimit = limit != null && tasks.length >= limit
@@ -993,8 +990,8 @@ function Band({ status, label, tasks, limit, isFull, onBlocked, resolveAssignees
   const [open, setOpen] = useState(false)
   const collapsed = isTally && !open
 
-  // Up next used to cluster under sprint headings. Every row now carries its
-  // sprint as a coloured pill and wears the same colour as its outline, which
+  // Up next used to cluster under project headings. Every row now carries its
+  // project as a coloured pill and wears the same colour as its outline, which
   // says the same thing without spending a heading on it — and keeps the band
   // in two columns.
   const items = tasks.map(t => t.id)
@@ -1002,7 +999,7 @@ function Band({ status, label, tasks, limit, isFull, onBlocked, resolveAssignees
   const renderRow = task => (
     <SortableTaskRow key={task.id} task={task}
       assignees={resolveAssignees(task)}
-      project={task.project_id ? { id: task.project_id, name: projectName(task.project_id) || 'Unknown sprint' } : null}
+      project={task.project_id ? { id: task.project_id, name: projectName(task.project_id) || 'Unknown project' } : null}
       updates={updatesForTask(task.id)}
       teamMembers={teamMembers}
       onEdit={() => onEdit(task)}
@@ -1111,7 +1108,7 @@ function rowChip(task, kind) {
   return null
 }
 
-// A sprint is worth a colour, not a heading: the pill names it and the row
+// A project is worth a colour, not a heading: the pill names it and the row
 // wears the same colour as its outline.
 function rowStyle(project) {
   return project ? { '--sprint': projectDotColor(project.id) } : undefined
@@ -1177,7 +1174,7 @@ function TaskRow({
               )}
               {task.title}
             </span>
-            {/* Date, then who has it, then which sprint — and each is simply
+            {/* Date, then who has it, then which project — and each is simply
                 absent when there's nothing to say. A row that has to announce
                 "no date, unassigned" is spending two slots on nothing. */}
             <span className="row-meta">
@@ -1295,7 +1292,7 @@ function TaskDetail({
                   task is what the composer's buttons and the row's chevrons
                   are for, so only the two that change the task itself are
                   left — and Edit is the only route to its due date, priority
-                  and sprint. */}
+                  and project. */}
               {isArchived && (
                 <button className="td-action" onClick={() => { onStatusChange('done'); onClose() }}>Unarchive</button>
               )}

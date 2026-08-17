@@ -102,7 +102,7 @@ export default function AccountPage() {
           <strong>Trak&rsquo;s tour</strong>
           <p className="dev-card-hint">
             The rabbit&rsquo;s walkthrough again — how the bands and their limits work,
-            sprints and projects, and the whole garden loop. Nothing is planted or
+            projects, and the whole garden loop. Nothing is planted or
             changed the second time round.
           </p>
         </div>

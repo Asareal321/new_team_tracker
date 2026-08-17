@@ -115,7 +115,6 @@ export default function BoardPage() {
   const [tasks, setTasks] = useState([])
   const [teamMembers, setTeamMembers] = useState([])
   const [projects, setProjects] = useState([])
-  const [projectGroups, setProjectGroups] = useState([])
   const [projectMembers, setProjectMembers] = useState([])
   const [taskUpdates, setTaskUpdates] = useState([])
   const [loading, setLoading] = useState(true)
@@ -193,43 +192,25 @@ export default function BoardPage() {
     let query = supabase.from('projects').select('*').order('created_at', { ascending: true })
     query = currentTeamId ? query.eq('team_id', currentTeamId) : query.is('team_id', null).eq('created_by', user.id)
     const { data, error } = await query
-    if (error) console.error('[trakkit] Failed to load sprints', error.message)
+    if (error) console.error('[trakkit] Failed to load projects', error.message)
     setProjects(data || [])
   }, [currentTeamId, user])
 
-  const fetchProjectGroups = useCallback(async () => {
-    let query = supabase.from('project_groups').select('*').order('created_at', { ascending: true })
-    query = currentTeamId ? query.eq('team_id', currentTeamId) : query.is('team_id', null).eq('created_by', user.id)
-    const { data, error } = await query
-    if (error) console.error('[trakkit] Failed to load projects — is the DB migration applied?', error.message)
-    setProjectGroups(data || [])
-  }, [currentTeamId, user])
-
-  const fetchProjectMembers = useCallback(async () => {
-    if (!currentTeamId) { setProjectMembers([]); return }
-    const { data } = await supabase
-      .from('project_members')
-      .select('project_id, user_id, projects!inner(team_id)')
-      .eq('projects.team_id', currentTeamId)
-    setProjectMembers((data || []).map(r => ({ project_id: r.project_id, user_id: r.user_id })))
-  }, [currentTeamId])
-
   useEffect(() => {
     setLoading(true)
-    Promise.all([fetchTasks(), fetchTeamMembers(), fetchProjects(), fetchProjectGroups(), fetchProjectMembers()]).then(() => setLoading(false))
+    Promise.all([fetchTasks(), fetchTeamMembers(), fetchProjects(), fetchProjectMembers()]).then(() => setLoading(false))
 
     const channel = supabase
       .channel(`board-${currentTeamId ?? 'personal'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchTasks)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'task_assignees' }, fetchTasks)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'projects', filter: currentTeamId ? `team_id=eq.${currentTeamId}` : undefined }, fetchProjects)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'project_groups', filter: currentTeamId ? `team_id=eq.${currentTeamId}` : undefined }, fetchProjectGroups)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'project_members' }, fetchProjectMembers)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'task_updates' }, fetchTasks)
       .subscribe()
 
     return () => supabase.removeChannel(channel)
-  }, [fetchTasks, fetchTeamMembers, fetchProjects, fetchProjectGroups, fetchProjectMembers, currentTeamId])
+  }, [fetchTasks, fetchTeamMembers, fetchProjects, fetchProjectMembers, currentTeamId])
 
   async function addTask({ assigneeIds = [], ...task }) {
     const samePriority = tasks.filter(t => t.priority === task.priority && t.status === task.status)
@@ -399,33 +380,6 @@ export default function BoardPage() {
     if (error) { fetchProjects(); throw error }
   }
 
-  async function addProjectGroup(name) {
-    const id = crypto.randomUUID()
-    const row = { id, team_id: currentTeamId, name, created_by: user.id, created_at: new Date().toISOString() }
-    setProjectGroups(prev => [...prev, row])
-    const { error } = await supabase.from('project_groups').insert(row)
-    if (error) { setProjectGroups(prev => prev.filter(g => g.id !== id)); throw error }
-  }
-
-  async function updateProjectGroup(id, name) {
-    setProjectGroups(prev => prev.map(g => g.id === id ? { ...g, name } : g))
-    const { error } = await supabase.from('project_groups').update({ name }).eq('id', id)
-    if (error) { fetchProjectGroups(); throw error }
-  }
-
-  async function deleteProjectGroup(id) {
-    setProjectGroups(prev => prev.filter(g => g.id !== id))
-    setProjects(prev => prev.map(p => p.group_id === id ? { ...p, group_id: null } : p))
-    const { error } = await supabase.from('project_groups').delete().eq('id', id)
-    if (error) { fetchProjectGroups(); fetchProjects(); throw error }
-  }
-
-  async function setSprintGroup(sprintId, groupId) {
-    setProjects(prev => prev.map(p => p.id === sprintId ? { ...p, group_id: groupId } : p))
-    const { error } = await supabase.from('projects').update({ group_id: groupId }).eq('id', sprintId)
-    if (error) { fetchProjects(); throw error }
-  }
-
   if (loading) return <div className="loading">Loading tasks…</div>
 
   const teamName = currentTeamId ? (teams.find(t => t.id === currentTeamId)?.name || 'Team') : 'Personal'
@@ -436,7 +390,7 @@ export default function BoardPage() {
         <h1 className="board-hero-title">{teamName} Taskboard</h1>
         {!currentTeamId && (
           <button className="btn-ghost btn-sm" onClick={() => setShowProjectsManager(true)}>
-            Projects &amp; sprints
+            Projects
           </button>
         )}
       </div>
@@ -481,14 +435,14 @@ export default function BoardPage() {
       {gardenReady && garden && !garden.onboarded && !currentTeamId && (
         <Onboarding
           displayName={user?.user_metadata?.display_name}
-          onFinish={async ({ seedKey, sprintName, firstTask }) => {
-            // A named sprint is created for real, so the sprint the tour just
-            // explained is on the board when the tour closes. If creating it
-            // fails (the personal-projects migration hasn't run), the first
+          onFinish={async ({ seedKey, projectName, firstTask }) => {
+            // A named project is created for real, so the project the tour
+            // just explained is on the board when the tour closes. If creating
+            // it fails (the personal-projects migration hasn't run), the first
             // task still lands — unfiled beats lost.
             let projectId = null
-            if (sprintName) {
-              try { projectId = await addProject({ name: sprintName, status: 'active', group_id: null }) }
+            if (projectName) {
+              try { projectId = await addProject({ name: projectName, status: 'active' }) }
               catch { projectId = null }
             }
             if (firstTask) {
@@ -503,14 +457,9 @@ export default function BoardPage() {
       {showProjectsManager && (
         <PersonalProjectsModal
           projects={projects}
-          projectGroups={projectGroups}
-          onAddSprint={addProject}
-          onUpdateSprint={updateProject}
-          onDeleteSprint={deleteProject}
-          onAddGroup={addProjectGroup}
-          onUpdateGroup={updateProjectGroup}
-          onDeleteGroup={deleteProjectGroup}
-          onSetSprintGroup={setSprintGroup}
+          onAddProject={addProject}
+          onUpdateProject={updateProject}
+          onDeleteProject={deleteProject}
           onClose={() => setShowProjectsManager(false)}
         />
       )}

@@ -105,7 +105,7 @@ export default function DashboardPage() {
     return { avg: Math.round(avg * 10) / 10, stalest }
   }, [activeTasks])
 
-  // Full sortable list — every active task with its days-outstanding, sprint,
+  // Full sortable list — every active task with its days-outstanding, project,
   // and assignee(s), for the "Days outstanding" table below the summary cards.
   const outstandingRows = useMemo(() => {
     const rows = activeTasks.map(t => {
@@ -117,7 +117,7 @@ export default function DashboardPage() {
       return {
         ...t,
         age: daysAgo(t.updated_at),
-        sprintName: projectName(t.project_id),
+        projectLabel: projectName(t.project_id),
         assigneeLabel,
       }
     })
@@ -126,7 +126,7 @@ export default function DashboardPage() {
       let av, bv
       switch (sortKey) {
         case 'title':    av = a.title.toLowerCase();     bv = b.title.toLowerCase(); break
-        case 'sprint':   av = a.sprintName.toLowerCase(); bv = b.sprintName.toLowerCase(); break
+        case 'project':  av = a.projectLabel.toLowerCase(); bv = b.projectLabel.toLowerCase(); break
         case 'assignee': av = a.assigneeLabel.toLowerCase(); bv = b.assigneeLabel.toLowerCase(); break
         default:         av = a.age; bv = b.age
       }
@@ -141,7 +141,7 @@ export default function DashboardPage() {
       setSortDir(d => (d === 'desc' ? 'asc' : 'desc'))
     } else {
       setSortKey(key)
-      setSortDir(key === 'title' || key === 'sprint' || key === 'assignee' ? 'asc' : 'desc')
+      setSortDir(key === 'title' || key === 'project' || key === 'assignee' ? 'asc' : 'desc')
     }
   }
 
@@ -313,7 +313,7 @@ export default function DashboardPage() {
             <thead>
               <tr>
                 <SortableHeader label="Task" col="title" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                <SortableHeader label="Sprint" col="sprint" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="dash-th-muted" />
+                <SortableHeader label="Project" col="project" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="dash-th-muted" />
                 <SortableHeader label="Assignee" col="assignee" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="dash-th-muted" />
                 <SortableHeader label="Days" col="age" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} align="right" />
               </tr>
@@ -325,7 +325,7 @@ export default function DashboardPage() {
                     <span className="stale-dot" style={{ background: colorFor(t.project_id || 'none') }} />
                     {t.title}
                   </td>
-                  <td className="dash-td-muted">{t.sprintName}</td>
+                  <td className="dash-td-muted">{t.projectLabel}</td>
                   <td className="dash-td-muted">{t.assigneeLabel}</td>
                   <td className="dash-td-age">
                     <span className={`stale-age${t.age >= 7 ? ' hot' : t.age >= 3 ? ' warm' : ''}`}>

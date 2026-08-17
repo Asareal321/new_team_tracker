@@ -362,7 +362,7 @@ export function GardenProvider({ children }) {
   }, [save])
 
   // Puts the account back to first-run so the real onboarding — the one that
-  // plants a seed, creates a sprint and writes a task — can be walked through
+  // plants a seed, creates a project and writes a task — can be walked through
   // again rather than only previewed. The growing slot is cleared with it,
   // because onboarding plants into that slot and would otherwise refuse.
   const devResetOnboarding = useCallback(() => save({

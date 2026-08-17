@@ -2,29 +2,26 @@ import { useState } from 'react'
 import { projectDotColor } from '../lib/projectColors'
 import './PersonalProjectsModal.css'
 
-// Lightweight projects/sprints manager for the Personal (no-team) board.
-// Teams get the full two-level Projects/Sprints UI on the Teams page; a solo
-// user has no such page, so this compact modal is the equivalent entry point
-// for creating the sprints (and optional project groupings) that tasks can
-// be assigned to.
+// Projects manager for the Personal (no-team) board.
+//
+// One level. This used to be two — sprints, grouped into projects — and the
+// grouping is gone: a solo board rarely has enough buckets to need buckets of
+// buckets, and the board only ever grouped by the lower level anyway. What was
+// called a sprint is now simply a project.
+//
+// The table is still `projects` and the column is still `group_id`; the column
+// is no longer read or written. See the note in TeamsPage for the same story.
 export default function PersonalProjectsModal({
-  projects, projectGroups,
-  onAddSprint, onUpdateSprint, onDeleteSprint,
-  onAddGroup, onUpdateGroup, onDeleteGroup,
-  onSetSprintGroup, onClose,
+  projects, onAddProject, onUpdateProject, onDeleteProject, onClose,
 }) {
-  const [newGroupName, setNewGroupName] = useState('')
-  const [newSprintName, setNewSprintName] = useState('')
-  const [newSprintGroup, setNewSprintGroup] = useState('')
-  const [editingGroupId, setEditingGroupId] = useState(null)
-  const [editingGroupName, setEditingGroupName] = useState('')
-  const [editingSprintId, setEditingSprintId] = useState(null)
-  const [editingSprintName, setEditingSprintName] = useState('')
+  const [newName, setNewName] = useState('')
+  const [editingId, setEditingId] = useState(null)
+  const [editingName, setEditingName] = useState('')
   const [error, setError] = useState('')
 
   // Any save can fail if the personal-projects migration hasn't run yet
-  // (projects.team_id / project_groups.team_id still NOT NULL). Surface that
-  // instead of the click doing nothing.
+  // (projects.team_id still NOT NULL). Surface that instead of the click doing
+  // nothing.
   async function run(fn) {
     setError('')
     try {
@@ -39,114 +36,52 @@ export default function PersonalProjectsModal({
     }
   }
 
-  async function handleAddGroup(e) {
+  async function handleAdd(e) {
     e.preventDefault()
-    const name = newGroupName.trim()
+    const name = newName.trim()
     if (!name) return
-    if (await run(() => onAddGroup(name))) setNewGroupName('')
+    if (await run(() => onAddProject({ name, status: 'active' }))) setNewName('')
   }
 
-  async function handleAddSprint(e) {
-    e.preventDefault()
-    const name = newSprintName.trim()
-    if (!name) return
-    if (await run(() => onAddSprint({ name, status: 'active', group_id: newSprintGroup || null }))) {
-      setNewSprintName('')
-      setNewSprintGroup('')
-    }
-  }
-
-  function startEditGroup(g) { setEditingGroupId(g.id); setEditingGroupName(g.name) }
-  async function saveEditGroup(id) {
-    const name = editingGroupName.trim()
-    setEditingGroupId(null)
-    if (name) await run(() => onUpdateGroup(id, name))
-  }
-
-  function startEditSprint(p) { setEditingSprintId(p.id); setEditingSprintName(p.name) }
-  async function saveEditSprint(id) {
-    const name = editingSprintName.trim()
-    setEditingSprintId(null)
-    if (name) await run(() => onUpdateSprint(id, { name }))
+  function startEdit(p) { setEditingId(p.id); setEditingName(p.name) }
+  async function saveEdit(id) {
+    const name = editingName.trim()
+    setEditingId(null)
+    if (name) await run(() => onUpdateProject(id, { name }))
   }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="ppm-modal" onClick={e => e.stopPropagation()}>
         <div className="ppm-head">
-          <h2>Projects &amp; sprints</h2>
+          <h2>Projects</h2>
           <button className="ppm-close" aria-label="Close" onClick={onClose}>✕</button>
         </div>
-        <p className="ppm-hint">Organize your tasks into sprints, and group sprints into projects.</p>
+        <p className="ppm-hint">Every task can belong to a project. Tasks without one are unfiled.</p>
 
         <section className="ppm-section">
-          <h3>Projects</h3>
-          {projectGroups.length === 0 && <p className="ppm-empty">No projects yet — group sprints together below.</p>}
-          <div className="ppm-list">
-            {projectGroups.map(g => {
-              const count = projects.filter(p => p.group_id === g.id).length
-              return (
-                <div key={g.id} className="ppm-row">
-                  <span className="ppm-dot" style={{ background: projectDotColor(g.id) }} />
-                  {editingGroupId === g.id ? (
-                    <input
-                      autoFocus className="ppm-inline-input" value={editingGroupName}
-                      onChange={e => setEditingGroupName(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && saveEditGroup(g.id)}
-                      onBlur={() => saveEditGroup(g.id)}
-                    />
-                  ) : (
-                    <span className="ppm-row-name">{g.name}</span>
-                  )}
-                  <span className="ppm-row-count">{count} sprint{count === 1 ? '' : 's'}</span>
-                  <button className="ppm-icon-btn" onClick={() => startEditGroup(g)} title="Rename">✎</button>
-                  <button className="ppm-icon-btn danger" onClick={() => run(() => onDeleteGroup(g.id))} title="Delete">✕</button>
-                </div>
-              )
-            })}
-          </div>
-          <form className="ppm-add-row" onSubmit={handleAddGroup}>
-            <input value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="New project name" />
-            <button type="submit" className="btn-primary btn-sm">+ Add</button>
-          </form>
-        </section>
-
-        <section className="ppm-section">
-          <h3>Sprints</h3>
-          {projects.length === 0 && <p className="ppm-empty">No sprints yet — add one below to start assigning tasks.</p>}
+          {projects.length === 0 && <p className="ppm-empty">No projects yet — add one below to start filing tasks.</p>}
           <div className="ppm-list">
             {projects.map(p => (
               <div key={p.id} className="ppm-row">
                 <span className="ppm-dot" style={{ background: projectDotColor(p.id) }} />
-                {editingSprintId === p.id ? (
+                {editingId === p.id ? (
                   <input
-                    autoFocus className="ppm-inline-input" value={editingSprintName}
-                    onChange={e => setEditingSprintName(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && saveEditSprint(p.id)}
-                    onBlur={() => saveEditSprint(p.id)}
+                    autoFocus className="ppm-inline-input" value={editingName}
+                    onChange={e => setEditingName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && saveEdit(p.id)}
+                    onBlur={() => saveEdit(p.id)}
                   />
                 ) : (
                   <span className="ppm-row-name">{p.name}</span>
                 )}
-                <select
-                  className="ppm-group-select"
-                  value={p.group_id || ''}
-                  onChange={e => run(() => onSetSprintGroup(p.id, e.target.value || null))}
-                >
-                  <option value="">No project</option>
-                  {projectGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                </select>
-                <button className="ppm-icon-btn" onClick={() => startEditSprint(p)} title="Rename">✎</button>
-                <button className="ppm-icon-btn danger" onClick={() => run(() => onDeleteSprint(p.id))} title="Delete">✕</button>
+                <button className="ppm-icon-btn" onClick={() => startEdit(p)} title="Rename">✎</button>
+                <button className="ppm-icon-btn danger" onClick={() => run(() => onDeleteProject(p.id))} title="Delete">✕</button>
               </div>
             ))}
           </div>
-          <form className="ppm-add-row" onSubmit={handleAddSprint}>
-            <input value={newSprintName} onChange={e => setNewSprintName(e.target.value)} placeholder="New sprint name" />
-            <select value={newSprintGroup} onChange={e => setNewSprintGroup(e.target.value)}>
-              <option value="">No project</option>
-              {projectGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </select>
+          <form className="ppm-add-row" onSubmit={handleAdd}>
+            <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="New project name" />
             <button type="submit" className="btn-primary btn-sm">+ Add</button>
           </form>
         </section>

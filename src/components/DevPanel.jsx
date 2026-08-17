@@ -17,7 +17,7 @@ export default function DevPanel({
   const [busy, setBusy] = useState(false)
   // 'setup' | 'replay' | null. A previewed tour writes nothing: its onFinish
   // just closes it, so the steps and their copy can be read through without
-  // planting a seed or creating a sprint every time.
+  // planting a seed or creating a project every time.
   const [preview, setPreview] = useState(null)
 
   async function run(fn) {
@@ -120,7 +120,7 @@ export default function DevPanel({
         <h4>Onboarding <span className="dev-note">preview writes nothing</span></h4>
         <p className="dev-hint">
           Preview walks the steps without saving. Reset clears the onboarded flag and the
-          growing slot, so the real first run — seed, sprint, first task — happens again
+          growing slot, so the real first run — seed, project, first task — happens again
           the next time the board loads.
         </p>
         <div className="dev-row">

@@ -11,7 +11,7 @@ import './Onboarding.css'
 // The tour, narrated by Trak.
 //
 // It runs in two modes. `setup` is the first run: it plants a seed, names a
-// first sprint and writes a first task, so the board you land on is already
+// first project and writes a first task, so the board you land on is already
 // yours rather than a set of empty bands. `replay` is the same explanations
 // with nothing to fill in, for when you want the rules again later.
 //
@@ -21,14 +21,14 @@ import './Onboarding.css'
 
 const STARTER_KEYS = ['daisy', 'tulip', 'orchid']
 
-const SETUP_STEPS  = ['hello', 'seed', 'planted', 'grow', 'economy', 'limits', 'board', 'sprints', 'task']
-const REPLAY_STEPS = ['hello', 'grow', 'economy', 'limits', 'board', 'sprints']
+const SETUP_STEPS  = ['hello', 'seed', 'planted', 'grow', 'economy', 'limits', 'board', 'projects', 'task']
+const REPLAY_STEPS = ['hello', 'grow', 'economy', 'limits', 'board', 'projects']
 
 export default function Onboarding({ displayName, mode = 'setup', onFinish, onClose }) {
   const steps = mode === 'replay' ? REPLAY_STEPS : SETUP_STEPS
   const [i, setI] = useState(0)
   const [pick, setPick] = useState(null)
-  const [sprintName, setSprintName] = useState('')
+  const [projectName, setProjectName] = useState('')
   const [firstTask, setFirstTask] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -45,7 +45,7 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
     try {
       await onFinish({
         seedKey: pick,
-        sprintName: sprintName.trim(),
+        projectName: projectName.trim(),
         firstTask: firstTask.trim(),
       })
     } catch (e) {
@@ -61,7 +61,7 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
     setBusy(true)
     setError('')
     try {
-      await onFinish({ seedKey: pick || STARTER_KEYS[0], sprintName: '', firstTask: '' })
+      await onFinish({ seedKey: pick || STARTER_KEYS[0], projectName: '', firstTask: '' })
     } catch (e) {
       setError(e?.message || String(e))
       setBusy(false)
@@ -222,28 +222,28 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
           </Scene>
         )}
 
-        {step === 'sprints' && (
-          <Scene mood="think" title="Sprints and projects">
+        {step === 'projects' && (
+          <Scene mood="think" title="Projects">
             <p className="onb-body">
-              A <strong>sprint</strong> is a bucket of tasks — a week, a release, a house move.
-              When you add a task you pick its sprint, and that&rsquo;s also the button that
-              files it. &ldquo;No sprint&rdquo; is always an option.
+              A <strong>project</strong> is a bucket of tasks — a week, a release, a house move.
+              When you add a task you pick its project, and that&rsquo;s also the button that
+              files it. &ldquo;No project&rdquo; is always an option.
             </p>
             <p className="onb-body">
-              A <strong>project</strong> is a group of sprints, for when one bucket stops being
-              enough. The board groups by sprint, so naming them well is most of the work.
+              Each project has its own colour, and a task wears it — so the board reads as
+              grouped without spending a heading on every bucket.
             </p>
             {mode === 'setup' && (
               <>
                 <input
                   className="onb-input"
-                  value={sprintName}
-                  onChange={e => setSprintName(e.target.value)}
-                  placeholder="Name your first sprint (optional)"
+                  value={projectName}
+                  onChange={e => setProjectName(e.target.value)}
+                  placeholder="Name your first project (optional)"
                   onKeyDown={e => e.key === 'Enter' && next()}
                 />
                 <p className="onb-body onb-fine">
-                  You can add and rename sprints any time from <b>Manage sprints</b> on the board.
+                  You can add and rename projects any time from <b>Projects</b> on the board.
                 </p>
               </>
             )}
@@ -254,7 +254,7 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
           <Scene mood="happy" title="One task to start you off">
             <p className="onb-body">
               Give me something real and I&rsquo;ll put it in Up next
-              {sprintName.trim() ? <> under <b>{sprintName.trim()}</b></> : null}. Finishing it is
+              {projectName.trim() ? <> under <b>{projectName.trim()}</b></> : null}. Finishing it is
               what makes the first cloud.
             </p>
             <input
