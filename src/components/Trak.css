@@ -74,20 +74,19 @@
 
 /* Noticing you. A held pose rather than a loop — he perks up and stays there
    while the cursor is on him, so it reads as attention and not as a fidget.
-   `forwards` is what holds it; the idle breathe resumes when the class goes. */
-.trak.is-alert { animation: trak-perk 260ms ease-out forwards; }
-@keyframes trak-perk {
-  from { transform: translateY(0) scale(1); }
-  to   { transform: translateY(-3px) scale(1.035); }
+   It's a transition on this wrapper rather than an animation on the rabbit,
+   so it eases *out* as well as in; the rabbit's own transform is still free
+   for the idle breathe and the pet squash. */
+.trak-pose {
+  display: inline-flex;
+  transform: translateY(0) scale(1);
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-.trak.is-alert .trak-ears { animation: trak-ears-perk 260ms ease-out forwards; }
-@keyframes trak-ears-perk {
-  from { transform: rotate(0deg) scaleY(1); }
-  to   { transform: rotate(-3deg) scaleY(1.06); }
-}
+.trak-pose.is-alert { transform: translateY(-3px) scale(1.035); }
 
 @media (prefers-reduced-motion: reduce) {
   /* The eyes still come up to meet you — that part is markup, not motion —
      but he doesn't lift or stretch. */
-  .trak.is-alert, .trak.is-alert .trak-ears { animation: none; }
+  .trak-pose { transition: none; }
+  .trak-pose.is-alert { transform: none; }
 }

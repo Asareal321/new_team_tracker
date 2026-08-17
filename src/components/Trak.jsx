@@ -79,7 +79,7 @@ export default function Trak({ mood = 'idle', size = 96, className = '', pettabl
 
   const art = (
     <svg
-      className={`trak trak-${shown}${petting ? ' is-petted' : near ? ' is-alert' : ''} ${className}`}
+      className={`trak trak-${shown}${petting ? ' is-petted' : ''} ${className}`}
       width={size}
       height={size}
       viewBox="0 0 100 100"
@@ -156,7 +156,10 @@ export default function Trak({ mood = 'idle', size = 96, className = '', pettabl
       title="Pet Trak"
       aria-label="Pet Trak"
     >
-      {art}
+      {/* The perk lives on this wrapper as a transition, not on the rabbit as
+          an animation: an animation can't ease back out, so leaving him used
+          to drop him the 3px in a single frame. */}
+      <span className={`trak-pose${near ? ' is-alert' : ''}`}>{art}</span>
       {/* Keyed on the count so a second pet restarts the animation rather than
           being swallowed by the first one still running. */}
       {pets > 0 && <span key={pets} className="trak-heart" aria-hidden="true">♥</span>}
