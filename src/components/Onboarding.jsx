@@ -2,7 +2,7 @@ import { useState } from 'react'
 import {
   SEEDS, RARITY_COLORS, RARITY_NAMES, PACKETS,
   CLOUD_TIERS, CLOUD_MAX_TAPS, GROWTH_STAGES, DAILY_CAPS,
-  ADD_TASK_REWARD, DOING_CLEAR_REWARD, formatDuration,
+  ADD_TASK_REWARD, formatDuration,
 } from '../lib/garden'
 import { MAX_DOING, MAX_UP_NEXT } from './TaskBoard'
 import Trak from './Trak'
@@ -164,7 +164,7 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
             </p>
             <ul className="onb-list">
               <li><strong>Seeds</strong> — {ADD_TASK_REWARD.seeds} for every task you add. Seeds are what you plant.</li>
-              <li><strong>Coins</strong> — {DOING_CLEAR_REWARD.coins} for clearing the Doing band, plus whatever your clouds pay.</li>
+              <li><strong>Coins</strong> — {ADD_TASK_REWARD.coins} for every task you add too, plus whatever your clouds pay.</li>
               <li><strong>Clouds</strong> — one for every task you finish.</li>
             </ul>
             <p className="onb-body">

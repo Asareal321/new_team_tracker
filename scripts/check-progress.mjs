@@ -4,7 +4,7 @@
 // Run with:  node scripts/check-progress.mjs
 
 import {
-  DAILY_CAPS, ADD_TASK_REWARD, DOING_CLEAR_REWARD,
+  DAILY_CAPS, ADD_TASK_REWARD,
   localDay, previousDay, todayBucket, advanceStreak, liveStreak,
 } from '../src/lib/garden.js'
 import { ACHIEVEMENTS, evaluate, newlyUnlocked } from '../src/lib/achievements.js'
@@ -34,16 +34,36 @@ for (let i = 0; i < 100; i++) {
 }
 check('100 added tasks pay at most the daily cap', seeds === DAILY_CAPS.seeds, `${seeds} seeds`)
 
+// Coins now come from adding tasks too, metered against their own cap.
 let coins = 0, cb = todayBucket(null)
 for (let i = 0; i < 100; i++) {
-  const gain = Math.min(DOING_CLEAR_REWARD.coins, Math.max(0, DAILY_CAPS.coins - cb.coins))
+  const gain = Math.min(ADD_TASK_REWARD.coins, Math.max(0, DAILY_CAPS.coins - cb.coins))
   coins += gain
   cb = { ...cb, coins: cb.coins + gain }
 }
-check('repeated Doing clears cap out', coins === DAILY_CAPS.coins, `${coins} coins`)
-check('the coin cap is a whole number of clears',
-  DAILY_CAPS.coins % DOING_CLEAR_REWARD.coins === 0,
-  `${DAILY_CAPS.coins}/${DOING_CLEAR_REWARD.coins}`)
+check('100 added tasks pay at most the coin cap', coins === DAILY_CAPS.coins, `${coins} coins`)
+check('the coin cap is a whole number of task adds',
+  DAILY_CAPS.coins % ADD_TASK_REWARD.coins === 0,
+  `${DAILY_CAPS.coins}/${ADD_TASK_REWARD.coins}`)
+
+// The two caps are metered separately, so one running out mustn't stop the
+// other. Seeds cap at 12 adds and coins at 20, so adds 13-20 pay coins alone.
+let sb = todayBucket(null), paidSeed = 0, paidCoin = 0
+for (let i = 0; i < 20; i++) {
+  const s = Math.min(ADD_TASK_REWARD.seeds, Math.max(0, DAILY_CAPS.seeds - sb.seeds))
+  const c = Math.min(ADD_TASK_REWARD.coins, Math.max(0, DAILY_CAPS.coins - sb.coins))
+  if (s > 0) paidSeed++
+  if (c > 0) paidCoin++
+  sb = { ...sb, seeds: sb.seeds + s, coins: sb.coins + c }
+}
+check('the seed cap stops seeds', paidSeed === DAILY_CAPS.seeds, `${paidSeed} adds paid a seed`)
+check('the seed cap does not stop coins', paidCoin > paidSeed, `${paidCoin} adds paid coins`)
+
+// Emptying Doing is still counted even though it no longer pays — the quests
+// and the Clean slate awards read it, and a counter nothing increments would
+// make them unreachable.
+check('clearing Doing is still counted, just not paid',
+  ACHIEVEMENTS.some(a => String(a.value).includes('doingClears')))
 
 // --- streaks --------------------------------------------------------------
 check('a first task starts the streak at 1',

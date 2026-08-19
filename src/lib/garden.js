@@ -98,38 +98,28 @@ export const RARITY_COLORS = {
 
 // What each action banks.
 //
-// The three rewards deliberately sit at different points of a task's life, so
-// no single repeated motion pays for everything:
-//   • adding a task pays a seed — the raw material, cheap and plentiful
-//   • clearing the Doing column pays coins — the only route to real money from
-//     the board, and it can't be farmed without actually finishing work
+// Two rewards, at the two ends of a task's life:
+//   • adding a task pays a seed and a few coins — the raw material, plus
+//     enough money to be worth the typing
 //   • finishing a task pays a cloud, whose value is its own roll
 //
-// Every one of them is capped per day (DAILY_CAPS). Adding a task is trivially
-// repeatable, so without a cap "add a seed, delete it, add another" would be
-// the most efficient way to play the game — which would make the rest of it
-// pointless.
-export const ADD_TASK_REWARD = { seeds: 1 }
-export const DOING_CLEAR_REWARD = { coins: 60 }
-
-// A clear is a *count of finished work*, not an empty column.
+// Clearing the Doing column used to pay 60 coins on top. It doesn't any more:
+// three separate payouts meant the board was explaining its own economy every
+// time you touched it, and the middle one rewarded a *position* rather than
+// work — the same finished task paid differently depending on what happened to
+// be sitting beside it. Emptying Doing is still counted, for the quests and
+// awards that ask for it; it just isn't separately paid.
 //
-// It used to be "the last card left Doing", which paid the same 60 whether you
-// emptied a full column or kept a single task in there and finished it — and
-// the second is both easier and worth more per task. Counting instead means
-// two Doing → Done moves earn the payout however they're spread: two at once,
-// or one now and one tomorrow. The part-finished pair is banked, so work is
-// never lost to a reload or a midnight.
-//
-// Must equal MAX_DOING in components/TaskBoard.jsx — a clear should be a full
-// column's worth. scripts/check-progress.mjs asserts the two agree.
-export const DOING_CLEAR_TASKS = 2
+// Both are capped per day (DAILY_CAPS). Adding a task is trivially repeatable,
+// so without a cap "add a task, delete it, add another" would be the most
+// efficient way to play the game — which would make the rest of it pointless.
+export const ADD_TASK_REWARD = { seeds: 1, coins: 15 }
 
 // A day's worth of each. Days are local, not UTC — a cap that rolls over at
 // 7pm local time would read as broken.
 export const DAILY_CAPS = {
   seeds: 12,    // from adding tasks
-  coins: 300,   // from clearing the Doing column
+  coins: 300,   // from adding tasks — 20 a day at ADD_TASK_REWARD.coins
   clouds: 10,   // clouds offered for finished tasks
 }
 
@@ -236,7 +226,15 @@ export function cloudIdleCoins(tier) {
   return cloudTier(tier).coins
 }
 
-// Garden starts at 3 x 4 = 12 plots and expands one row of 3 at a time.
+// The garden is three rows deep and grows sideways: 12 plots is 4 columns of
+// 3, and each expansion adds another column of 3, out to 8 columns at 24.
+//
+// It used to grow downward — 3 wide, adding rows — which pushed the beds off
+// the bottom of the screen as you bought more, so the reward for expanding was
+// having to scroll to see what you'd bought. Sideways, the whole garden stays
+// in one view: it widens while there's room, then the beds themselves shrink.
+// Plot indices are unchanged, so no existing garden moves.
+export const PLOT_ROWS      = 3
 export const PLOTS_PER_ROW  = 3
 export const STARTING_PLOTS = 12
 export const MAX_PLOTS      = 24

@@ -447,11 +447,17 @@ html[data-theme="dark"] .coin-count {
   box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.18);
 }
 
+/* Columns come from the plot count (--cols, set on the element), so buying a
+   bed widens the garden rather than lengthening it.
+   The max-width is the "and then get smaller" half: while the columns fit at
+   --tile each, the garden grows outward; once it would pass the width it has,
+   100% wins and the beds shrink to fit instead. Nothing ever scrolls. */
 .plot-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
   gap: 0.7rem;
-  max-width: 460px;
+  --tile: 112px;
+  max-width: min(100%, calc(var(--cols, 4) * var(--tile)));
   margin: 0 auto;
 }
 
@@ -588,7 +594,9 @@ html[data-theme="dark"] .plot-sell { background: rgba(38, 42, 44, 0.95); border-
   .garden-head { flex-direction: column; align-items: stretch; gap: 1.4rem; margin-bottom: 2rem; }
   .coin-pouch { align-self: flex-start; }
   .garden-title { font-size: 1.4rem; }
-  .plot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Same shape on a phone, just a smaller floor for each bed — the column
+     count is the garden's size and shouldn't change with the window. */
+  .plot-grid { --tile: 78px; gap: 0.45rem; }
   /* No hover on a phone — the name and price would be unreachable.
      The grid is in the selector to outrank the hide rule, which is defined
      further down the file at otherwise equal specificity. */

@@ -109,7 +109,7 @@ export default function BoardPage() {
   const { user } = useAuth()
   const { currentTeamId } = useTeam()
   const {
-    rewardTaskAdded, rewardTaskDone, rewardDoingCleared,
+    rewardTaskAdded, rewardTaskDone, recordDoingCleared,
     state: garden, ready: gardenReady, completeOnboarding,
   } = useGarden()
   const [tasks, setTasks] = useState([])
@@ -118,7 +118,8 @@ export default function BoardPage() {
   const [projectMembers, setProjectMembers] = useState([])
   const [taskUpdates, setTaskUpdates] = useState([])
   const [loading, setLoading] = useState(true)
-  // { task, fromDoing } — the completion being celebrated.
+  // { task, fromDoing } — the completion being celebrated. `fromDoing` means
+  // it emptied the Doing column, which is counted but no longer paid.
   const [doneTask, setDoneTask] = useState(null)
   const [showProjectsManager, setShowProjectsManager] = useState(false)
 
@@ -304,7 +305,7 @@ export default function BoardPage() {
     const cleared = doneTask?.fromDoing
     setDoneTask(null)
     rewardTaskDone()
-    if (cleared) rewardDoingCleared()
+    if (cleared) recordDoingCleared()
   }
 
   async function updateTask(id, updates) {
@@ -416,14 +417,18 @@ export default function BoardPage() {
         onRespondToAssignment={respondToAssignment}
         onResolveChangeRequest={resolveChangeRequest}
         onTaskDone={task => {
-          // Every task finished out of Doing counts toward a clear, not just
-          // the one that happens to empty the column — the payout is per
-          // DOING_CLEAR_TASKS finished, and GardenContext keeps the tally.
-          // Read from the task's pre-move status rather than the refreshed
-          // list: it's leaving Doing *because* it was finished, and a card
-          // dragged back to Up next also empties the column but earns nothing.
-          const fromDoing = task.status === 'in_progress'
-          setDoneTask({ task, fromDoing })
+          // A clear is the column actually going empty — that's what the
+          // quests and awards that read it say ("Empty the Doing band"). It
+          // pays nothing now, so there's no farming pressure to design around;
+          // it just has to be true.
+          //
+          // Decided here rather than from the refreshed list: this task was
+          // the last one in Doing, and it's leaving because it was finished.
+          // A card dragged back to Up next also empties the column, and that
+          // isn't a clear.
+          const clearedDoing = task.status === 'in_progress'
+            && !tasks.some(t => t.status === 'in_progress' && t.id !== task.id)
+          setDoneTask({ task, fromDoing: clearedDoing })
           respawnRecurring(task)
         }}
       />

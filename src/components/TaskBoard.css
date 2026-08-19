@@ -1372,7 +1372,13 @@
    Press physics: geometry only. Never a colour change on hover.             */
 
 .board-bands,
-.dump-wrap {
+.dump-wrap,
+/* The swap picker and the delete confirmation are rendered as siblings of the
+   tab bodies, not inside them — one dialog serves both the board and the pile.
+   That puts them outside the scope these tokens were declared in, so they take
+   the vocabulary explicitly. Without this the modal painted with an
+   undefined --bb-surface, which resolves to transparent. */
+.swap-modal {
   /* The board runs on the app's own tokens. It previously carried a second
      material system — a second green, wood, zero-blur "edges", and two extra
      typefaces — which is what made it read as a different product. The --bb-*
@@ -2427,4 +2433,137 @@
 
 @media (prefers-reduced-motion: reduce) {
   .qs-bar span { transition: none; }
+}
+
+/* --- the swap picker ------------------------------------------------------ */
+
+/* Shown when a move lands on a full band. It's a decision, so it's a modal:
+   the WIP limit only means anything if dropping something is deliberate. */
+.swap-modal {
+  background: var(--bb-surface);
+  border: 1px solid var(--bb-border);
+  border-radius: 10px;
+  padding: 20px;
+  width: min(440px, calc(100vw - 2rem));
+  max-height: calc(100vh - 4rem);
+  overflow-y: auto;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.swap-eyebrow {
+  margin: 0;
+  font-family: var(--bb-num);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bb-muted);
+}
+.swap-heading {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.35;
+  color: var(--bb-on-surface);
+  text-wrap: balance;
+}
+.swap-body { margin: 0; font-size: 13px; line-height: 1.5; color: var(--bb-muted); }
+
+.swap-list { display: flex; flex-direction: column; gap: 7px; margin-top: 4px; }
+.swap-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: var(--bb-sunk);
+  border: 1px solid var(--bb-border);
+  border-radius: 6px;
+  /* 44px of target, since this is reachable on a phone. */
+  min-height: 44px;
+  padding: 9px 12px;
+  font-family: inherit;
+  color: var(--bb-on-surface);
+  cursor: pointer;
+  transition: border-color 90ms, transform 90ms;
+}
+.swap-option:hover:not(:disabled) { border-color: var(--bb-wood); transform: translateY(-1px); }
+.swap-option:disabled { opacity: 0.5; cursor: default; }
+.swap-option-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.swap-option-title { font-size: 14px; line-height: 1.35; }
+.swap-option-meta { font-family: var(--bb-num); font-size: 11px; color: var(--bb-muted); }
+.swap-option-cta {
+  font-family: var(--bb-num);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--bb-muted);
+  white-space: nowrap;
+}
+.swap-option:hover:not(:disabled) .swap-option-cta { color: var(--bb-wood); }
+
+.swap-foot { display: flex; justify-content: flex-end; margin-top: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .swap-option { transition: none; }
+  .swap-option:hover:not(:disabled) { transform: none; }
+}
+
+/* --- braindump: drag to file, drag to delete ------------------------------ */
+
+.dump-item { touch-action: none; }
+.dump-item.dragging { opacity: 0.45; cursor: grabbing; }
+
+/* A header lights up as a target only while something is over it — the pile
+   should look like a list, not like a row of slots waiting to be fed. */
+.dump-group-head.over {
+  border-bottom-color: var(--bb-wood);
+  background: var(--bb-selected);
+  border-radius: 4px 4px 0 0;
+}
+.dump-group-head.over .dump-group-name { color: var(--bb-wood); }
+
+.dump-group-blank {
+  font-size: 12px;
+  color: var(--bb-muted);
+  padding: 10px 12px;
+  border: 1px dashed var(--bb-border);
+  border-radius: 4px;
+}
+
+/* The bin only exists mid-drag. It holds its space either way so the pile
+   doesn't jump the moment you pick something up. */
+.dump-trash {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 1px dashed transparent;
+  border-radius: 6px;
+  font-family: var(--bb-num);
+  font-size: 12px;
+  color: transparent;
+  opacity: 0;
+  transition: opacity 120ms, color 120ms, border-color 120ms, background 120ms;
+  pointer-events: none;
+}
+.dump-trash.live {
+  opacity: 1;
+  color: var(--bb-muted);
+  border-color: var(--bb-border);
+  pointer-events: auto;
+}
+.dump-trash.over {
+  border-color: var(--red-text);
+  background: var(--red-bg);
+  color: var(--red-text);
+}
+.dump-trash-icon { font-size: 15px; }
+
+.swap-foot-split { justify-content: space-between; }
+.bb-btn.danger { border-color: var(--red-text); color: var(--red-text); }
+.bb-btn.danger:hover { background: var(--red-bg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .dump-trash { transition: none; }
 }

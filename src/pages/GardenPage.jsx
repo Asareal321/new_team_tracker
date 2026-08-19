@@ -5,7 +5,7 @@ import {
 } from '@dnd-kit/core'
 import { useGarden } from '../context/GardenContext'
 import {
-  SEEDS, seedByKey, RARITY_COLORS, RARITY_NAMES, PLOTS_PER_ROW, PACKETS,
+  SEEDS, seedByKey, RARITY_COLORS, RARITY_NAMES, PLOTS_PER_ROW, PLOT_ROWS, PACKETS,
   nextExpansion, remainingSeconds, formatDuration, MAX_PLOTS, growthStage, GROWTH_STAGES,
   liveStreak,
 } from '../lib/garden'
@@ -394,7 +394,10 @@ export default function GardenPage() {
                 run(() => moveFlower(active.id, to))
               }}
             >
-              <div className={`plot-grid${dragging ? ' rearranging' : ''}`}>
+              <div
+                className={`plot-grid${dragging ? ' rearranging' : ''}`}
+                style={{ '--cols': Math.max(1, Math.ceil(plotCount / PLOT_ROWS)) }}
+              >
                 {Array.from({ length: plotCount }, (_, i) => {
                   const flower = byPlot.get(i)
                   const seed = seedByKey(flower?.seed_key)

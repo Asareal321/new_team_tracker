@@ -6,7 +6,7 @@ import {
 import {
   SortableContext, useSortable, verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
-import { useDroppable } from '@dnd-kit/core'
+import { useDroppable, useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { useNavigate } from 'react-router-dom'
 import { projectDotColor, projectTintClass } from '../lib/projectColors'
@@ -560,6 +560,22 @@ function PriorityBoard({
 }) {
   const [activeId, setActiveId] = useState(null)
   const [zoneNotice, setZoneNotice] = useState('')
+  // { task, status } — a move that was blocked because the target band is
+  // full, waiting for the user to pick what steps aside.
+  const [swap, setSwap] = useState(null)
+  // A braindump item dragged to the bin, waiting to be confirmed.
+  const [pendingDelete, setPendingDelete] = useState(null)
+
+  // The two writes are ordered: the occupant leaves first, so the band is never
+  // momentarily over its limit. If the second write fails the board is left
+  // with a free slot rather than a lost task.
+  async function performSwap(victim) {
+    const { task, status } = swap
+    setSwap(null)
+    await onUpdate(victim.id, { status: BRAINDUMP })
+    await onUpdate(task.id, { status })
+    setZoneNotice(`Swapped — “${victim.title}” is in the braindump.`)
+  }
   const [draftUpdates, setDraftUpdates] = useState(() => {
     try { return JSON.parse(localStorage.getItem('trakkit-drafts') || '{}') } catch { return {} }
   })
@@ -615,6 +631,23 @@ function PriorityBoard({
     if (!srcTask) return
 
     const overId = String(over.id)
+
+    // The braindump's own drop targets. They share this DndContext because the
+    // pile lives inside it; the board never renders these ids, and the pile
+    // never renders a column, so the two can't be confused.
+    if (overId.startsWith('dumpproj-')) {
+      const raw = overId.replace('dumpproj-', '')
+      const project_id = raw === 'unfiled' ? null : raw
+      if (project_id !== (srcTask.project_id || null)) onUpdate(srcTask.id, { project_id })
+      return
+    }
+    if (overId === 'dump-trash') {
+      // Deleting is the one thing here that can't be undone, so a drag alone
+      // doesn't do it — the drop asks first.
+      setPendingDelete(srcTask)
+      return
+    }
+
     const tgtStatus = overId.startsWith('col-')
       ? overId.replace('col-', '')
       : (tasks.find(t => t.id === over.id)?.status ?? srcTask.status)
@@ -622,7 +655,8 @@ function PriorityBoard({
     const colTasks = getColumnTasks(tgtStatus).filter(t => t.id !== active.id)
 
     if (tgtStatus !== srcTask.status && bandFull(tasks, tgtStatus, active.id)) {
-      setZoneNotice(bandFullNotice(tgtStatus))
+      // Offer the swap rather than refusing the drag outright.
+      setSwap({ task: srcTask, status: tgtStatus })
       return
     }
 
@@ -655,6 +689,37 @@ function PriorityBoard({
     <DndContext sensors={sensors} collisionDetection={closestCenter}
       onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="board-panel">
+        {/* Outside the tab bodies: a swap can be started from the board or from
+            the braindump tray, and the dialog is the same either way. */}
+        {swap && (
+          <SwapPicker
+            incoming={swap.task}
+            status={swap.status}
+            occupants={getColumnTasks(swap.status).filter(t => t.id !== swap.task.id)}
+            projectName={projectName}
+            onSwap={performSwap}
+            onCancel={() => setSwap(null)}
+          />
+        )}
+        {pendingDelete && (
+          <div className="modal-overlay" onClick={() => setPendingDelete(null)}>
+            <div className="swap-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
+              <p className="swap-eyebrow">Delete</p>
+              <h3 className="swap-heading">Delete “{pendingDelete.title}”?</h3>
+              <p className="swap-body">
+                This can’t be undone. To keep it out of the way instead, drop it
+                on a project — or just leave it in the pile.
+              </p>
+              <div className="swap-foot swap-foot-split">
+                <button className="bb-btn" onClick={() => setPendingDelete(null)}>Keep it</button>
+                <button
+                  className="bb-btn danger"
+                  onClick={() => { onDelete(pendingDelete.id); setPendingDelete(null) }}
+                >Delete</button>
+              </div>
+            </div>
+          </div>
+        )}
         {peopleFilter.show && (
           <div className="people-bar">
             <span className="people-label">Viewing</span>
@@ -765,8 +830,14 @@ function PriorityBoard({
             laneCounts={Object.fromEntries(BAND_KEYS.map(k => [k, byStatus(k).length]))}
             projectName={projectName}
             projects={projects}
+            dragActive={!!activeId}
             onCapture={onCapture}
-            onSort={onSortFromDump}
+            onSort={async (item, status) => {
+              // Caught here rather than in sortFromDump so the tray gets the
+              // same swap dialog the board does instead of a refusal.
+              if (bandFull(tasks, status)) { setSwap({ task: item, status }); return null }
+              return onSortFromDump(item, status)
+            }}
             onDelete={onDelete}
             onBack={() => setActiveTab('board')}
           />
@@ -774,12 +845,14 @@ function PriorityBoard({
           <div className="board-bands">
             {zoneNotice && <div className="zone-notice">{zoneNotice}</div>}
 
+
             <GreenhouseStrip doneToday={byStatus('done').length} />
 
             {BANDS_DISPLAY.map(band => (
               <Band key={band.key} status={band.key} label={band.label}
                 isFull={isFull}
                 onBlocked={setZoneNotice}
+                onFullBand={(task, status) => setSwap({ task, status })}
                 tasks={getColumnTasks(band.key)}
                 limit={BAND_LIMITS[band.key] ?? null}
                 resolveAssignees={resolveAssignees}
@@ -1009,7 +1082,7 @@ function AssignmentResponseForm({ mode, busy, onCancel, onSubmit }) {
 
 // ─── Priority zone ───────────────────────────────────────────────────────────
 
-function Band({ status, label, tasks, limit, isFull, onBlocked, resolveAssignees, projectName, updatesForTask, teamMembers, onEdit, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, onUpdateAssignees, draftUpdates, setDraft, onTaskDone }) {
+function Band({ status, label, tasks, limit, isFull, onBlocked, onFullBand, resolveAssignees, projectName, updatesForTask, teamMembers, onEdit, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, onUpdateAssignees, draftUpdates, setDraft, onTaskDone }) {
   const { setNodeRef, isOver } = useDroppable({ id: `col-${status}` })
   const atLimit = limit != null && tasks.length >= limit
 
@@ -1036,7 +1109,9 @@ function Band({ status, label, tasks, limit, isFull, onBlocked, resolveAssignees
       onEdit={() => onEdit(task)}
       onDelete={() => onDelete(task.id)}
       onStatusChange={s => {
-        if (s !== task.status && isFull?.(s)) { onBlocked?.(bandFullNotice(s)); return }
+        // A full band offers a swap instead of a refusal. onBlocked stays for
+        // anything that isn't a capacity problem.
+        if (s !== task.status && isFull?.(s)) { onFullBand?.(task, s); return }
         onUpdate(task.id, { status: s })
         // Any route into Done banks the reward, not just the drag.
         if (s === 'done' && task.status !== 'done') onTaskDone?.(task)
@@ -1410,6 +1485,60 @@ function TaskDetail({
   )
 }
 
+// ─── Swap picker ─────────────────────────────────────────────────────────────
+
+// A full band used to be a dead end: the move was refused and you were told to
+// go and finish something. But "Doing is full" is usually not a mistake — it's
+// the moment you've changed your mind about what you're doing, and the board
+// should let you say so.
+//
+// So a blocked move opens this instead: the band's current occupants, one of
+// which steps aside to the braindump so the incoming task can take its place.
+// Nothing is deleted and nothing is auto-chosen — the point of the WIP limit is
+// that dropping something is a decision, and this makes you make it rather than
+// making it for you.
+function SwapPicker({ incoming, status, occupants, projectName, onSwap, onCancel }) {
+  const [busy, setBusy] = useState(null)
+
+  async function choose(victim) {
+    setBusy(victim.id)
+    try { await onSwap(victim) } finally { setBusy(null) }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <div className="swap-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"
+        aria-label={`${MOVE_LABELS[status]} is full — choose a task to swap out`}>
+        <p className="swap-eyebrow">{MOVE_LABELS[status]} is full</p>
+        <h3 className="swap-heading">Make room for “{incoming.title}”</h3>
+        <p className="swap-body">
+          Pick what steps aside. It goes to the braindump, keeping its notes and
+          updates, and can come back whenever you want it.
+        </p>
+
+        <div className="swap-list">
+          {occupants.map(t => (
+            <button key={t.id} className="swap-option" disabled={!!busy} onClick={() => choose(t)}>
+              <span className={`status-dot ${t.priority || 'medium'}`} />
+              <span className="swap-option-body">
+                <span className="swap-option-title">{t.title}</span>
+                {t.project_id && (
+                  <span className="swap-option-meta">{projectName(t.project_id) || 'Unknown project'}</span>
+                )}
+              </span>
+              <span className="swap-option-cta">{busy === t.id ? '…' : 'Swap out →'}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="swap-foot">
+          <button className="bb-btn" onClick={onCancel} disabled={!!busy}>Leave it where it is</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Braindump ───────────────────────────────────────────────────────────────
 
 // How long an item has been sitting in the pile. The design shows this as the
@@ -1444,7 +1573,60 @@ function groupByProject(items, projectName) {
   return unfiled ? [...named, { key: '', name: 'Unfiled', list: unfiled }] : named
 }
 
-function Braindump({ items, bands, laneCounts, projectName, projects = [], onCapture, onSort, onDelete, onBack }) {
+// A pile item you can pick up. The whole row is the handle — there's nothing
+// else on it to hit, and a dedicated grip at this size would be most of the row.
+function DumpItem({ item, selected, onSelect, projectName }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: item.id })
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      className={`dump-item${selected ? ' on' : ''}${isDragging ? ' dragging' : ''}`}
+      style={transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined}
+      role="button"
+      aria-pressed={selected}
+      onClick={onSelect}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect() } }}
+    >
+      <span className="dump-grab" />
+      <span className="dump-body">
+        <span className="dump-title">{item.title}</span>
+        <span className="dump-meta">
+          <span>{ageOf(item.created_at)}</span>
+          <span>typed</span>
+        </span>
+      </span>
+    </div>
+  )
+}
+
+// A project header that also accepts a drop — filing a thought is then the
+// same gesture as reading where it belongs.
+function DumpGroupHead({ id, name, count, unfiled }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `dumpproj-${id || 'unfiled'}` })
+  return (
+    <div ref={setNodeRef} className={`dump-group-head${unfiled ? ' unfiled' : ''}${isOver ? ' over' : ''}`}>
+      {!unfiled && <span className="dump-pjdot" style={{ background: projectDotColor(id) }} />}
+      <span className="dump-group-name">{name}</span>
+      <span className="dump-group-count">{count}</span>
+    </div>
+  )
+}
+
+// The bin. Only shown while something is being dragged: a delete target that's
+// always on screen is a delete target you eventually hit by accident.
+function DumpTrash({ active }) {
+  const { setNodeRef, isOver } = useDroppable({ id: 'dump-trash' })
+  return (
+    <div ref={setNodeRef} className={`dump-trash${active ? ' live' : ''}${isOver ? ' over' : ''}`} aria-hidden={!active}>
+      <span className="dump-trash-icon">🗑</span>
+      <span>{isOver ? 'Release to delete' : 'Drag here to delete'}</span>
+    </div>
+  )
+}
+
+function Braindump({ items, bands, laneCounts, projectName, projects = [], dragActive, onCapture, onSort, onDelete, onBack }) {
   const [draft, setDraft] = useState('')
   const [selected, setSelected] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -1456,6 +1638,14 @@ function Braindump({ items, bands, laneCounts, projectName, projects = [], onCap
   const [captureProject, setCaptureProject] = useState(null)
 
   const groups = useMemo(() => groupByProject(items, projectName), [items, projectName])
+
+  // Projects with nothing in the pile. They have no header of their own, so
+  // mid-drag they get a placeholder one — otherwise the only projects you could
+  // file something into would be the ones you'd already filed something into.
+  const emptyProjects = useMemo(
+    () => projects.filter(p => !items.some(i => i.project_id === p.id)),
+    [projects, items],
+  )
 
   // A project that's been deleted shouldn't leave the next capture pointing at
   // nothing.
@@ -1562,36 +1752,34 @@ function Braindump({ items, bands, laneCounts, projectName, projects = [], onCap
           {/* Grouped under project headers. The per-item chip goes with them —
               it said the same thing on every row of a group, and the header
               says it once. */}
+          <DumpTrash active={dragActive} />
+
           <div className="dump-list">
             {groups.map(group => (
               <div className="dump-group" key={group.key || 'unfiled'}>
-                <div className={`dump-group-head${group.key ? '' : ' unfiled'}`}>
-                  {group.key && (
-                    <span className="dump-pjdot" style={{ background: projectDotColor(group.key) }} />
-                  )}
-                  <span className="dump-group-name">{group.name}</span>
-                  <span className="dump-group-count">{group.list.length}</span>
-                </div>
+                <DumpGroupHead
+                  id={group.key}
+                  name={group.name}
+                  count={group.list.length}
+                  unfiled={!group.key}
+                />
                 {group.list.map(item => (
-                  <div
+                  <DumpItem
                     key={item.id}
-                    className={`dump-item${item.id === selected ? ' on' : ''}`}
-                    tabIndex={0}
-                    role="button"
-                    aria-pressed={item.id === selected}
-                    onClick={() => setSelected(item.id)}
-                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(item.id) } }}
-                  >
-                    <span className="dump-grab" />
-                    <span className="dump-body">
-                      <span className="dump-title">{item.title}</span>
-                      <span className="dump-meta">
-                        <span>{ageOf(item.created_at)}</span>
-                        <span>typed</span>
-                      </span>
-                    </span>
-                  </div>
+                    item={item}
+                    selected={item.id === selected}
+                    onSelect={() => setSelected(item.id)}
+                    projectName={projectName}
+                  />
                 ))}
+              </div>
+            ))}
+            {/* Every project gets a header even when empty, so there's always
+                somewhere to drop a thought that belongs to one. */}
+            {dragActive && emptyProjects.map(p => (
+              <div className="dump-group" key={p.id}>
+                <DumpGroupHead id={p.id} name={p.name} count={0} />
+                <div className="dump-group-blank">Drop here to file it under {p.name}</div>
               </div>
             ))}
             {items.length === 0 && (
