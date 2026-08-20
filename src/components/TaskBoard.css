@@ -2078,7 +2078,17 @@
 }
 
 @media (max-width: 820px) {
-  .board-bands, .dump-wrap { padding: 14px; }
+  /* One gutter, not three.
+     A row on a 375px phone was 291px wide, and the title column inside it 181
+     — 48% of the screen — because .board-panel (16), .board-bands (14) and
+     .band (10) each added their own inset, 84px in total before anything was
+     drawn. Nested padding is invisible in a wide window and most of the screen
+     in a narrow one. The panel keeps a small outer margin so the board isn't
+     flush to the bezel; the two inside it give theirs up entirely, and the
+     band keeps only its vertical padding so its tint still frames the rows. */
+  .board-panel { padding: 0.7rem; }
+  .board-bands, .dump-wrap { padding: 0; }
+  .band { padding: 8px 6px; }
   /* Narrow enough that the bar and the button would each get a line of their
      own; the button leads instead of trailing a wrapped row. */
   .gh-go { margin-left: 0; }
@@ -2670,4 +2680,34 @@
 
 @media (prefers-reduced-motion: reduce) {
   .arc-result-goto { transition: none; }
+}
+
+/* --- mobile: text fields, and the one button that pays out ---------------- */
+
+@media (max-width: 820px) {
+  /* iOS Safari zooms the page when a field under 16px takes focus, and never
+     zooms back — the board is left scaled up and scrolled sideways, which
+     reads as the app breaking rather than as a browser behaviour. 16px is the
+     threshold, not a preference. */
+  .dump-capture input,
+  .arc-search-input,
+  .qc-field, .qc-title, .qc-datefield,
+  .done-next-input,
+  input[type="text"], input[type="search"], input[type="date"], textarea, select {
+    font-size: 16px;
+  }
+
+  /* Claim was 19px tall — the payoff button of the whole quest system, at less
+     than half the smallest target a thumb hits reliably. The pill itself grows
+     rather than a padded pseudo-element, because unlike the row chevrons this
+     one wants to look pressable. */
+  .qs-claim {
+    min-height: 44px;
+    min-width: 88px;
+    padding-inline: 18px;
+    font-size: 13px;
+    border-radius: 9999px;
+  }
+  /* Which makes the reward line and the button a column, not a squeezed row. */
+  .qs-pay { flex-direction: column; align-items: flex-end; gap: 6px; }
 }
