@@ -2567,3 +2567,107 @@
 @media (prefers-reduced-motion: reduce) {
   .dump-trash { transition: none; }
 }
+
+/* --- archive search ------------------------------------------------------- */
+
+.arc-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 0 10px;
+  margin-bottom: 0.9rem;
+}
+.arc-search:focus-within { border-color: var(--accent); }
+.arc-search-icon { font-size: 15px; color: var(--text-4); flex-shrink: 0; }
+.arc-search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  /* 44px of target — this is the first thing a thumb reaches for here. */
+  min-height: 44px;
+  padding: 0;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--text-1);
+}
+.arc-search-input:focus { outline: none; }
+.arc-search-input::-webkit-search-cancel-button { display: none; }
+.arc-search-clear {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-4);
+  font-size: 20px;
+  line-height: 1;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.arc-search-clear:hover { background: var(--bg-muted); color: var(--text-2); }
+
+.arc-results { display: flex; flex-direction: column; gap: 0.55rem; }
+.arc-count {
+  margin: 0 0 0.15rem;
+  font-size: 0.78rem;
+  color: var(--text-4);
+  font-variant-numeric: tabular-nums;
+}
+
+.arc-result {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 0.7rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.arc-result-head { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.arc-result-title { font-size: 0.925rem; line-height: 1.4; color: var(--text-1); }
+
+/* The date doubles as the way back to the calendar, so it's a button — but a
+   quiet one, since it sits under every result. */
+.arc-result-date {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  align-self: flex-start;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--bb-num, inherit);
+  font-size: 0.75rem;
+  color: var(--text-4);
+}
+.arc-result-date:hover { color: var(--accent); }
+.arc-result-goto { opacity: 0; transition: opacity 120ms; }
+.arc-result-date:hover .arc-result-goto,
+.arc-result-date:focus-visible .arc-result-goto { opacity: 1; }
+
+.arc-result-why {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text-3);
+  padding-left: 0.6rem;
+  border-left: 2px solid var(--border);
+}
+
+/* The matched run. Tinted rather than the browser's yellow, which is the one
+   colour guaranteed to clash with whatever theme is on. */
+.arc-hit {
+  background: var(--accent-bg);
+  color: var(--accent-text);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arc-result-goto { transition: none; }
+}

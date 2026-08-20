@@ -11,6 +11,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useNavigate } from 'react-router-dom'
 import { projectDotColor, projectTintClass } from '../lib/projectColors'
 import { MAX_DOING, MAX_UP_NEXT, BAND_LIMITS, bandFull } from '../lib/boardLimits'
+import { searchArchive, parseQuery, highlight, matchingUpdate, excerpt } from '../lib/archiveSearch'
 import { useGarden } from '../context/GardenContext'
 import DailyCaps from './DailyCaps'
 import Trak from './Trak'
@@ -2039,7 +2040,16 @@ function QuestStrip() {
 
 // ─── Archive calendar ────────────────────────────────────────────────────────
 
+// Text with the search terms marked. <mark> rather than a span: it's what the
+// element is for, and it survives a theme change without a colour of its own.
+function Marked({ text, terms }) {
+  return highlight(text, terms).map((run, i) =>
+    run.hit ? <mark key={i} className="arc-hit">{run.text}</mark> : <span key={i}>{run.text}</span>
+  )
+}
+
 function ArchiveCalendar({ tasks, updatesForTask, projectName }) {
+  const [query, setQuery] = useState('')
   const [viewDate, setViewDate] = useState(new Date())
   const [selectedDay, setSelectedDay] = useState(null)
 
@@ -2068,10 +2078,84 @@ function ArchiveCalendar({ tasks, updatesForTask, projectName }) {
 
   const selectedTasks = selectedDay ? (tasksByDate[selectedDay] || []) : []
 
+  const terms = parseQuery(query)
+  const searching = terms.length > 0
+  const results = useMemo(
+    () => (searching ? searchArchive(tasks, query, { projectName, updatesForTask }) : []),
+    [searching, tasks, query, projectName, updatesForTask],
+  )
+
   if (tasks.length === 0) return <div className="empty-col">No archived tasks yet</div>
 
   return (
     <div className="archive-cal">
+      {/* Above the calendar, because it's the faster of the two routes and the
+          one you reach for when you don't know the date. */}
+      <div className="arc-search">
+        <span className="arc-search-icon" aria-hidden="true">⌕</span>
+        <input
+          className="arc-search-input"
+          type="search"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder={`Search ${tasks.length} archived task${tasks.length === 1 ? '' : 's'} — title, notes, project, updates`}
+          aria-label="Search the archive"
+        />
+        {query && (
+          <button className="arc-search-clear" onClick={() => setQuery('')} aria-label="Clear search">×</button>
+        )}
+      </div>
+
+      {searching ? (
+        <div className="arc-results">
+          <p className="arc-count">
+            {results.length === 0
+              ? 'Nothing matches.'
+              : `${results.length} task${results.length === 1 ? '' : 's'}`}
+          </p>
+          {results.map(task => {
+            const hitUpdate = matchingUpdate(task, terms, updatesForTask)
+            const when = task.archived_at || task.updated_at || task.created_at
+            return (
+              <div key={task.id} className="arc-result">
+                <div className="arc-result-head">
+                  <span className={`status-dot ${task.priority || 'medium'}`} style={{ width: 8, height: 8 }} />
+                  <span className="arc-result-title"><Marked text={task.title} terms={terms} /></span>
+                  {projectName(task.project_id) && (
+                    <span className="project-tag">
+                      <Marked text={projectName(task.project_id)} terms={terms} />
+                    </span>
+                  )}
+                </div>
+                {/* The date is the thing search exists to recover, so it's on
+                    every result, and it jumps you to that day in the calendar. */}
+                <button
+                  className="arc-result-date"
+                  onClick={() => {
+                    const d = new Date(when)
+                    setViewDate(new Date(d.getFullYear(), d.getMonth()))
+                    setSelectedDay(localDayStr(when))
+                    setQuery('')
+                  }}
+                >
+                  {new Date(when).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                  <span className="arc-result-goto">show the day →</span>
+                </button>
+                {/* Why this result is here, when the reason isn't the title. */}
+                {hitUpdate && (
+                  <p className="arc-result-why">
+                    <Marked text={excerpt(hitUpdate.body, terms)} terms={terms} />
+                  </p>
+                )}
+                {!hitUpdate && task.notes && (
+                  <p className="arc-result-why"><Marked text={excerpt(task.notes, terms)} terms={terms} /></p>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+      <>
       <div className="archive-cal-header">
         <button className="cal-nav" onClick={() => { setViewDate(new Date(year, month - 1)); setSelectedDay(null) }}>‹</button>
         <span className="cal-month-label">{monthLabel}</span>
@@ -2135,6 +2219,8 @@ function ArchiveCalendar({ tasks, updatesForTask, projectName }) {
             )
           })}
         </div>
+      )}
+      </>
       )}
     </div>
   )
