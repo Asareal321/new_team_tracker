@@ -266,6 +266,22 @@ export default function TaskBoard({
 
   // The people filter only applies on a team board with a roster to filter by.
   const showPeopleFilter = !!currentTeamId && teamMembers.length > 0
+
+  // On a personal board there is nobody to assign anything to. The member list
+  // is a list of one — you — so every task read "assigned to you", which is the
+  // only thing it could ever say, and the chip to set it was a chip to tell
+  // yourself something you already knew.
+  //
+  // Expressed as an empty roster rather than a flag threaded through five
+  // components, because that is what is actually true: the rows, the detail
+  // panel and the braindump all already hide assignment when there is nobody
+  // to assign to. The composer's avatars and the people filter were gated on
+  // currentTeamId already.
+  //
+  // Nothing is deleted. A personal task that carries an assignment from before
+  // keeps it in the database, unshown; moving that board into a team would
+  // bring it back rather than having quietly dropped it.
+  const assignableMembers = currentTeamId ? teamMembers : []
   const meMember = teamMembers.find(m => m.id === currentUserId)
 
   // Individual filter chips are scoped to teammates who share at least one
@@ -362,9 +378,11 @@ export default function TaskBoard({
     return null
   }
 
+  // Resolved against the assignable roster, so on a personal board this is
+  // always empty and the rows show no owner.
   function resolveAssignees(task) {
     return (task.task_assignees || [])
-      .map(a => teamMembers.find(m => m.id === a.user_id))
+      .map(a => assignableMembers.find(m => m.id === a.user_id))
       .filter(Boolean)
   }
 
@@ -535,7 +553,7 @@ export default function TaskBoard({
         projects={projects}
         updatesForTask={updatesForTask}
         resolveAssignees={resolveAssignees}
-        teamMembers={teamMembers}
+        teamMembers={assignableMembers}
         onAdd={onAdd}
         onUpdate={onUpdate}
         onDelete={onDelete}
@@ -1376,8 +1394,14 @@ function TaskDetail({
 }) {
   const assigneeIds = (task.task_assignees || []).map(a => a.user_id)
   const isArchived = task.status === 'archived'
-  const detailNext = NEXT_BAND[task.status]
-  const detailPrev = PREV_BAND[task.status]
+  // Mobile only. On a desktop the row's chevrons are right there and always
+  // have been, so repeating them inside the panel is a second control for a
+  // job that already has one. On a phone the chevrons are gone — the row is
+  // swiped instead — and these are the only way to move a task without a
+  // gesture, which is what a keyboard and a screen reader have.
+  const narrowDetail = useIsNarrow()
+  const detailNext = narrowDetail ? NEXT_BAND[task.status] : null
+  const detailPrev = narrowDetail ? PREV_BAND[task.status] : null
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose() }
