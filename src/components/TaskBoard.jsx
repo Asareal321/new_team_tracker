@@ -1725,6 +1725,9 @@ function Braindump({ items, bands, laneCounts, projectName, projects = [], dragA
   // braindump exists to avoid.
   const [captureProject, setCaptureProject] = useState(null)
 
+  // The tray is a pointer-and-keyboard control; the swipe is the phone's.
+  const narrow = useIsNarrow()
+
   const groups = useMemo(() => groupByProject(items, projectName), [items, projectName])
 
   // Projects with nothing in the pile. They have no header of their own, so
@@ -1833,7 +1836,9 @@ function Braindump({ items, bands, laneCounts, projectName, projects = [], dragA
           )}
 
           <p className="dump-hint">
-            click an item, then press 1–{bands.length} or hit a tray slot · oldest first
+            {narrow
+              ? 'swipe an item left to sort or delete it · oldest first'
+              : `click an item, then press 1–${bands.length} or hit a tray slot · oldest first`}
           </p>
           {notice && <p className="form-notice">{notice}</p>}
 
@@ -1877,6 +1882,17 @@ function Braindump({ items, bands, laneCounts, projectName, projects = [], dragA
           </div>
         </div>
 
+        {/* Desktop only. On a phone the tray sat at the bottom of the pile,
+            so triaging meant scrolling down to sort and back up to read — and
+            "Sort into / Up next / Doing / Done today" is four controls to do
+            what one sideways flick now does. Swiping replaced it rather than
+            joining it.
+
+            Nothing is lost by dropping the Doing and Done slots: the bands are
+            a progression, so an item swiped to Up next is one more swipe from
+            Doing on the board itself. The tray's shortcut skipped steps that
+            take a second each. */}
+        {!narrow && (
         <div className="dump-tray">
           <span className="tray-title">Sort into</span>
           {bands.map((band, i) => (
@@ -1909,6 +1925,7 @@ function Braindump({ items, bands, laneCounts, projectName, projects = [], dragA
               : `1 selected · hit a slot or press its number.`}
           </p>
         </div>
+        )}
       </div>
     </div>
   )
