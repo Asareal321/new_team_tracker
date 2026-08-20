@@ -2104,9 +2104,20 @@
   /* Narrow enough that the bar and the button would each get a line of their
      own; the button leads instead of trailing a wrapped row. */
   .gh-go { margin-left: 0; }
-  /* Trak keeps his place at the left — he's the strip's anchor, and stacking
-     him above it would give back the height this layout exists to save. */
-  .gh-trak { align-self: flex-start; }
+  /* Trak moves to the right and centres.
+     He was top-left of a column whose neighbour ran 125px tall, so 84px of the
+     strip was empty space under a 56px rabbit — the single biggest piece of
+     nothing on the board. On the right he reads as sitting beside the line he
+     comments on rather than presiding over a gap, and centred, whatever height
+     is left over is split rather than all pooling beneath him. */
+  .gh-trak { order: 2; align-self: center; }
+
+  /* Which only works if the line beside him is short. The bar was greedy
+     (flex-basis 120, min-width 100), so the Garden button never fitted next to
+     it and took a third line of its own. A narrower bar puts the bar, the time
+     remaining and the button on one line, and the whole strip becomes what it
+     always claimed to be: two lines and a rabbit. */
+  .gh-bar { flex: 1 1 56px; min-width: 52px; }
 
   /* On a phone these two are the only way to move a task: the drag handle is
      hidden below 640px and the drag stripe is a few pixels wide, so a 30px
