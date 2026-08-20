@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom'
 import { projectDotColor, projectTintClass } from '../lib/projectColors'
 import { MAX_DOING, MAX_UP_NEXT, BAND_LIMITS, bandFull } from '../lib/boardLimits'
 import { searchArchive, parseQuery, highlight, matchingUpdate, excerpt } from '../lib/archiveSearch'
+import useSwipeReveal, { useIsNarrow } from './useSwipeReveal'
 import { useGarden } from '../context/GardenContext'
 import DailyCaps from './DailyCaps'
 import Trak from './Trak'
@@ -1248,13 +1249,44 @@ function TaskRow({
   const next = NEXT_BAND[task.status]
   const prev = PREV_BAND[task.status]
 
+  // On a phone the chevrons are gone and the row slides aside instead. They
+  // cost 74px of a 375px screen on every row — a fifth of the width, standing
+  // by for an action taken a few times a day — which is what pushed titles on
+  // to a second line. The same two moves are in the task's own panel, which is
+  // where a keyboard or a screen reader finds them.
+  const narrow = useIsNarrow()
+  const canMove = !isArchived && (next || prev)
+  const swipe = useSwipeReveal({ enabled: narrow && canMove })
+
   return (
     <>
       <div
-        className={`paper-row kind-${kind}${isArchived ? ' archived' : ''}${project ? ' has-sprint' : ''}`}
+        className={`paper-row kind-${kind}${isArchived ? ' archived' : ''}${project ? ' has-sprint' : ''}${swipe.open ? ' swiped' : ''}`}
         style={rowStyle(project)}
       >
-        <div className="paper-main">
+        {narrow && canMove && (
+          <div className="row-actions" aria-hidden={!swipe.open}>
+            <button
+              className="row-action up"
+              disabled={!next}
+              tabIndex={swipe.open ? 0 : -1}
+              onClick={() => { swipe.close(); next && onStatusChange(next) }}
+            >
+              <Chevron up />
+              <span>{next ? MOVE_LABELS[next] : 'Done'}</span>
+            </button>
+            <button
+              className="row-action down"
+              disabled={!prev}
+              tabIndex={swipe.open ? 0 : -1}
+              onClick={() => { swipe.close(); prev && onStatusChange(prev) }}
+            >
+              <Chevron />
+              <span>{prev === BRAINDUMP ? 'Braindump' : (prev ? MOVE_LABELS[prev] : '')}</span>
+            </button>
+          </div>
+        )}
+        <div className="paper-main" style={swipe.style} {...swipe.handlers}>
           {/* The stripe doubles as the drag handle: it runs the full height of
               the row and is the one part with nothing else to click. */}
           <span
@@ -1347,6 +1379,8 @@ function TaskDetail({
 }) {
   const assigneeIds = (task.task_assignees || []).map(a => a.user_id)
   const isArchived = task.status === 'archived'
+  const detailNext = NEXT_BAND[task.status]
+  const detailPrev = PREV_BAND[task.status]
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose() }
@@ -1402,6 +1436,20 @@ function TaskDetail({
                   and project. */}
               {isArchived && (
                 <button className="td-action" onClick={() => { onStatusChange('done'); onClose() }}>Unarchive</button>
+              )}
+              {/* Moving the task lives here as well as on the row. On a phone
+                  the row's chevrons are replaced by a swipe, and a gesture is
+                  invisible to a keyboard and unreachable by a screen reader —
+                  so these are the route that always exists, at every width. */}
+              {!isArchived && detailNext && (
+                <button className="td-action" onClick={() => { onStatusChange(detailNext); onClose() }}>
+                  Move up to {MOVE_LABELS[detailNext]}
+                </button>
+              )}
+              {!isArchived && detailPrev && (
+                <button className="td-action" onClick={() => { onStatusChange(detailPrev); onClose() }}>
+                  {detailPrev === BRAINDUMP ? 'Send to the braindump' : `Move down to ${MOVE_LABELS[detailPrev]}`}
+                </button>
               )}
               {!isArchived && <button className="td-action" onClick={() => { onEdit(); onClose() }}>Edit</button>}
               <button className="td-action danger" onClick={() => { onDelete(); onClose() }}>Delete</button>
