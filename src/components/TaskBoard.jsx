@@ -826,6 +826,9 @@ function PriorityBoard({
             projectName={projectName}
           />
         ) : activeTab === 'braindump' ? (
+          /* onDeleteItem, not onDelete: swiping to delete asks first, exactly
+             as dropping on the bin does — the same irreversible thing by a
+             different route. */
           <Braindump
             items={dumpTasks}
             bands={BANDS}
@@ -834,13 +837,13 @@ function PriorityBoard({
             projects={projects}
             dragActive={!!activeId}
             onCapture={onCapture}
+            onDeleteItem={setPendingDelete}
             onSort={async (item, status) => {
               // Caught here rather than in sortFromDump so the tray gets the
               // same swap dialog the board does instead of a refusal.
               if (bandFull(tasks, status)) { setSwap({ task: item, status }); return null }
               return onSortFromDump(item, status)
             }}
-            onDelete={onDelete}
             onBack={() => setActiveTab('board')}
           />
         ) : (
@@ -1624,28 +1627,64 @@ function groupByProject(items, projectName) {
 
 // A pile item you can pick up. The whole row is the handle — there's nothing
 // else on it to hit, and a dedicated grip at this size would be most of the row.
-function DumpItem({ item, selected, onSelect, projectName }) {
+function DumpItem({ item, selected, onSelect, onSort, onDelete }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: item.id })
+
+  // The same gesture the board's rows use, for the same reason: the tray that
+  // sorts an item lives at the bottom of the pile, which on a phone is a scroll
+  // away from whatever you're reading. Swiping triages where your thumb is.
+  //
+  // Up next is the move that empties the pile, so it takes the green slot;
+  // delete takes the other, because a braindump collects as much rubbish as
+  // work and the alternative is dragging to a bin at the top of the list.
+  const narrow = useIsNarrow()
+  const swipe = useSwipeReveal({ enabled: narrow })
+
   return (
-    <div
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      className={`dump-item${selected ? ' on' : ''}${isDragging ? ' dragging' : ''}`}
-      style={transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined}
-      role="button"
-      aria-pressed={selected}
-      onClick={onSelect}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect() } }}
-    >
-      <span className="dump-grab" />
-      <span className="dump-body">
-        <span className="dump-title">{item.title}</span>
-        <span className="dump-meta">
-          <span>{ageOf(item.created_at)}</span>
-          <span>typed</span>
+    <div className={`dump-shell${swipe.open ? ' swiped' : ''}`}>
+      {narrow && (
+        <div className="row-actions" aria-hidden={!swipe.open}>
+          <button
+            className="row-action up"
+            tabIndex={swipe.open ? 0 : -1}
+            onClick={() => { swipe.close(); onSort?.('todo') }}
+          >
+            <Chevron up />
+            <span>{MOVE_LABELS.todo}</span>
+          </button>
+          <button
+            className="row-action delete"
+            tabIndex={swipe.open ? 0 : -1}
+            onClick={() => { swipe.close(); onDelete?.() }}
+          >
+            <span aria-hidden="true">🗑</span>
+            <span>Delete</span>
+          </button>
+        </div>
+      )}
+      <div
+        ref={setNodeRef}
+        {...attributes}
+        {...listeners}
+        {...swipe.handlers}
+        className={`dump-item${selected ? ' on' : ''}${isDragging ? ' dragging' : ''}`}
+        style={transform
+          ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+          : swipe.style}
+        role="button"
+        aria-pressed={selected}
+        onClick={onSelect}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect() } }}
+      >
+        <span className="dump-grab" />
+        <span className="dump-body">
+          <span className="dump-title">{item.title}</span>
+          <span className="dump-meta">
+            <span>{ageOf(item.created_at)}</span>
+            <span>typed</span>
+          </span>
         </span>
-      </span>
+      </div>
     </div>
   )
 }
@@ -1675,7 +1714,7 @@ function DumpTrash({ active }) {
   )
 }
 
-function Braindump({ items, bands, laneCounts, projectName, projects = [], dragActive, onCapture, onSort, onDelete, onBack }) {
+function Braindump({ items, bands, laneCounts, projectName, projects = [], dragActive, onCapture, onSort, onDeleteItem, onBack }) {
   const [draft, setDraft] = useState('')
   const [selected, setSelected] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -1818,7 +1857,8 @@ function Braindump({ items, bands, laneCounts, projectName, projects = [], dragA
                     item={item}
                     selected={item.id === selected}
                     onSelect={() => setSelected(item.id)}
-                    projectName={projectName}
+                    onSort={status => onSort(item, status)}
+                    onDelete={() => onDeleteItem(item)}
                   />
                 ))}
               </div>
@@ -1857,8 +1897,10 @@ function Braindump({ items, bands, laneCounts, projectName, projects = [], dragA
             className="tray-discard"
             disabled={selected == null || busy}
             onClick={() => {
+              // Was a window.confirm. Now the same in-app dialog the bin and
+              // the swipe use, so discarding looks the same by all three routes.
               const item = items.find(i => i.id === selected)
-              if (item && window.confirm(`Discard "${item.title}"?`)) onDelete(item.id)
+              if (item) onDeleteItem(item)
             }}
           >Discard selected</button>
           <p className="tray-note">

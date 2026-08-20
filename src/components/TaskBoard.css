@@ -2797,3 +2797,24 @@
   /* The hook sets the transition inline, so it needs outranking here. */
   .paper-main { transition: none !important; }
 }
+
+/* --- braindump: swipe a thought out of the pile --------------------------- */
+
+/* The item itself carries the border and the tint, so the shell only exists to
+   clip the actions and give them something to be absolutely positioned in. */
+.dump-shell { position: relative; }
+
+@media (max-width: 820px) {
+  .dump-shell { overflow: hidden; border-radius: 4px; }
+  .dump-item {
+    position: relative;
+    z-index: 2;
+    background: var(--bb-surface);
+    touch-action: pan-y;
+  }
+  /* Delete is the second slot here rather than a demotion: a pile collects as
+     much rubbish as work, and the alternative was dragging to a bin that may
+     be several screens up the list. It still asks before it does anything. */
+  .row-action.delete { background: var(--bb-flag-tint); color: var(--bb-flag-ink); }
+  .dump-shell.swiped .dump-item { border-color: var(--bb-wood); }
+}
