@@ -848,7 +848,7 @@ function PriorityBoard({
             {zoneNotice && <div className="zone-notice">{zoneNotice}</div>}
 
 
-            <GreenhouseStrip doneToday={byStatus('done').length} />
+            <GreenhouseStrip />
 
             {BANDS_DISPLAY.map(band => (
               <Band key={band.key} status={band.key} label={band.label}
@@ -1880,10 +1880,12 @@ function Braindump({ items, bands, laneCounts, projectName, projects = [], dragA
 // running a second, contradictory economy, this reads the real one: the flower
 // actually in the ground, its real stage, and the balances the board's own
 // rewards feed. The button goes to the garden instead of watering.
-function GreenhouseStrip({ doneToday }) {
+function GreenhouseStrip() {
   const { state, ready, quests } = useGarden()
   const navigate = useNavigate()
   const [, setTick] = useState(0)
+
+  const narrowStrip = useIsNarrow()
 
   const growing = seedByKey(state?.growing_seed)
   // The remaining time is a live number, so it needs a heartbeat to stay true.
@@ -1925,9 +1927,12 @@ function GreenhouseStrip({ doneToday }) {
   return (
     <section className="greenhouse-strip">
       <div className={`gh-trak${claimable ? ' has-quest' : ''}`} title={say}>
+        {/* Smaller on a phone. He's the strip's anchor rather than its
+            content, and at 88 he was taking 88px of a 375px screen — a quarter
+            of the width — from the line that has something to say. */}
         <Trak
           mood={claimable ? 'happy' : isReady ? 'point' : growing ? 'idle' : 'think'}
-          size={88}
+          size={narrowStrip ? 56 : 88}
           pettable
         />
         {claimable > 0 && <span className="gh-trak-dot" aria-hidden="true" />}
@@ -1976,10 +1981,14 @@ function GreenhouseStrip({ doneToday }) {
           <span aria-hidden="true">{streak > 0 ? '🔥' : '🌑'}</span>
           {streak} {streak === 1 ? 'day' : 'days'}
         </span>
-        <span className="gh-chip" title="Tasks you've finished today">
-          <span aria-hidden="true">✅</span>{doneToday} done today
-        </span>
-        <span className="gh-chip-rule" aria-hidden="true" />
+        {/* "done today" used to sit here too. It has its own tile further down
+            the board — the same number twice on one screen, and on a phone it
+            was 99px of a 217px row. The tile is the one that stays: it's bigger,
+            it's where the eye already goes for it, and it can carry the toggle.
+
+            The rule that separated the balances from the allowances has gone
+            with them: the allowances are usually absent now, and a divider
+            with nothing after it is just a mark. */}
         <DailyCaps state={state} />
       </div>
       </div>

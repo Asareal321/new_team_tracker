@@ -2069,8 +2069,15 @@
 }
 /* A spent allowance is stated, not hidden — it explains a refusal you may be
    about to hit. */
-.gh-chip.cap.spent { color: var(--bb-due-ink); background: var(--bb-due-tint); border-color: var(--bb-due); }
-.gh-chip-rule { width: 1px; height: 17px; background: var(--bb-border); margin: 0 3px; }
+/* An allowance only renders once it's nearly gone (see DailyCaps.jsx), so
+   both states are tinted — a chip that appears in the plain style would look
+   like the permanent ones it replaced and be read as background. */
+/* Escalating, not just different: amber while it's running out, red once it's
+   gone. Spent was previously amber, which was the only tint it needed when it
+   was the only state — now that a warning comes before it, it takes the
+   stronger of the two. */
+.gh-chip.cap.low   { color: var(--bb-due-ink);  background: var(--bb-due-tint);  border-color: var(--bb-due); }
+.gh-chip.cap.spent { color: var(--bb-flag-ink); background: var(--bb-flag-tint); border-color: var(--bb-flag); }
 
 /* --- responsive ----------------------------------------------------------- */
 
