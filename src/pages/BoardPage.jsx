@@ -401,6 +401,7 @@ export default function BoardPage() {
     <div>
       <TaskBoard
         onManageProjects={!currentTeamId ? () => setShowProjectsManager(true) : null}
+        onAddProject={!currentTeamId ? addProject : null}
         tasks={tasks}
         teamMembers={teamMembers}
         projects={projects}

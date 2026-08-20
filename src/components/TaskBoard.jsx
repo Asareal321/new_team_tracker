@@ -154,7 +154,7 @@ export default function TaskBoard({
   tasks, teamMembers, projects, projectMembers, taskUpdates,
   currentUserId, currentTeamId,
   onAdd, onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees,
-  onRespondToAssignment, onResolveChangeRequest, onTaskDone, onManageProjects,
+  onRespondToAssignment, onResolveChangeRequest, onTaskDone, onManageProjects, onAddProject,
 }) {
   const [showForm, setShowForm]   = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -346,10 +346,10 @@ export default function TaskBoard({
   // already made (the pill stays selected between captures), and knowing which
   // project a thought belongs to is the thing you forget first and can least
   // reconstruct later. Everything else can still wait for triage.
-  async function captureToDump(title, projectId = null) {
+  async function captureToDump(title, projectId = null, dueDate = null) {
     await onAdd({
       title, notes: '', status: BRAINDUMP, priority: 'medium',
-      due_date: null, project_id: projectId, recurrence: null, assigneeIds: [],
+      due_date: dueDate || null, project_id: projectId, recurrence: null, assigneeIds: [],
     })
   }
 
@@ -544,8 +544,8 @@ export default function TaskBoard({
         onUpdateAssignees={onUpdateAssignees}
         onStartEdit={startEdit}
         onTaskDone={onTaskDone}
-        onOpenForm={() => { setShowForm(true); setEditingId(null); setForm(defaultForm()) }}
         onManageProjects={onManageProjects}
+        onAddProject={onAddProject}
       />
     </div>
   )
@@ -558,7 +558,7 @@ function PriorityBoard({
   activeTab, setActiveTab, byStatus, peopleFilter,
   dumpTasks, onCapture, onSortFromDump,
   projectName, projects, updatesForTask, resolveAssignees, teamMembers,
-  onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onStartEdit, onOpenForm, onTaskDone, onManageProjects,
+  onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onStartEdit, onTaskDone, onManageProjects, onAddProject,
 }) {
   const [activeId, setActiveId] = useState(null)
   const [zoneNotice, setZoneNotice] = useState('')
@@ -798,14 +798,6 @@ function PriorityBoard({
               Archived
             </button>
           </div>
-          <div className="tabs-actions">
-            {/* Personal boards only — a team's projects are managed from the
-                community page, which has room for the two-column version. */}
-            {onManageProjects && (
-              <button className="btn-ghost btn-sm" onClick={onManageProjects}>Projects</button>
-            )}
-            <button className="btn-primary btn-sm" onClick={onOpenForm}>+ Add Task</button>
-          </div>
         </div>
 
         {activeTab === 'pending' ? (
@@ -836,6 +828,8 @@ function PriorityBoard({
             projectName={projectName}
             projects={projects}
             dragActive={!!activeId}
+            onAddProject={onAddProject}
+            onManageProjects={onManageProjects}
             onCapture={onCapture}
             onDeleteItem={setPendingDelete}
             onSort={async (item, status) => {
@@ -1714,7 +1708,7 @@ function DumpTrash({ active }) {
   )
 }
 
-function Braindump({ items, bands, laneCounts, projectName, projects = [], dragActive, onCapture, onSort, onDeleteItem, onBack }) {
+function Braindump({ items, bands, laneCounts, projectName, projects = [], dragActive, onCapture, onSort, onDeleteItem, onAddProject, onManageProjects, onBack }) {
   const [draft, setDraft] = useState('')
   const [selected, setSelected] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -1724,6 +1718,14 @@ function Braindump({ items, bands, laneCounts, projectName, projects = [], dragA
   // worth of thinking, and re-picking it every line would be the friction the
   // braindump exists to avoid.
   const [captureProject, setCaptureProject] = useState(null)
+  // When the task should be done by. Not sticky, unlike the project: a run of
+  // captures is usually one project's worth of thinking but rarely one
+  // deadline's, and a date silently carried on to the next task is a wrong
+  // date rather than a saved keystroke.
+  const [captureDue, setCaptureDue] = useState('')
+  // The inline "+ New project" field, when it's open.
+  const [newProject, setNewProject] = useState(null)
+  const [projectBusy, setProjectBusy] = useState(false)
 
   // The tray is a pointer-and-keyboard control; the swipe is the phone's.
   const narrow = useIsNarrow()
@@ -1737,6 +1739,26 @@ function Braindump({ items, bands, laneCounts, projectName, projects = [], dragA
     () => projects.filter(p => !items.some(i => i.project_id === p.id)),
     [projects, items],
   )
+
+  // Naming a project is the whole of creating one, so it's an input in the
+  // pill row rather than a modal — the alternative was leaving the pile,
+  // opening a manager, adding, closing, and finding your place again, to type
+  // one word.
+  async function createProject(e) {
+    e.preventDefault()
+    const name = (newProject || '').trim()
+    if (!name || projectBusy) return
+    setProjectBusy(true)
+    try {
+      const id = await onAddProject({ name, status: 'active' })
+      // Select it: you named it because this is where the thing you're typing
+      // belongs.
+      if (id) setCaptureProject(id)
+      setNewProject(null)
+    } catch (err) {
+      setNotice(err?.message || 'Could not add that project.')
+    } finally { setProjectBusy(false) }
+  }
 
   // A project that's been deleted shouldn't leave the next capture pointing at
   // nothing.
@@ -1780,7 +1802,12 @@ function Braindump({ items, bands, laneCounts, projectName, projects = [], dragA
     const title = draft.trim()
     if (!title || busy) return
     setBusy(true)
-    try { await onCapture(title, captureProject); setDraft(''); setNotice('') }
+    try {
+      await onCapture(title, captureProject, captureDue || null)
+      setDraft('')
+      setCaptureDue('')
+      setNotice('')
+    }
     finally { setBusy(false) }
   }
 
@@ -1809,31 +1836,75 @@ function Braindump({ items, bands, laneCounts, projectName, projects = [], dragA
               it's part of the same act — you pick it once and keep typing.
               "Unfiled" is always offered and is the default, so the pile can
               still take a thought that doesn't belong anywhere yet. */}
-          {projects.length > 0 && (
-            <div className="dump-projects" role="group" aria-label="File captures under">
-              <span className="dump-plabel">File under</span>
-              <div className="dump-pills">
+          {/* The whole of filing a capture: which project, and when it's due.
+              Both sit under the field because both are part of the same act of
+              writing the thing down — this is the only way into a task now, so
+              anything that can't wait for triage has to be reachable here. */}
+          <div className="dump-projects" role="group" aria-label="File captures under">
+            <span className="dump-plabel">File under</span>
+            <div className="dump-pills">
+              <button
+                type="button"
+                className={`dump-pj${captureProject === null ? ' selected' : ''}`}
+                aria-pressed={captureProject === null}
+                onClick={() => setCaptureProject(null)}
+              >Unfiled</button>
+              {projects.map(p => (
                 <button
+                  key={p.id}
                   type="button"
-                  className={`dump-pj${captureProject === null ? ' selected' : ''}`}
-                  aria-pressed={captureProject === null}
-                  onClick={() => setCaptureProject(null)}
-                >Unfiled</button>
-                {projects.map(p => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    className={`dump-pj${captureProject === p.id ? ' selected' : ''}`}
-                    aria-pressed={captureProject === p.id}
-                    onClick={() => setCaptureProject(captureProject === p.id ? null : p.id)}
-                  >
-                    <span className="dump-pjdot" style={{ background: projectDotColor(p.id) }} />
-                    {p.name}
+                  className={`dump-pj${captureProject === p.id ? ' selected' : ''}`}
+                  aria-pressed={captureProject === p.id}
+                  onClick={() => setCaptureProject(captureProject === p.id ? null : p.id)}
+                >
+                  <span className="dump-pjdot" style={{ background: projectDotColor(p.id) }} />
+                  {p.name}
+                </button>
+              ))}
+              {onAddProject && newProject === null && (
+                <button type="button" className="dump-pj dump-pj-new" onClick={() => setNewProject('')}>
+                  + New project
+                </button>
+              )}
+              {onAddProject && newProject !== null && (
+                <form className="dump-newpj" onSubmit={createProject}>
+                  <input
+                    autoFocus
+                    value={newProject}
+                    onChange={e => setNewProject(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Escape') setNewProject(null) }}
+                    placeholder="Project name"
+                    aria-label="New project name"
+                  />
+                  <button type="submit" className="dump-pj selected" disabled={!newProject.trim() || projectBusy}>
+                    Add
                   </button>
-                ))}
-              </div>
+                  <button type="button" className="dump-pj" onClick={() => setNewProject(null)}>Cancel</button>
+                </form>
+              )}
+              {onManageProjects && projects.length > 0 && (
+                <button type="button" className="dump-pj-manage" onClick={onManageProjects}>
+                  Rename or delete
+                </button>
+              )}
             </div>
-          )}
+          </div>
+
+          <div className="dump-due">
+            <label className="dump-plabel" htmlFor="dump-due-date">Done by</label>
+            <input
+              id="dump-due-date"
+              type="date"
+              className="dump-duefield"
+              value={captureDue}
+              onChange={e => setCaptureDue(e.target.value)}
+            />
+            {captureDue && (
+              <button type="button" className="dump-due-clear" onClick={() => setCaptureDue('')}>
+                No date
+              </button>
+            )}
+          </div>
 
           <p className="dump-hint">
             {narrow
