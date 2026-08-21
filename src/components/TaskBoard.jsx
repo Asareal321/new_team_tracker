@@ -75,12 +75,9 @@ const BRAINDUMP = 'braindump'
 // BoardPage and others already import them from this module.
 export { MAX_DOING, MAX_UP_NEXT }
 
-// A capture that couldn't land where it was aimed. Said out loud rather than
-// silently: a task that isn't where you put it is worse than one that was
-// refused, unless you're told.
-function divertNotice(status) {
-  return `${MOVE_LABELS[status]} is full — filed to the braindump instead.`
-}
+// A capture used to be able to land somewhere other than where it was aimed,
+// and divertNotice said so. Capture now only ever goes to the braindump, which
+// has no limit, so there is nothing left to divert.
 
 function bandFullNotice(status) {
   return `${MOVE_LABELS[status]} holds ${BAND_LIMITS[status]}.`
@@ -156,110 +153,18 @@ export default function TaskBoard({
   onAdd, onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees,
   onRespondToAssignment, onResolveChangeRequest, onTaskDone, onManageProjects, onAddProject,
 }) {
-  const [showForm, setShowForm]   = useState(false)
-  const [editingId, setEditingId] = useState(null)
-  const [form, setForm]           = useState(defaultForm())
   const [activeTab, setActiveTab] = useState('board')
-  const [datePickerOpen, setDatePickerOpen] = useState(false)
-  const [formNotice, setFormNotice] = useState('')
-  const titleRef = useRef(null)
-  // The garden's toast layer, so a diverted capture is still announced once the
-  // drawer has closed behind it.
-  const { notify } = useGarden() || {}
 
   // People filter: which teammates' tasks to show. Default = only me (tasks
   // I'm assigned to). "Everyone" shows the whole team board.
   const [peopleEveryone, setPeopleEveryone] = useState(false)
   const [selectedMembers, setSelectedMembers] = useState(() => new Set(currentUserId ? [currentUserId] : []))
 
-  // With no scrim, Escape is the keyboard route out of the drawer.
-  useEffect(() => {
-    if (!showForm) return
-    function onKey(e) { if (e.key === 'Escape') cancelForm() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [showForm])
-
   // Reset the filter to "just me" whenever the team (or user) changes.
   useEffect(() => {
     setSelectedMembers(new Set(currentUserId ? [currentUserId] : []))
     setPeopleEveryone(false)
   }, [currentTeamId, currentUserId])
-
-  function defaultForm() {
-    return { title: '', notes: '', status: 'todo', priority: '', due_date: '', project_id: null, recurrence: null, assigneeIds: [] }
-  }
-
-  // Quick capture: keeping the drawer open after an add lets you type the next
-  // task straight away. The chips (priority, project, due date) deliberately
-  // survive — a capture run is usually several tasks of the same shape.
-  // `overrides` lets a control commit a value *and* submit in the same click —
-  // the project pills do exactly that, and reading `form` here would still see
-  // the pre-click state.
-  async function handleSubmit(e, keepGoing = false, overrides = {}) {
-    e.preventDefault()
-    if (!form.title.trim()) return
-    const { assigneeIds, ...rest } = { ...form, ...overrides }
-    const payload = { ...rest, priority: rest.priority || 'medium', due_date: rest.due_date || null, project_id: rest.project_id || null }
-    // The limits hold on create and edit too, or the form is the way around
-    // them — but a full board must never refuse a capture. Editing a task into
-    // a full band is a deliberate move and still gets stopped; a NEW task with
-    // nowhere to land goes to the braindump, which exists for exactly this.
-    let divertedTo = null
-    if (bandFull(tasks, payload.status, editingId)) {
-      if (editingId) {
-        setFormNotice(bandFullNotice(payload.status))
-        return
-      }
-      divertedTo = payload.status
-      payload.status = BRAINDUMP
-      notify?.(divertNotice(divertedTo), 'capped')
-    }
-    if (editingId) {
-      await onUpdate(editingId, payload)
-      await onUpdateAssignees(editingId, assigneeIds)
-      setEditingId(null)
-    } else {
-      const newId = await onAdd({ ...payload, assigneeIds })
-      // newId returned by BoardPage
-    }
-    if (keepGoing && !editingId) {
-      setForm(f => ({ ...defaultForm(), priority: f.priority, status: f.status, project_id: f.project_id, recurrence: f.recurrence }))
-      setDatePickerOpen(false)
-      setFormNotice(divertedTo ? divertNotice(divertedTo) : 'Added — keep typing.')
-      titleRef.current?.focus()
-      return
-    }
-    setForm(defaultForm())
-    setDatePickerOpen(false)
-    setShowForm(false)
-  }
-
-  function startEdit(task) {
-    setForm({
-      title:       task.title,
-      notes:       task.notes || '',
-      status:      task.status,
-      priority:    task.priority,
-      due_date:    task.due_date || '',
-      project_id:  task.project_id,
-      recurrence:  task.recurrence || null,
-      assigneeIds: (task.task_assignees || []).map(a => a.user_id),
-    })
-    setEditingId(task.id)
-    setShowForm(true)
-  }
-
-  function cancelForm() { setForm(defaultForm()); setEditingId(null); setDatePickerOpen(false); setShowForm(false); setFormNotice('') }
-
-  function toggleAssignee(id) {
-    setForm(f => ({
-      ...f,
-      assigneeIds: f.assigneeIds.includes(id)
-        ? f.assigneeIds.filter(x => x !== id)
-        : [...f.assigneeIds, id],
-    }))
-  }
 
   const projectName    = (id) => projects.find(p => p.id === id)?.name
   const updatesForTask = (taskId) => taskUpdates.filter(u => u.task_id === taskId).slice().reverse()
@@ -388,145 +293,6 @@ export default function TaskBoard({
 
   return (
     <div className="board">
-      {showForm && (
-        // A drawer, not a modal: no scrim, so the board behind stays live and
-        // you can keep dragging cards while a task is open. That's the whole
-        // point of the side-drawer direction — it's built for triage runs.
-        <div className="task-drawer-wrap">
-          <form className="task-form task-drawer" onSubmit={handleSubmit}>
-            <div className="drawer-head">
-              <h2>{editingId ? 'Edit Task' : 'New Task'}</h2>
-              <button type="button" className="drawer-close" aria-label="Close" onClick={cancelForm}>✕</button>
-            </div>
-            <label>Title
-              <input autoFocus ref={titleRef} value={form.title}
-                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && !editingId) { e.preventDefault(); handleSubmit(e, true) }
-                }}
-                placeholder="What needs to be done?" />
-            </label>
-            {!editingId && <p className="capture-hint">⏎ add &amp; keep going</p>}
-            <label>Notes
-              <textarea rows={2} value={form.notes}
-                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                placeholder="Any context or details…" />
-            </label>
-
-            <div className="qc-bar">
-              <div className="qc-prio" role="group" aria-label="Priority">
-                {PRIORITIES.map(p => (
-                  <button
-                    key={p} type="button"
-                    className={`qc-dot prio-${p}${form.priority === p ? ' selected' : ''}`}
-                    aria-pressed={form.priority === p}
-                    aria-label={PRIORITY_LABELS[p]}
-                    title={PRIORITY_LABELS[p]}
-                    onClick={() => { setForm(f => ({ ...f, priority: f.priority === p ? '' : p })); setFormNotice('') }}
-                  ><span /></button>
-                ))}
-              </div>
-              <span className="qc-vr" />
-              <button
-                type="button"
-                className={`qc-date${form.due_date ? ' set' : ''}`}
-                onClick={() => setDatePickerOpen(o => !o)}
-              >
-                <span className="qc-cal">📅</span>
-                {form.due_date ? formatDate(form.due_date) : 'Due date'}
-              </button>
-              {form.due_date && (
-                <button type="button" className="qc-clear" aria-label="Clear due date"
-                  onClick={() => { setForm(f => ({ ...f, due_date: '' })); setDatePickerOpen(false) }}>×</button>
-              )}
-              <span className="qc-vr" />
-              {/* Repeat is off unless chosen — clicking the active one clears
-                  it, same as the priority dots. */}
-              <div className="qc-repeat" role="group" aria-label="Repeats">
-                <span className="qc-cal" aria-hidden="true">🔁</span>
-                {RECURRENCES.map(r => (
-                  <button
-                    key={r.key} type="button"
-                    className={`qc-rep${form.recurrence === r.key ? ' selected' : ''}`}
-                    aria-pressed={form.recurrence === r.key}
-                    onClick={() => setForm(f => ({ ...f, recurrence: f.recurrence === r.key ? null : r.key }))}
-                  >{r.short}</button>
-                ))}
-              </div>
-              {currentTeamId && teamMembers.length > 0 && (
-                <>
-                  <span className="qc-vr" />
-                  <div className="qc-avatars" role="group" aria-label="Assignees">
-                    {teamMembers.map(m => (
-                      <button
-                        key={m.id} type="button"
-                        className={`qc-av${form.assigneeIds.includes(m.id) ? ' selected' : ''}`}
-                        aria-pressed={form.assigneeIds.includes(m.id)}
-                        title={m.display_name}
-                        onClick={() => toggleAssignee(m.id)}
-                      >{initials(m.display_name)}</button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {datePickerOpen && (
-              <input type="date" className="qc-datefield" autoFocus value={form.due_date}
-                onChange={e => { setForm(f => ({ ...f, due_date: e.target.value })); setDatePickerOpen(false) }} />
-            )}
-
-            {/* On a new task the project pills ARE the submit: picking where it
-                goes is the last decision, so it may as well be the one that
-                files the card. "No project" is always offered — including when
-                there are no projects at all, which is otherwise a dead end.
-                While editing they stay a plain selector, because saving an
-                edit shouldn't be a side effect of retagging it. */}
-            <div className="qc-projects">
-              <span className="qc-plabel">{editingId ? 'Project' : 'Add to'}</span>
-              <div className="qc-pills">
-                {projects.map(p => (
-                  <button
-                    key={p.id} type="button"
-                    className={`qc-pj${form.project_id === p.id ? ' selected' : ''}${editingId ? '' : ' qc-pj-submit'}`}
-                    aria-pressed={editingId ? form.project_id === p.id : undefined}
-                    disabled={!editingId && !form.title.trim()}
-                    onClick={e => {
-                      if (editingId) {
-                        setForm(f => ({ ...f, project_id: f.project_id === p.id ? null : p.id }))
-                      } else {
-                        setForm(f => ({ ...f, project_id: p.id }))
-                        handleSubmit(e, false, { project_id: p.id })
-                      }
-                    }}
-                  >
-                    <span className="qc-pjdot" style={{ background: projectDotColor(p.id) }} />
-                    {p.name}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  className={`qc-pj qc-pj-none${!form.project_id ? ' selected' : ''}${editingId ? '' : ' qc-pj-submit'}`}
-                  aria-pressed={editingId ? !form.project_id : undefined}
-                  disabled={!editingId && !form.title.trim()}
-                  onClick={e => {
-                    if (editingId) setForm(f => ({ ...f, project_id: null }))
-                    else handleSubmit(e, false, { project_id: null })
-                  }}
-                >No project</button>
-              </div>
-            </div>
-            {formNotice && <p className="form-notice">{formNotice}</p>}
-            <div className="form-actions">
-              <button type="button" className="btn-ghost" onClick={cancelForm}>Cancel</button>
-              {editingId
-                ? <button type="submit" className="btn-primary">Save</button>
-                : <span className="form-actions-hint">Pick a project above to add it</span>}
-            </div>
-          </form>
-        </div>
-      )}
-
       <PriorityBoard
         tasks={visibleTasks}
         pendingTasks={pendingTasksForMe}
@@ -560,7 +326,6 @@ export default function TaskBoard({
         onAddUpdate={onAddUpdate}
         onDeleteUpdate={onDeleteUpdate}
         onUpdateAssignees={onUpdateAssignees}
-        onStartEdit={startEdit}
         onTaskDone={onTaskDone}
         onManageProjects={onManageProjects}
         onAddProject={onAddProject}
@@ -576,7 +341,7 @@ function PriorityBoard({
   activeTab, setActiveTab, byStatus, peopleFilter,
   dumpTasks, onCapture, onSortFromDump,
   projectName, projects, updatesForTask, resolveAssignees, teamMembers,
-  onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onStartEdit, onTaskDone, onManageProjects, onAddProject,
+  onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onTaskDone, onManageProjects, onAddProject,
 }) {
   const [activeId, setActiveId] = useState(null)
   const [zoneNotice, setZoneNotice] = useState('')
@@ -876,7 +641,7 @@ function PriorityBoard({
                 projectName={projectName}
                 updatesForTask={updatesForTask}
                 teamMembers={teamMembers}
-                onEdit={onStartEdit}
+                projects={projects}
                 onDelete={onDelete}
                 onUpdate={onUpdate}
                 onAddUpdate={onAddUpdate}
@@ -1099,7 +864,7 @@ function AssignmentResponseForm({ mode, busy, onCancel, onSubmit }) {
 
 // ─── Priority zone ───────────────────────────────────────────────────────────
 
-function Band({ status, label, tasks, limit, isFull, onBlocked, onFullBand, resolveAssignees, projectName, updatesForTask, teamMembers, onEdit, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, onUpdateAssignees, draftUpdates, setDraft, onTaskDone }) {
+function Band({ status, label, tasks, limit, isFull, onBlocked, onFullBand, resolveAssignees, projectName, projects, updatesForTask, teamMembers, onDelete, onUpdate, onAddUpdate, onDeleteUpdate, onUpdateAssignees, draftUpdates, setDraft, onTaskDone }) {
   const { setNodeRef, isOver } = useDroppable({ id: `col-${status}` })
   const atLimit = limit != null && tasks.length >= limit
 
@@ -1123,7 +888,8 @@ function Band({ status, label, tasks, limit, isFull, onBlocked, onFullBand, reso
       project={task.project_id ? { id: task.project_id, name: projectName(task.project_id) || 'Unknown project' } : null}
       updates={updatesForTask(task.id)}
       teamMembers={teamMembers}
-      onEdit={() => onEdit(task)}
+      onUpdateTask={updates => onUpdate(task.id, updates)}
+      projects={projects}
       onDelete={() => onDelete(task.id)}
       onStatusChange={s => {
         // A full band offers a swap instead of a refusal. onBlocked stays for
@@ -1244,7 +1010,7 @@ function rowStyle(project) {
 function TaskRow({
   task, assignees, project, updates,
   teamMembers = [], onUpdateAssignees,
-  onEdit, onDelete, onStatusChange, onAddUpdate, onDeleteUpdate,
+  onDelete, onStatusChange, onUpdateTask, projects, onAddUpdate, onDeleteUpdate,
   statuses, statusLabels,
   dragListeners, dragAttributes,
   draftText = '', onDraftChange, onTaskDone,
@@ -1374,7 +1140,8 @@ function TaskRow({
         <TaskDetail
           task={task} project={project} assignees={assignees} updates={updates}
           teamMembers={teamMembers} onUpdateAssignees={onUpdateAssignees}
-          onEdit={onEdit} onDelete={onDelete} onStatusChange={onStatusChange}
+          onDelete={onDelete} onStatusChange={onStatusChange}
+          onUpdateTask={onUpdateTask} projects={projects}
           onAddUpdate={onAddUpdate} onDeleteUpdate={onDeleteUpdate}
           draftText={draftText} onDraftChange={onDraftChange} onTaskDone={onTaskDone}
           onClose={() => setDetail(false)}
@@ -1389,9 +1156,21 @@ function TaskRow({
 // what has actually been going on you open it.
 function TaskDetail({
   task, project, assignees, updates, teamMembers, onUpdateAssignees,
-  onEdit, onDelete, onStatusChange,
+  onDelete, onStatusChange, onUpdateTask, projects = [],
   onAddUpdate, onDeleteUpdate, draftText = '', onDraftChange, onTaskDone, onClose,
 }) {
+  // The title, held locally while you type so every keystroke isn't a write.
+  const [titleDraft, setTitleDraft] = useState(task.title)
+  // Someone else's edit, or a reopen on a different task, should win over a
+  // draft nobody is typing into.
+  useEffect(() => { setTitleDraft(task.title) }, [task.id, task.title])
+
+  function commitTitle() {
+    const next = titleDraft.trim()
+    // Unchanged, or emptied: put the stored title back rather than writing.
+    if (!next || next === task.title) { setTitleDraft(task.title); return }
+    onUpdateTask?.({ title: next })
+  }
   const assigneeIds = (task.task_assignees || []).map(a => a.user_id)
   const isArchived = task.status === 'archived'
   // Mobile only. On a desktop the row's chevrons are right there and always
@@ -1435,26 +1214,30 @@ function TaskDetail({
       <div className="task-detail" onClick={e => e.stopPropagation()}>
         <header className="td-head">
           <div className="td-headings">
-            <h3 className="td-title">{task.title}</h3>
+            {/* The title is the field, not a heading with a field hidden behind
+                an Edit button. Saves on blur or Enter; Escape puts back what
+                was there. A title cleared to nothing reverts rather than
+                saving, because a task with no name can't be found again. */}
+            <input
+              className="td-title td-title-input"
+              value={titleDraft}
+              onChange={e => setTitleDraft(e.target.value)}
+              onBlur={commitTitle}
+              onKeyDown={e => {
+                if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() }
+                if (e.key === 'Escape') { setTitleDraft(task.title); e.currentTarget.blur() }
+              }}
+              aria-label="Task name"
+            />
             <div className="td-facts">
               <span className={`td-status s-${task.status}`}>{MOVE_LABELS[task.status]}</span>
-              {project && (
-                <span className={`row-sprint ${projectTintClass(project.id)}`}>{project.name}</span>
-              )}
               {task.due_date && (
                 <span className={`td-fact ${dueClass(task.due_date)}`}>due {formatDate(task.due_date)}</span>
               )}
-              <span className="td-fact">{PRIORITY_LABELS[task.priority] || 'No'} priority</span>
-              <span className="td-fact">
-                {assignees.length
-                  ? assignees.map(a => a.display_name).join(', ')
-                  : 'Unassigned'}
-              </span>
-              {/* Up here with the pills rather than in a footer. Moving the
-                  task is what the composer's buttons and the row's chevrons
-                  are for, so only the two that change the task itself are
-                  left — and Edit is the only route to its due date, priority
-                  and project. */}
+              {/* The priority and "Unassigned" pills used to sit here. Both
+                  described something the tile can no longer change, and the
+                  second said "Unassigned" on every task of a board with nobody
+                  to assign to. */}
               {isArchived && (
                 <button className="td-action" onClick={() => { onStatusChange('done'); onClose() }}>Unarchive</button>
               )}
@@ -1472,7 +1255,6 @@ function TaskDetail({
                   {detailPrev === BRAINDUMP ? 'Send to the braindump' : `Move down to ${MOVE_LABELS[detailPrev]}`}
                 </button>
               )}
-              {!isArchived && <button className="td-action" onClick={() => { onEdit(); onClose() }}>Edit</button>}
               <button className="td-action danger" onClick={() => { onDelete(); onClose() }}>Delete</button>
             </div>
           </div>
@@ -1480,6 +1262,33 @@ function TaskDetail({
         </header>
 
         <div className="td-scroll">
+          {/* Project, as pills. The tile is where a task is changed now, so
+              the two things worth changing about one are both in it. */}
+          {projects.length > 0 && !isArchived && (
+            <section className="td-section">
+              <span className="td-label">Project</span>
+              <div className="td-projects">
+                {projects.map(p => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className={`dump-pj${task.project_id === p.id ? ' selected' : ''}`}
+                    aria-pressed={task.project_id === p.id}
+                    onClick={() => onUpdateTask?.({ project_id: task.project_id === p.id ? null : p.id })}
+                  >
+                    <span className="dump-pjdot" style={{ background: projectDotColor(p.id) }} />
+                    {p.name}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className={`dump-pj${!task.project_id ? ' selected' : ''}`}
+                  aria-pressed={!task.project_id}
+                  onClick={() => onUpdateTask?.({ project_id: null })}
+                >No project</button>
+              </div>
+            </section>
+          )}
           {task.notes && (
             <section className="td-section">
               <span className="td-label">Notes</span>
