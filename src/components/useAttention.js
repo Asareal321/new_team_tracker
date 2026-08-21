@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useGarden } from '../context/GardenContext'
 import { myFriends, marketOpen, isUnmigrated } from '../lib/community'
-import { attentionFor, signatures } from '../lib/attention'
+import { attentionFor, signatures, primeSignatures } from '../lib/attention'
 import { readSeen, writeSeen, SEEN_EVENT } from '../lib/seenState'
 
 // How often to ask the server whether anything happened. Friend requests and
@@ -67,6 +67,22 @@ export function useAttention() {
 
   // The rail's routes clear themselves by being navigated to.
   useEffect(() => { markSeen(location.pathname) }, [location.pathname, markSeen])
+
+  // Give the quiet signals a baseline the first time we ever see this account.
+  //
+  // A "new" signal means "this appeared since you last looked", so it stays
+  // silent with no record to compare against — which meant the shop could
+  // never speak up until you had already been to the shop. Priming the
+  // scopes that have no record at all fixes that without making a first run
+  // open onto a lit-up rail: what is there now is the baseline, and the next
+  // thing that happens is news.
+  useEffect(() => {
+    if (!user || !state) return
+    const base = primeSignatures({ state, flowers, quests, community })
+    for (const [scope, sig] of Object.entries(base)) {
+      if (seen[scope] === undefined) setSeen(writeSeen(user.id, scope, sig))
+    }
+  }, [user, state, flowers, quests, community, seen])
 
   const signals = attentionFor({ ...input, seen })
   return { signals, markSeen, refresh: poll }

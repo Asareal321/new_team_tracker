@@ -42,6 +42,7 @@ export const GARDEN_SHOP = 'garden:shop'
 // Which rail tab a garden room reports up to.
 export const GARDEN_SCOPES = [GARDEN_GREENHOUSE, GARDEN_BEDS, GARDEN_HERBARIUM, GARDEN_SHOP]
 
+// The best coin-priced packet the purse can reach, as an index into PACKETS.
 export function affordablePacketTier(state) {
   const coins = state?.coins ?? 0
   let best = -1
@@ -49,6 +50,25 @@ export function affordablePacketTier(state) {
     if (p.currency === 'coins' && coins >= p.cost) best = Math.max(best, i)
   })
   return best
+}
+
+// What the shop will actually sell you right now, in either currency.
+//
+// Seed-priced packets used to be excluded here on the grounds that they are
+// "always affordable" — which is wrong twice over. Seeds are earned one per
+// task added, the cheapest packet costs several, and a new account starts with
+// none. Reaching that first packet is the earliest thing the shop has to say
+// and it was the one thing it could not say.
+export function affordable(state) {
+  const seeds = state?.seeds ?? 0
+  let seedPacket = null
+  PACKETS.forEach(p => {
+    if (p.currency === 'seeds' && seeds >= p.cost) {
+      if (!seedPacket || p.cost > seedPacket.cost) seedPacket = p
+    }
+  })
+  const coinTier = affordablePacketTier(state)
+  return { seedPacket, coinTier, coinPacket: coinTier >= 0 ? PACKETS[coinTier] : null }
 }
 
 const packetsHeld = state =>
@@ -113,10 +133,16 @@ function raw({ state, flowers, quests, community }) {
   }
 
   // — the shop —
-  const tier = affordablePacketTier(state)
-  if (tier >= 0) {
-    const packet = PACKETS[tier]
-    add(GARDEN_SHOP, 'new', `tier:${tier}`, `You can afford the ${packet.name.toLowerCase()}`)
+  //
+  // The signature is *what* you can afford, not how much you hold. Buying a
+  // packet and earning your way back to the same one is not news, and a
+  // signature that moved with every coin would glow on every finished task.
+  const { seedPacket, coinPacket, coinTier } = affordable(state)
+  if (seedPacket || coinPacket) {
+    const best = coinPacket || seedPacket
+    const cost = best.currency === 'seeds' ? `${best.cost} seeds` : `${best.cost} coins`
+    add(GARDEN_SHOP, 'new', `afford:${seedPacket ? seedPacket.key : '-'}:${coinTier}`,
+      `You can afford the ${best.name.toLowerCase()} — ${cost}`)
   }
 
   // — community —
@@ -142,6 +168,19 @@ function raw({ state, flowers, quests, community }) {
 function rollUpSignature(all) {
   const parts = GARDEN_SCOPES.map(s => all[s]?.signature).filter(Boolean)
   return parts.length ? parts.join('|') : null
+}
+
+// Scopes whose signal only means "since you last looked". These need a
+// baseline before they can ever fire — see the note in shown(). Loud signals
+// are deliberately not primed: a cloud already banked when you open the app is
+// still waiting for you, and should say so on the first render.
+export function primeSignatures(input) {
+  const all = raw(input)
+  const out = {}
+  for (const [scope, sig] of Object.entries(all)) {
+    if (sig.level === 'new') out[scope] = sig.signature
+  }
+  return out
 }
 
 export function signatures(input) {

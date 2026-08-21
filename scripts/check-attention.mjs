@@ -12,7 +12,7 @@
 // cause never glows twice — but a changed cause is news again.
 
 import {
-  attentionFor, signatures, attentionTitle, affordablePacketTier,
+  attentionFor, signatures, primeSignatures, attentionTitle, affordablePacketTier, affordable,
   ROUTE_BOARD, ROUTE_COMMUNITY, ROUTE_GARDEN,
   GARDEN_GREENHOUSE, GARDEN_BEDS, GARDEN_HERBARIUM, GARDEN_SHOP,
 } from '../src/lib/attention.js'
@@ -123,15 +123,65 @@ const otherFlower = { ...done, growing_seed: 'tulip' }
 ok('a different flower finishing is news again',
   attentionFor({ state: otherFlower, flowers: [], quests: [], community: {}, seen: seenAll(doneInput) })[GARDEN_GREENHOUSE]?.level === 'ready')
 
-// — the shop —
+// — the shop, in seeds —
+//
+// Seeds are the first currency you earn: one per task added, and the cheapest
+// packet costs several. Reaching that first packet is the earliest thing the
+// shop has to say, and it used to be excluded on the grounds that a
+// seed-priced packet is "always affordable".
+
+const SEED_PACKET = PACKETS.find(p => p.currency === 'seeds')
+
+ok('no seeds affords nothing', !affordable({ seeds: 0, coins: 0 }).seedPacket)
+ok('one seed short affords nothing', !affordable({ seeds: SEED_PACKET.cost - 1 }).seedPacket)
+ok('enough seeds affords the packet', !!affordable({ seeds: SEED_PACKET.cost }).seedPacket)
+
+const sprouts = { ...empty, seeds: SEED_PACKET.cost }
+const noSeeds = { ...empty, seeds: 0 }
+const seenBroke = seenAll({ state: noSeeds, flowers: [], quests: [], community: {} })
+
+const seedLit = attentionFor({ state: sprouts, flowers: [], quests: [], community: {}, seen: { ...seenBroke, [GARDEN_SHOP]: 'afford:-:-1' } })
+ok('earning the third seed lights the shop', !!seedLit[GARDEN_SHOP], JSON.stringify(seedLit))
+ok('and lights the garden tab in the rail', !!seedLit[ROUTE_GARDEN])
+ok('it names what you can afford and the price',
+  /garden packet/i.test(attentionTitle(seedLit[GARDEN_SHOP])) && /3 seeds/.test(attentionTitle(seedLit[GARDEN_SHOP])),
+  attentionTitle(seedLit[GARDEN_SHOP]))
+
+// Going to look is what puts it out, whether or not you buy anything.
+const sproutInput = { state: sprouts, flowers: [], quests: [], community: {} }
+ok('visiting the shop clears it even without buying',
+  !attentionFor({ ...sproutInput, seen: seenAll(sproutInput) })[GARDEN_SHOP])
+
+// Buying takes you below the price: nothing to say, so nothing is said.
+ok('buying the packet leaves the shop quiet',
+  !attentionFor({ state: { ...empty, seeds: 0 }, flowers: [], quests: [], community: {}, seen: seenAll(sproutInput) })[GARDEN_SHOP])
+
+// And earning your way back to the SAME packet is not news again — the
+// signature is what you can afford, not how much you hold.
+ok('re-affording the same packet is not news',
+  !attentionFor({ state: sprouts, flowers: [], quests: [], community: {}, seen: seenAll(sproutInput) })[GARDEN_SHOP])
+
+// A seed that changes nothing about what you can buy must not re-light it.
+ok('a fourth seed is not news',
+  !attentionFor({ state: { ...empty, seeds: SEED_PACKET.cost + 1 }, flowers: [], quests: [], community: {}, seen: seenAll(sproutInput) })[GARDEN_SHOP])
+
+// — priming: a quiet signal needs a baseline before it can ever fire —
+
+const primeInput = { state: { ...empty, seeds: SEED_PACKET.cost, discovered: { daisy: 1 } }, flowers: [], quests: [], community: {} }
+const primed = primeSignatures(primeInput)
+ok('priming covers the quiet scopes', !!primed[GARDEN_SHOP] && !!primed[GARDEN_HERBARIUM])
+ok('priming never silences a loud one — a banked cloud still speaks on first run',
+  !primeSignatures({ state: { ...empty, stats: { pendingClouds: 1 } }, flowers: [], quests: [], community: {} })[GARDEN_GREENHOUSE])
+
+// — the shop, in coins —
 
 const coinPacket = PACKETS.find(p => p.currency === 'coins')
 const poor = { ...empty, coins: 0 }
 const rich = { ...empty, coins: coinPacket.cost }
 const seenPoor = seenAll({ state: poor, flowers: [], quests: [], community: {} })
 
-ok('a newly affordable packet lights the shop',
-  attentionFor({ state: rich, flowers: [], quests: [], community: {}, seen: { ...seenPoor, [GARDEN_SHOP]: 'tier:-1' } })[GARDEN_SHOP]?.level === 'new')
+ok('a newly affordable coin packet lights the shop',
+  attentionFor({ state: rich, flowers: [], quests: [], community: {}, seen: { ...seenPoor, [GARDEN_SHOP]: 'afford:-:-1' } })[GARDEN_SHOP]?.level === 'new')
 
 const richInput = { state: rich, flowers: [], quests: [], community: {} }
 ok('after visiting the shop it goes quiet',
