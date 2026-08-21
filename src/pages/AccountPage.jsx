@@ -1,14 +1,17 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { checkDisplayName, MAX_LENGTH } from '../lib/displayName'
 import { useAuth } from '../auth/AuthContext'
 import { useGarden } from '../context/GardenContext'
 import { useTeam } from '../context/TeamContext'
 import Onboarding from '../components/Onboarding'
+import { resetTour, requestTour } from '../lib/tourState'
 import './AccountPage.css'
 
 export default function AccountPage() {
   const { user, profile, signOut, refreshProfile } = useAuth()
+  const navigate = useNavigate()
   const { isDev, openDevPanel, state: garden, setQuietMode } = useGarden()
   const { teams, currentTeamId, setCurrentTeam } = useTeam()
   const [theme, setTheme] = useState(() => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'))
@@ -115,15 +118,29 @@ export default function AccountPage() {
         </label>
       </div>
 
-      {/* The tour only fires once, and the rules it explains are the ones you
-          forget by the time you need them. */}
+      {/* Two different things, deliberately. The rules are worth re-reading;
+          where everything lives is worth being shown again, on the real
+          screens rather than in a diagram of them. */}
+      <div className="account-card settings-card">
+        <div>
+          <strong>Show me round again</strong>
+          <p className="dev-card-hint">
+            Trak walks you through the taskboard, the community tab and the garden,
+            pointing at the real thing as he goes. Nothing is changed.
+          </p>
+        </div>
+        <button
+          className="btn-ghost btn-sm"
+          onClick={() => { resetTour(user?.id); requestTour(); navigate('/') }}
+        >Take the tour</button>
+      </div>
+
       <div className="account-card settings-card">
         <div>
           <strong>Trak&rsquo;s tour</strong>
           <p className="dev-card-hint">
-            The rabbit&rsquo;s walkthrough again — how the bands and their limits work,
-            projects, and the whole garden loop. Nothing is planted or
-            changed the second time round.
+            The rules again — the bands and their limits, projects, and the
+            garden loop. Nothing is planted the second time round.
           </p>
         </div>
         <button className="btn-ghost btn-sm" onClick={() => setTour(true)}>Replay</button>

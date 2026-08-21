@@ -1,0 +1,87 @@
+/* The guided walk's overlay. */
+
+.tour-root {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  /* The panels take their own pointer events; the root must not swallow
+     clicks on the highlighted element itself. */
+  pointer-events: none;
+}
+
+.tour-mask {
+  position: fixed;
+  background: rgba(8, 14, 16, 0.62);
+  pointer-events: auto;
+  transition: all 180ms ease;
+}
+.tour-mask-all { inset: 0; }
+
+/* The cut-out's edge. Nothing paints inside it, so the element underneath
+   keeps its own colours and stays clickable. */
+.tour-ring {
+  position: fixed;
+  border-radius: 12px;
+  box-shadow: 0 0 0 2px var(--accent-on, #C3F73A), 0 0 0 5px rgba(195, 247, 58, 0.28);
+  pointer-events: none;
+  transition: all 180ms ease;
+}
+
+.tour-card {
+  position: fixed;
+  width: min(340px, calc(100vw - 24px));
+  background: var(--bg-surface);
+  color: var(--text-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg, 14px);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.28);
+  padding: 0.85rem 0.95rem 0.75rem;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: top 180ms ease, left 180ms ease;
+}
+.tour-card-centred {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.tour-card-head { display: flex; align-items: center; gap: 0.6rem; }
+.tour-card-heading { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tour-count {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-4);
+  font-variant-numeric: tabular-nums;
+}
+.tour-title { margin: 0; font-size: 1rem; font-weight: 650; line-height: 1.25; }
+.tour-body { margin: 0; font-size: 0.88rem; line-height: 1.5; color: var(--text-2); }
+.tour-hunting { margin: 0; font-size: 0.75rem; color: var(--text-4); font-style: italic; }
+
+.tour-actions { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.15rem; }
+.tour-spacer { flex: 1; }
+.tour-btn { padding: 0.4rem 0.9rem; font-size: 0.85rem; min-height: 36px; }
+.tour-skip {
+  background: none;
+  border: none;
+  padding: 0.3rem 0;
+  font-family: inherit;
+  font-size: 0.76rem;
+  color: var(--text-4);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.tour-skip:hover { color: var(--text-2); }
+
+@media (max-width: 620px) {
+  /* The rail becomes a bottom bar on a phone, so a card pinned near the foot
+     of the screen can land on top of it. Keep clear of it. */
+  .tour-card { width: calc(100vw - 20px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-mask, .tour-ring, .tour-card { transition: none; }
+}

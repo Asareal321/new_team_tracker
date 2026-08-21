@@ -1,6 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext'
 import { useTeam } from '../context/TeamContext'
+import Tour from './Tour'
+import { tourDone, markTourDone, tourRequested, clearTourRequest, TOUR_EVENT } from '../lib/tourState'
 import { isIsolatedSession, isolatedSessionLabel } from '../supabase'
 import {
   IconBoard, IconDeadlines, IconCommunity, IconDashboard, IconGarden, IconAccount,
@@ -26,7 +29,24 @@ function getInitialTheme() {
 
 export default function Layout() {
   const { teams, currentTeam, currentTeamId, setCurrentTeam } = useTeam()
+  const { user } = useAuth()
   const [theme, setTheme] = useState(getInitialTheme)
+
+  // The walk lives here because it changes route as it goes — a page that
+  // unmounts on the first step can't run it. Setup leaves a flag behind and
+  // this picks it up.
+  const [touring, setTouring] = useState(false)
+  useEffect(() => {
+    if (!user) return undefined
+    const start = () => {
+      if (!tourRequested() || tourDone(user.id)) return
+      clearTourRequest()
+      setTouring(true)
+    }
+    start()  // a request left behind before this mounted
+    window.addEventListener(TOUR_EVENT, start)
+    return () => window.removeEventListener(TOUR_EVENT, start)
+  }, [user])
 
   const isAdmin = currentTeam?.role === 'owner' || currentTeam?.role === 'admin'
 
@@ -83,6 +103,10 @@ export default function Layout() {
       <main className="app-main">
         <Outlet />
       </main>
+
+      {touring && (
+        <Tour onDone={() => { markTourDone(user?.id); setTouring(false) }} />
+      )}
     </div>
   )
 }

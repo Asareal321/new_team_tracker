@@ -189,3 +189,23 @@
   .onb-list, .onb-flow li, .onb-table { text-align: left; }
   .onb-caps { justify-content: center; }
 }
+
+/* The public/private pick. Two cards rather than a switch, because the
+   consequence of each is a sentence and a switch has no room for one. */
+.onb-choices { display: flex; flex-direction: column; gap: 0.5rem; }
+.onb-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border: 2px solid var(--border);
+  border-radius: var(--r-md, 10px);
+  background: var(--bg-surface);
+  font-family: inherit;
+  cursor: pointer;
+}
+.onb-choice:hover { border-color: var(--text-4); }
+.onb-choice.picked { border-color: var(--accent); background: var(--accent-bg, var(--bg-subtle)); }
+.onb-choice-name { font-size: 0.9rem; font-weight: 650; color: var(--text-1); }
+.onb-choice-meta { font-size: 0.76rem; line-height: 1.45; color: var(--text-4); }

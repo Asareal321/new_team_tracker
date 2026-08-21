@@ -6,6 +6,8 @@ import { useGarden } from '../context/GardenContext'
 import TaskBoard, { MAX_UP_NEXT } from '../components/TaskBoard'
 import PersonalProjectsModal from '../components/PersonalProjectsModal'
 import Onboarding from '../components/Onboarding'
+import { setVisibility } from '../lib/community'
+import { requestTour } from '../lib/tourState'
 
 function DoneTaskModal({ task, tasks = [], projects, onAdd, onUpdateProject, onPromote, onDismiss }) {
   const [nextTitle, setNextTitle] = useState('')
@@ -448,7 +450,7 @@ export default function BoardPage() {
       {gardenReady && garden && !garden.onboarded && !currentTeamId && (
         <Onboarding
           displayName={user?.user_metadata?.display_name}
-          onFinish={async ({ seedKey, projectName, firstTask }) => {
+          onFinish={async ({ seedKey, projectName, firstTask, isPublic }) => {
             // A named project is created for real, so the project the tour
             // just explained is on the board when the tour closes. If creating
             // it fails (the personal-projects migration hasn't run), the first
@@ -461,8 +463,15 @@ export default function BoardPage() {
             if (firstTask) {
               await addTask({ title: firstTask, notes: '', status: 'todo', priority: 'high', due_date: null, project_id: projectId, assigneeIds: [user.id] })
             }
+            // Visibility is a community feature, so it needs the community
+            // migration. An unmigrated database shouldn't cost you the setup —
+            // private is the default there anyway.
+            try { await setVisibility(user.id, !!isPublic) } catch { /* not migrated yet */ }
             await completeOnboarding(seedKey)
             await fetchTasks()
+            // The walk starts on the board and ends in the garden, so it is
+            // Layout's to run, not this page's.
+            requestTour()
           }}
         />
       )}

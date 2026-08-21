@@ -21,7 +21,7 @@ import './Onboarding.css'
 
 const STARTER_KEYS = ['daisy', 'tulip', 'orchid']
 
-const SETUP_STEPS  = ['hello', 'seed', 'planted', 'grow', 'economy', 'limits', 'board', 'projects', 'task']
+const SETUP_STEPS  = ['hello', 'seed', 'planted', 'grow', 'economy', 'limits', 'profile', 'projects', 'task']
 const REPLAY_STEPS = ['hello', 'grow', 'economy', 'limits', 'board', 'projects']
 
 export default function Onboarding({ displayName, mode = 'setup', onFinish, onClose }) {
@@ -30,6 +30,9 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
   const [pick, setPick] = useState(null)
   const [projectName, setProjectName] = useState('')
   const [firstTask, setFirstTask] = useState('')
+  // Private by default. Being listed is a choice you make, not one you have to
+  // notice and undo.
+  const [isPublic, setIsPublic] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -47,6 +50,7 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
         seedKey: pick,
         projectName: projectName.trim(),
         firstTask: firstTask.trim(),
+        isPublic,
       })
     } catch (e) {
       setError(e?.message || String(e))
@@ -61,7 +65,7 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
     setBusy(true)
     setError('')
     try {
-      await onFinish({ seedKey: pick || STARTER_KEYS[0], projectName: '', firstTask: '' })
+      await onFinish({ seedKey: pick || STARTER_KEYS[0], projectName: '', firstTask: '', isPublic })
     } catch (e) {
       setError(e?.message || String(e))
       setBusy(false)
@@ -78,12 +82,10 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
         {step === 'hello' && (
           <Scene mood="happy" title={displayName ? `Hello, ${displayName}.` : 'Hello.'}>
             <p className="onb-body">
-              I&rsquo;m <strong>Trak</strong>. I keep the garden here, and I&rsquo;ll show you how the
-              place works — what grows, what pays for it, and where your work goes.
+              I&rsquo;m <strong>Trak</strong>. Let&rsquo;s set you up, then I&rsquo;ll walk you
+              round the place itself.
             </p>
-            <p className="onb-body">
-              It takes about a minute. You can leave at any point.
-            </p>
+            <p className="onb-body onb-fine">A minute, and you can leave at any point.</p>
           </Scene>
         )}
 
@@ -119,21 +121,18 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
         {step === 'planted' && (
           <Scene mood="happy" title="Planted." hero={chosen?.emoji}>
             <p className="onb-body">
-              Your {chosen?.name.toLowerCase()} is in the ground, and it grows on a real clock —
-              about {formatDuration(chosen?.growSeconds || 0)} if you leave it alone. Come back
-              tomorrow and it will have moved on without you.
+              Your {chosen?.name.toLowerCase()} is in the ground. It grows on a real clock —
+              about {formatDuration(chosen?.growSeconds || 0)} if you leave it be.
             </p>
-            <p className="onb-body">But you don&rsquo;t have to leave it alone.</p>
+            <p className="onb-body">But you don&rsquo;t have to leave it be.</p>
           </Scene>
         )}
 
         {step === 'grow' && (
           <Scene mood="point" title="Finishing work is the weather">
             <p className="onb-body">
-              A flower passes through <strong>{GROWTH_STAGES.length} stages</strong> — sown,
-              germinating, sprouting, and on up to bloom. Real time moves it along on its own.
-              Finishing a task drops a <strong>rain cloud</strong> on your screen, and tapping a
-              cloud cuts time off the wait.
+              {GROWTH_STAGES.length} stages, sown to bloom. Finishing a task drops a
+              {' '}<strong>rain cloud</strong>, and tapping one cuts time off the wait.
             </p>
             <table className="onb-table">
               <thead>
@@ -150,9 +149,8 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
               </tbody>
             </table>
             <p className="onb-body onb-fine">
-              Each cloud takes up to {CLOUD_MAX_TAPS} taps, and every tap can promote it to the
-              next tier — so a Common can climb. If a cloud overshoots and finishes the flower,
-              the leftover time is banked and you choose which seed gets it.
+              Up to {CLOUD_MAX_TAPS} taps each, and a tap can promote a cloud a tier — so a
+              Common can climb.
             </p>
           </Scene>
         )}
@@ -167,12 +165,9 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
               <li><strong>Coins</strong> — {ADD_TASK_REWARD.coins} for every task you add too, plus whatever your clouds pay.</li>
               <li><strong>Clouds</strong> — one for every task you finish.</li>
             </ul>
-            <p className="onb-body">
-              Coins buy <strong>packets</strong> in the shop — {PACKETS.length} of them, from the
-              {' '}{PACKETS[0].name.toLowerCase()} up to the {PACKETS[PACKETS.length - 1].name.toLowerCase()}.
-              A packet is a roll, not a species: the odds are printed on it, and every packet can
-              drop anything. A grown flower can be kept in the garden or sold back for coins, and
-              every species you&rsquo;ve ever seen is recorded in the herbarium.
+            <p className="onb-body onb-fine">
+              Coins buy <strong>packets</strong> in the shop — {PACKETS.length} of them. I&rsquo;ll
+              show you the shop shortly.
             </p>
           </Scene>
         )}
@@ -190,11 +185,42 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
             </div>
             <p className="onb-body">
               They reset at your midnight. Finishing past a cap still counts toward your
-              <strong> streak</strong> and your awards — a streak is any day you finish at least
-              one task, and it survives a single quiet day only if you pick it up the next.
+              {' '}<strong>streak</strong>.
             </p>
+          </Scene>
+        )}
+
+        {step === 'profile' && (
+          <Scene mood="think" title="Public or private?">
+            <p className="onb-body">
+              There&rsquo;s a community here — friends, and a market. Your profile decides how
+              much of it can find you.
+            </p>
+            <div className="onb-choices">
+              <button
+                className={`onb-choice${isPublic ? '' : ' picked'}`}
+                onClick={() => setIsPublic(false)}
+                aria-pressed={!isPublic}
+              >
+                <span className="onb-choice-name">🔒 Private</span>
+                <span className="onb-choice-meta">
+                  Not in the browsable list. People can still find you by name, and your garden
+                  stays shut until you accept them.
+                </span>
+              </button>
+              <button
+                className={`onb-choice${isPublic ? ' picked' : ''}`}
+                onClick={() => setIsPublic(true)}
+                aria-pressed={isPublic}
+              >
+                <span className="onb-choice-name">🌍 Public</span>
+                <span className="onb-choice-meta">
+                  Listed for anyone to browse and add. Friends still have to be accepted.
+                </span>
+              </button>
+            </div>
             <p className="onb-body onb-fine">
-              Today&rsquo;s remaining allowances sit on the greenhouse strip at the top of the board.
+              Either way you can change it whenever you like — I&rsquo;ll show you where.
             </p>
           </Scene>
         )}
@@ -226,12 +252,7 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
           <Scene mood="think" title="Projects">
             <p className="onb-body">
               A <strong>project</strong> is a bucket of tasks — a week, a release, a house move.
-              When you add a task you pick its project, and that&rsquo;s also the button that
-              files it. &ldquo;No project&rdquo; is always an option.
-            </p>
-            <p className="onb-body">
-              Each project has its own colour, and a task wears it — so the board reads as
-              grouped without spending a heading on every bucket.
+              Each gets a colour, and its tasks wear it.
             </p>
             {mode === 'setup' && (
               <>
