@@ -24,9 +24,25 @@
 }
 .mk-explain { margin: 0; font-size: 0.78rem; color: var(--text-4); line-height: 1.5; }
 
-.mk-sell { display: flex; flex-direction: column; gap: 0.45rem; padding: 0.6rem 0; border-bottom: 1px solid var(--border-subtle); }
+/* What you hold on the left, what you want for it on the right, one panel.
+   The price box is narrow and fixed so the chips take the slack — there are
+   many of them and only ever one number. */
+.mk-sell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 190px;
+  gap: 1rem;
+  align-items: start;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.mk-sell-side { display: flex; flex-direction: column; gap: 0.4rem; min-width: 0; }
+.mk-sell-side .mk-sell-label:not(:first-child) { margin-top: 0.35rem; }
 .mk-sell-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-4); }
 .mk-sell-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.mk-chip-n { font-variant-numeric: tabular-nums; opacity: 0.7; }
+.mk-picked { margin: 0; font-size: 0.78rem; color: var(--text-2); line-height: 1.4; }
+.mk-picked strong { font-weight: 650; color: var(--text-1); }
+.mk-picked-none { color: var(--text-4); }
 .mk-chip {
   display: inline-flex;
   align-items: center;
@@ -43,9 +59,15 @@
 }
 .mk-chip.on { background: var(--accent); color: var(--accent-on); border-color: var(--accent); }
 
-.mk-price { display: flex; gap: 0.5rem; }
+.mk-price {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  background: var(--bg-subtle);
+  border-radius: var(--r-md, 10px);
+  padding: 0.7rem 0.75rem;
+}
 .mk-price input {
-  flex: 1;
   min-width: 0;
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
@@ -57,6 +79,12 @@
   color: var(--text-1);
 }
 .mk-price input:focus { outline: none; border-color: var(--accent); }
+.mk-price input:disabled { opacity: 0.55; cursor: not-allowed; }
+
+@media (max-width: 700px) {
+  /* One column on a phone: the chips, then the price under them. */
+  .mk-sell { grid-template-columns: minmax(0, 1fr); gap: 0.7rem; }
+}
 
 .mk-list { display: flex; flex-direction: column; }
 .mk-row {
