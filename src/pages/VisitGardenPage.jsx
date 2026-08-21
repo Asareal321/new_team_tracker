@@ -22,15 +22,19 @@ import './GardenPage.css'
 // Either way there are no controls on this page. Visiting is the only social
 // mechanic in the game: no leaderboard, nothing to compare, nothing to click.
 
+// A code you handed to someone shows them the lot. A friend sees the beds and
+// the herbarium and no more: a friend list is a larger and more permanent
+// audience than one person you gave a string to, so it gets the narrower view.
 const TABS = [
   { key: 'greenhouse', label: 'Greenhouse' },
   { key: 'garden', label: 'Garden' },
   { key: 'herbarium', label: 'Herbarium' },
   { key: 'awards', label: 'Awards' },
 ]
+const FRIEND_TABS = TABS.filter(t => t.key === 'garden' || t.key === 'herbarium')
 const RARITY_ORDER = [1, 2, 3, 4, 5]
 
-export default function VisitGardenPage() {
+export default function VisitGardenPage({ asFriend = false }) {
   const { userId, code } = useParams()
   const [garden, setGarden] = useState(null)
   const [status, setStatus] = useState('loading')
@@ -48,6 +52,19 @@ export default function VisitGardenPage() {
         if (cancelled) return
         if (error) { setStatus(/function/i.test(error.message) ? 'unmigrated' : 'error'); return }
         if (!data) { setStatus('nocode'); return }
+        setGarden(data)
+        setStatus('ready')
+        return
+      }
+
+      // A friend's garden comes from a function that checks the friendship
+      // rather than from the table: RLS lets you read the garden of someone in
+      // one of your teams, which a friend need not be.
+      if (asFriend) {
+        const { data, error } = await supabase.rpc('friend_garden', { _user_id: userId })
+        if (cancelled) return
+        if (error) { setStatus(/function|schema cache/i.test(error.message) ? 'unmigrated' : 'error'); return }
+        if (!data) { setStatus('notfriends'); return }
         setGarden(data)
         setStatus('ready')
         return
@@ -119,12 +136,23 @@ export default function VisitGardenPage() {
           </section>
         )}
 
+        {status === 'notfriends' && (
+          <section className="garden-panel">
+            <span className="panel-label">Not yet</span>
+            <p className="garden-empty">
+              You can see a garden once you’re friends. Send a request from the community
+              page — they’ll need to accept it first.
+            </p>
+          </section>
+        )}
+
         {status === 'unmigrated' && (
           <section className="garden-panel">
             <span className="panel-label">Not set up</span>
             <p className="garden-empty">
-              Shared gardens need a one-time database migration — run
-              migration-garden-share.sql in the Supabase SQL editor, then try again.
+              This needs a one-time database migration — run{' '}
+              {asFriend ? 'migration-community.sql' : 'migration-garden-share.sql'} in the
+              Supabase SQL editor, then try again.
             </p>
           </section>
         )}
@@ -146,7 +174,7 @@ export default function VisitGardenPage() {
         {status === 'ready' && (
           <>
             <nav className="shelf-tabs" role="tablist" aria-label="Rooms">
-              {TABS.map(t => (
+              {(asFriend ? FRIEND_TABS : TABS).map(t => (
                 <button
                   key={t.key}
                   role="tab"

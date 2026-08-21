@@ -51,6 +51,9 @@ export default function App() {
                 <Route path="garden" element={<GardenPage />} />
                 {/* By code first — "visit" can never be a user id. */}
                 <Route path="garden/visit/:code" element={<VisitGardenPage />} />
+                {/* A friend's garden: checked by friendship, and narrower than
+                    a code's view — the beds and the herbarium only. */}
+                <Route path="garden/friend/:userId" element={<VisitGardenPage asFriend />} />
                 <Route path="garden/:userId" element={<VisitGardenPage />} />
                 <Route path="projects/:projectId" element={<ProjectPage />} />
               </Route>

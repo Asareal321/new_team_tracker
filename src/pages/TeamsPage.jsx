@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useTeam } from '../context/TeamContext'
 import { projectColorIndex, projectDotColor } from '../lib/projectColors'
 import GardenShareCard from '../components/GardenShareCard'
+import CommunityPeople from '../components/CommunityPeople'
 import './TeamsPage.css'
 
 const PROJECT_STATUSES = ['active', 'on_hold', 'completed']
@@ -253,6 +254,7 @@ export default function TeamsPage() {
       <div className="team-detail-col">
         {/* Above the community itself: a garden is yours, not a community's,
             and the code works on people you share nothing else with. */}
+        <CommunityPeople />
         <GardenShareCard />
 
         {!currentTeam ? (
