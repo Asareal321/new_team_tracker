@@ -205,13 +205,14 @@ as $$
   ) p;
 $$;
 
--- Search. Public profiles match on a fragment; private ones only on the whole
--- display name, exactly.
+-- Search. Everyone matches on a fragment, public or private.
 --
--- That asymmetry is the privacy promise: a private account cannot be discovered
--- by typing two letters and reading what comes back, because a fragment never
--- matches one. You have to already know the name to find it, which is what
--- "findable by name but not listed" has to mean to be worth anything.
+-- Private used to mean "exact name only", so that an unlisted account could not
+-- be found by typing two letters. That has moved: what private means now is
+-- "not in the browsable list", and the protection sits on the garden instead —
+-- a private profile's garden cannot be opened by anyone who is not an accepted
+-- friend, whatever else they share with you. Being findable and being readable
+-- are separate questions, and only the second one was ever load-bearing.
 create or replace function search_profiles(_query text)
 returns jsonb
 language sql
@@ -225,11 +226,7 @@ as $$
   where auth.uid() is not null
     and length(q.raw) > 0
     and p.id <> auth.uid()
-    and (
-      (p.is_public and p.display_name ilike '%' || q.raw || '%')
-      or
-      (not p.is_public and lower(p.display_name) = lower(q.raw))
-    );
+    and p.display_name ilike '%' || q.raw || '%';
 $$;
 
 -- Your friends, and the requests waiting on you.
@@ -304,6 +301,136 @@ as $$
     and auth.uid() is not null
     and are_friends(auth.uid(), _user_id);
 $$;
+
+
+-- ── 4b. a private garden is not readable by a non-friend ───────────────────
+--
+-- migration-garden-social.sql lets you SELECT the garden of anyone who shares a
+-- team with you, and VisitGardenPage's /garden/:userId route reads the table
+-- directly on that basis. For a private profile that is a way around the
+-- friendship check: a colleague could open the garden of someone who never
+-- agreed to it.
+--
+-- So the team path now applies only to public profiles. A private garden is
+-- reachable by exactly two routes: an accepted friendship (friend_garden), or a
+-- share code its owner minted and handed over (garden_by_code). Both are things
+-- the owner did on purpose.
+create or replace function profile_is_public(_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce((select is_public from profiles where id = _id), false);
+$$;
+
+drop policy if exists "garden_state_read_team" on garden_state;
+create policy "garden_state_read_team" on garden_state
+  for select using (
+    user_id <> auth.uid()
+    and shares_team_with(user_id)
+    and profile_is_public(user_id)
+  );
+
+drop policy if exists "garden_flowers_read_team" on garden_flowers;
+create policy "garden_flowers_read_team" on garden_flowers
+  for select using (
+    user_id <> auth.uid()
+    and shares_team_with(user_id)
+    and profile_is_public(user_id)
+  );
+
+
+-- ── 4c. display names ───────────────────────────────────────────────────────
+--
+-- A display name is now searchable by strangers and sits next to a garden on
+-- someone else's screen, which is different from a label you picked for
+-- yourself. The client checks it too (src/lib/displayName.js) but that is a
+-- courtesy; this is the enforcement, because a client check is one fetch call
+-- away from being skipped.
+--
+-- Two lists, and the split is the point. WORDS match on word boundaries only:
+-- "Scunthorpe" contains a slur as a substring and is a real place, and
+-- rejecting real names is a worse failure than missing a rude one. SLURS match
+-- anywhere, because no name legitimately contains them.
+create or replace function normalise_name(_name text)
+returns text
+language sql
+immutable
+as $$
+  -- Leetspeak first, then everything that is not a letter becomes a space, so
+  -- "f.u.c.k" and "sh1t" collapse to the words they are pretending not to be.
+  -- The two strings are positional and must stay the same length:
+  --   0 1 3 4 5 7 8 @ $ ! | +
+  --   o i e a s t b a s i i t
+  select btrim(regexp_replace(
+    translate(lower(coalesce(_name, '')), '0134578@$!|+', 'oieastbasiit'),
+    '[^a-z]+', ' ', 'g'));
+$$;
+
+create or replace function name_has_profanity(_name text)
+returns boolean
+language plpgsql
+immutable
+as $$
+declare
+  words text[] := array[
+    'anal','anus','arse','arsehole','ass','asshole','bastard','bitch','bollocks',
+    'boner','boob','boobs','bugger','bullshit','clit','cock','crap','cum','cunt',
+    'dick','dickhead','dildo','douche','dyke','ejaculate','erection','fag','faggot',
+    'fanny','fuck','fucker','fucking','goddamn','handjob','hoe','horny','jerkoff',
+    'jizz','knob','labia','milf','minge','motherfucker','nazi','nigga','nigger',
+    'nonce','orgasm','paedo','paedophile','pedo','penis','piss','poon','porn',
+    'prick','pube','pussy','queer','rape','rapist','retard','retarded','rimjob',
+    'scrotum','semen','shag','shit','shite','slut','spastic','spunk','testicle',
+    'tit','tits','titty','tosser','tranny','turd','twat','vagina','wank','wanker',
+    'whore','wog'];
+  -- Short on purpose. Every entry must be a string that cannot occur inside an
+  -- ordinary word: 'rapist' here blocked "Therapist", 'spic' would block
+  -- "Spice", 'coon' would block "Raccoon". The word list catches those on
+  -- token boundaries instead.
+  slurs text[] := array[
+    'nigger','nigga','faggot','tranny','kike','chink','wetback'];
+  norm text := normalise_name(_name);
+  flat text := replace(norm, ' ', '');
+  w text;
+begin
+  foreach w in array words loop
+    if norm = w or norm like w || ' %' or norm like '% ' || w or norm like '% ' || w || ' %' then
+      return true;
+    end if;
+  end loop;
+  foreach w in array slurs loop
+    if position(w in flat) > 0 then return true; end if;
+  end loop;
+  return false;
+end;
+$$;
+
+create or replace function check_display_name()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.display_name is null then return new; end if;
+  if length(btrim(new.display_name)) < 2 then
+    raise exception 'that name is too short';
+  end if;
+  if length(btrim(new.display_name)) > 32 then
+    raise exception 'that name is too long';
+  end if;
+  if name_has_profanity(new.display_name) then
+    raise exception 'that name is not allowed';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists profiles_display_name_check on profiles;
+create trigger profiles_display_name_check
+  before insert or update of display_name on profiles
+  for each row execute function check_display_name();
 
 
 -- ── 5. the marketplace ──────────────────────────────────────────────────────
@@ -526,6 +653,7 @@ $$;
 
 -- ── grants ──────────────────────────────────────────────────────────────────
 
+revoke all on function profile_is_public(uuid)      from anon;
 revoke all on function are_friends(uuid, uuid)      from anon;
 revoke all on function request_friend(uuid)         from anon;
 revoke all on function respond_friend(uuid, boolean) from anon;
@@ -541,6 +669,7 @@ revoke all on function cancel_listing(uuid)         from anon;
 revoke all on function buy_listing(uuid)            from anon;
 revoke all on function market_open(int, int)        from anon;
 
+grant execute on function profile_is_public(uuid)       to authenticated;
 grant execute on function are_friends(uuid, uuid)       to authenticated;
 grant execute on function request_friend(uuid)          to authenticated;
 grant execute on function respond_friend(uuid, boolean) to authenticated;

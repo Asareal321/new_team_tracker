@@ -119,3 +119,10 @@
 .switch input:focus-visible + .switch-track { box-shadow: 0 0 0 3px var(--accent-bg); }
 
 .settings-controls { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+
+/* A rejected display name, said where the field is rather than in a toast. */
+.account-error {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  color: var(--red-text);
+}

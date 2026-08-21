@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
+import { checkDisplayName, MAX_LENGTH } from '../lib/displayName'
 import { useAuth } from '../auth/AuthContext'
 import { useGarden } from '../context/GardenContext'
 import { useTeam } from '../context/TeamContext'
@@ -23,16 +24,29 @@ export default function AccountPage() {
   const [displayName, setDisplayName] = useState(profile?.display_name || '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [nameError, setNameError] = useState('')
   const [tour, setTour] = useState(false)
 
   async function handleSave(e) {
     e.preventDefault()
-    if (!displayName.trim()) return
+    const name = displayName.trim()
+    // Checked here for the message, and again by a trigger in the database,
+    // which is the one that actually decides — this check is a fetch call away
+    // from being skipped.
+    const problem = checkDisplayName(name)
+    if (problem) { setNameError(problem); return }
+    setNameError('')
     setSaving(true)
     setSaved(false)
-    await supabase.from('profiles').update({ display_name: displayName.trim() }).eq('id', user.id)
-    await refreshProfile()
+    const { error } = await supabase.from('profiles').update({ display_name: name }).eq('id', user.id)
     setSaving(false)
+    if (error) {
+      setNameError(/not allowed|too short|too long/.test(error.message)
+        ? 'That name isn’t allowed. Pick another.'
+        : error.message)
+      return
+    }
+    await refreshProfile()
     setSaved(true)
     setTimeout(() => setSaved(false), 1500)
   }
@@ -46,7 +60,13 @@ export default function AccountPage() {
           <input value={user.email} disabled />
         </label>
         <label>Display name
-          <input value={displayName} onChange={e => setDisplayName(e.target.value)} required />
+          <input
+            value={displayName}
+            onChange={e => { setDisplayName(e.target.value); if (nameError) setNameError('') }}
+            maxLength={MAX_LENGTH}
+            required
+          />
+          {nameError && <p className="account-error">{nameError}</p>}
         </label>
         <div className="form-actions">
           {saved && <span className="saved-hint">Saved</span>}

@@ -153,8 +153,8 @@ export default function CommunityPeople() {
       </div>
       <p className="cp-explain">
         {isPublic
-          ? 'You appear in the list below and anyone can find you by name.'
-          : 'You’re not listed. People can only find you by typing your display name in full.'}
+          ? 'You’re in the list below, and anyone can find you by name.'
+          : 'You’re not in the list, but people can still find you by name. Your garden stays shut until you accept a friend request.'}
       </p>
 
       <div className="cp-tabs">
@@ -237,8 +237,9 @@ export default function CommunityPeople() {
             <button type="submit" className="cp-btn primary" disabled={!query.trim() || busy}>Find</button>
           </form>
           <p className="cp-hint">
-            Public profiles match on part of a name. Private ones only match the whole name,
-            exactly — that’s what keeps them unlisted.
+            Part of a name is enough. A private profile can be found this way too — being
+            private keeps you out of the browsable list, and keeps your garden shut until
+            you accept someone.
           </p>
           {results && results.length === 0 && <p className="cp-empty">Nobody by that name.</p>}
           {results && results.map(p => (

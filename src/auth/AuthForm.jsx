@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { checkDisplayName } from '../lib/displayName'
 import { useAuth } from './AuthContext'
 import './AuthForm.css'
 
@@ -34,6 +35,10 @@ export default function AuthForm({ initialMode = 'signin', onBack }) {
         const { error } = await signIn(email, password)
         if (error) throw error
       } else {
+        // Caught before the round trip so the message is about the name rather
+        // than a trigger; the database checks it again on the profile row.
+        const problem = checkDisplayName(displayName)
+        if (problem) throw new Error(problem)
         const { error, data } = await signUp(email, password, displayName)
         if (error) throw error
         if (!data.session) {
