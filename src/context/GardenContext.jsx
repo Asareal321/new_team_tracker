@@ -12,6 +12,7 @@ import { questView } from '../lib/quests'
 import { streakReward } from '../lib/streak'
 import { isDevUser } from '../lib/devMode'
 import CloudLayer from '../components/CloudLayer'
+import { cloudOutcome, cloudStatsPatch, cloudNotice, pendingClouds } from '../lib/clouds'
 import DevPanel from '../components/DevPanel'
 import RewardToasts from '../components/RewardToasts'
 import StreakPanel from '../components/StreakPanel'
@@ -377,7 +378,7 @@ export function GardenProvider({ children }) {
   // than as they are popped: they are on screen now, and a reload that lost
   // both the bank and the clouds would be worse than one that lost neither.
   const releaseBankedClouds = useCallback(async () => {
-    const waiting = stateRef.current?.stats?.pendingClouds || 0
+    const waiting = pendingClouds(stateRef.current)
     if (waiting < 1) return 0
     setClouds(prev => [
       ...prev,
@@ -622,32 +623,32 @@ export function GardenProvider({ children }) {
     const packets = { ...(cur.packet_inventory || {}) }
     if (reward?.packetKey) packets[reward.packetKey] = (packets[reward.packetKey] || 0) + 1
 
-    // Quiet mode still takes the cash instead, and a capped day banks nothing.
-    const banks = underCap && !quiet
+    // Banked, capped, or paid out — decided in lib/clouds.js so it can be
+    // tested. Nothing about this appears on screen, so a wrong answer here is
+    // silent until you notice the nav never lights.
+    const outcome = cloudOutcome({ daily, quiet })
+    const banks = outcome.banks > 0
+
+    // pendingClouds is not a statistic. It lives in the stats bag because that
+    // bag is jsonb and already saved — a column of its own would mean another
+    // migration standing between this and working.
+    const nextStats = bumpStats({ tasksDone: 1, ...cloudStatsPatch(outcome) })
 
     await commit({
       coins: (cur.coins || 0) + paidQuiet + (reward?.coins || 0),
       ...(reward?.packetKey ? { packet_inventory: packets } : {}),
       daily: { ...daily, clouds: daily.clouds + (underCap ? 1 : 0), done: (daily.done || 0) + 1 },
       streak: nextStreak,
-      // pendingClouds is not a statistic. It lives in the stats bag because
-      // that bag is jsonb and already saved — a column of its own would mean
-      // another migration standing between this and working.
-      stats: bumpStats({ tasksDone: 1, ...(banks ? { pendingClouds: 1 } : {}) }),
+      stats: nextStats,
     })
 
     // Nothing takes the screen now — the cloud is already put by. All that is
     // left is to say so.
     const releaseCloud = () => {
-      if (!underCap) {
-        notify(`☁️ That's all ${DAILY_CAPS.clouds} clouds for today — back tomorrow`, 'capped')
-        return
-      }
-      if (quiet) { notify(`+${paidQuiet} 🪙 (quiet mode)`); return }
-      const waiting = (stateRef.current?.stats?.pendingClouds || 0)
-      notify(waiting > 1
-        ? `☁️ ${waiting} clouds waiting in the greenhouse`
-        : '☁️ A cloud is waiting in the greenhouse')
+      // Read the count we just wrote, not the ref — a ref updated on render
+      // is still one completion behind at this point.
+      const notice = cloudNotice(outcome, nextStats.pendingClouds || 0)
+      notify(notice.text, notice.tone)
     }
 
     if (reward) {

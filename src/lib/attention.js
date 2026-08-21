@@ -135,10 +135,21 @@ function raw({ state, flowers, quests, community }) {
 
 // The signature of every scope right now, whether or not it is glowing. This
 // is what a visit records, and what a first run primes itself with.
+// The rail's garden tab is a roll-up of its rooms rather than a signal in its
+// own right, so it has to be derived the same way in both places. Computed
+// here from every room, lit or not, because a visit records what is there —
+// not only what you happened to be shown.
+function rollUpSignature(all) {
+  const parts = GARDEN_SCOPES.map(s => all[s]?.signature).filter(Boolean)
+  return parts.length ? parts.join('|') : null
+}
+
 export function signatures(input) {
   const all = raw(input)
   const out = {}
   for (const [scope, sig] of Object.entries(all)) out[scope] = sig.signature
+  const roll = rollUpSignature(all)
+  if (roll) out[ROUTE_GARDEN] = roll
   return out
 }
 
@@ -160,15 +171,18 @@ export function attentionFor({ state, flowers, quests, community, seen = {} } = 
   // see there is something to go for without knowing which room it is in.
   const rooms = GARDEN_SCOPES.map(s => out[s]).filter(Boolean)
   if (rooms.length > 0) {
-    const roll = {
-      level: rooms.some(r => r.level === 'ready') ? 'ready' : 'new',
-      count: rooms.reduce((n, r) => Math.max(n, r.count), 0),
-      reasons: rooms.flatMap(r => r.reasons),
-      signature: rooms.map(r => r.signature).join('|'),
+    // Compared against the signature of ALL rooms, which is what a visit
+    // records — otherwise the rail would clear only when the lit rooms
+    // happened to match, which is almost never.
+    const mark = rollUpSignature(all)
+    if (seen[ROUTE_GARDEN] !== mark) {
+      out[ROUTE_GARDEN] = {
+        level: rooms.some(r => r.level === 'ready') ? 'ready' : 'new',
+        count: rooms.reduce((n, r) => Math.max(n, r.count), 0),
+        reasons: rooms.flatMap(r => r.reasons),
+        signature: mark,
+      }
     }
-    // Visiting the garden puts the rail out even though the rooms stay lit —
-    // you have been told, and the rooms themselves are the next signpost.
-    if (seen[ROUTE_GARDEN] !== roll.signature) out[ROUTE_GARDEN] = roll
   }
 
   return out

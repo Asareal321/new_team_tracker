@@ -88,12 +88,24 @@ ok('visiting clears the greenhouse glow', !afterGreenhouse[GARDEN_GREENHOUSE])
 ok('visiting clears the rail glow with it', !afterGreenhouse[ROUTE_GARDEN])
 
 // The rail can be put out on its own — that is the whole point of the roll-up.
+// It has to clear using the signature a *visit* records, which is the one
+// signatures() hands back for the rail. Deriving it two different ways is the
+// bug this case exists for: the rail then never cleared at all.
+ok('signatures() knows about the rail roll-up', !!signatures(doneInput)[ROUTE_GARDEN])
+
 const railOnly = attentionFor({
   ...doneInput,
-  seen: { [ROUTE_GARDEN]: signatures(doneInput)[GARDEN_GREENHOUSE] },
+  seen: { [ROUTE_GARDEN]: signatures(doneInput)[ROUTE_GARDEN] },
 })
 ok('visiting the garden clears the rail but leaves the room lit',
   !railOnly[ROUTE_GARDEN] && !!railOnly[GARDEN_GREENHOUSE])
+
+// And a new cause in any room re-lights the rail, even one already visited.
+const moreLater = attentionFor({
+  state: { ...done, stats: { pendingClouds: 1 } }, flowers: [], quests: [], community: {},
+  seen: { [ROUTE_GARDEN]: signatures(doneInput)[ROUTE_GARDEN] },
+})
+ok('a new cause re-lights the rail after a visit', !!moreLater[ROUTE_GARDEN])
 
 // — but a changed cause is news again —
 
