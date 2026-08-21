@@ -1707,16 +1707,27 @@ function DumpItem({ item, selected, onSelect, onSort, onDelete }) {
   )
 }
 
-// A project header that also accepts a drop — filing a thought is then the
-// same gesture as reading where it belongs.
-function DumpGroupHead({ id, name, count, unfiled }) {
+// A project header: a drop target, and the thing that opens the group.
+//
+// Both on one element deliberately. Filing a thought and looking at what's
+// already filed are the same question asked two ways, and a drop doesn't
+// raise a click, so the two gestures don't collide.
+function DumpGroupHead({ id, name, count, unfiled, open, onToggle, panelId }) {
   const { setNodeRef, isOver } = useDroppable({ id: `dumpproj-${id || 'unfiled'}` })
   return (
-    <div ref={setNodeRef} className={`dump-group-head${unfiled ? ' unfiled' : ''}${isOver ? ' over' : ''}`}>
+    <button
+      ref={setNodeRef}
+      type="button"
+      className={`dump-group-head${unfiled ? ' unfiled' : ''}${isOver ? ' over' : ''}${open ? ' open' : ''}`}
+      onClick={onToggle}
+      aria-expanded={open}
+      aria-controls={panelId}
+    >
+      <span className="dump-group-caret" aria-hidden="true"><Chevron up={open} /></span>
       {!unfiled && <span className="dump-pjdot" style={{ background: projectDotColor(id) }} />}
       <span className="dump-group-name">{name}</span>
       <span className="dump-group-count">{count}</span>
-    </div>
+    </button>
   )
 }
 
@@ -1750,6 +1761,20 @@ function Braindump({ items, bands, laneCounts, projectName, projects = [], dragA
   // The inline "+ New project" field, when it's open.
   const [newProject, setNewProject] = useState(null)
   const [projectBusy, setProjectBusy] = useState(false)
+  // Which project groups are open. Everything starts shut, so opening the pile
+  // shows you what it's made of — a list of projects — rather than every
+  // thought you've ever had in one column. The pile is the one place in the app
+  // with no upper bound on length; a hundred captures is a hundred rows to
+  // scroll past to reach the one project you came for.
+  const [openGroups, setOpenGroups] = useState(() => new Set())
+
+  const toggleGroup = useCallback(key => {
+    setOpenGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key); else next.add(key)
+      return next
+    })
+  }, [])
 
   // The tray is a pointer-and-keyboard control; the swipe is the phone's.
   const narrow = useIsNarrow()
@@ -1943,31 +1968,46 @@ function Braindump({ items, bands, laneCounts, projectName, projects = [], dragA
           <DumpTrash active={dragActive} />
 
           <div className="dump-list">
-            {groups.map(group => (
-              <div className="dump-group" key={group.key || 'unfiled'}>
-                <DumpGroupHead
-                  id={group.key}
-                  name={group.name}
-                  count={group.list.length}
-                  unfiled={!group.key}
-                />
-                {group.list.map(item => (
-                  <DumpItem
-                    key={item.id}
-                    item={item}
-                    selected={item.id === selected}
-                    onSelect={() => setSelected(item.id)}
-                    onSort={status => onSort(item, status)}
-                    onDelete={() => onDeleteItem(item)}
+            {groups.map(group => {
+              const key = group.key || 'unfiled'
+              const open = openGroups.has(key)
+              const panelId = `dumpgroup-${key}`
+              return (
+                <div className="dump-group" key={key}>
+                  <DumpGroupHead
+                    id={group.key}
+                    name={group.name}
+                    count={group.list.length}
+                    unfiled={!group.key}
+                    open={open}
+                    panelId={panelId}
+                    onToggle={() => toggleGroup(key)}
                   />
-                ))}
-              </div>
-            ))}
+                  {/* Closed groups render nothing rather than hiding it: the
+                      pile is unbounded, and a hundred rows kept in the DOM to
+                      be invisible is a hundred rows of layout on every drag. */}
+                  {open && (
+                    <div className="dump-group-items" id={panelId}>
+                      {group.list.map(item => (
+                        <DumpItem
+                          key={item.id}
+                          item={item}
+                          selected={item.id === selected}
+                          onSelect={() => setSelected(item.id)}
+                          onSort={status => onSort(item, status)}
+                          onDelete={() => onDeleteItem(item)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
             {/* Every project gets a header even when empty, so there's always
                 somewhere to drop a thought that belongs to one. */}
             {dragActive && emptyProjects.map(p => (
               <div className="dump-group" key={p.id}>
-                <DumpGroupHead id={p.id} name={p.name} count={0} />
+                <DumpGroupHead id={p.id} name={p.name} count={0} open={false} onToggle={() => {}} />
                 <div className="dump-group-blank">Drop here to file it under {p.name}</div>
               </div>
             ))}

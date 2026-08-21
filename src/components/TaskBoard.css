@@ -1882,9 +1882,33 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 0 2px 2px;
+  width: 100%;
+  /* It's the control that opens the group now, so it gets a target rather
+     than the 2px of padding a label needed. */
+  min-height: 40px;
+  padding: 0 8px;
+  border: 1px solid transparent;
   border-bottom: 1px solid var(--bb-border);
+  border-radius: 4px 4px 0 0;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
 }
+.dump-group-head:hover { background: var(--bb-sunk); }
+.dump-group-head:hover .dump-group-name { color: var(--bb-wood); }
+/* Open, it sits on top of its own list, so the bottom rule would double with
+   the first item's border. */
+.dump-group-head.open { border-bottom-color: transparent; }
+.dump-group-caret {
+  display: flex;
+  color: var(--bb-muted);
+  flex-shrink: 0;
+  transition: color 120ms;
+}
+.dump-group-caret svg { width: 13px; height: 13px; }
+.dump-group-head:hover .dump-group-caret { color: var(--bb-wood); }
+.dump-group-items { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
 .dump-group-name {
   font-family: var(--bb-num);
   font-size: 11px;
@@ -2876,4 +2900,13 @@
   .dump-newpj input, .dump-duefield { font-size: 16px; }
   .dump-duefield { min-height: 44px; }
   .dump-pj, .dump-pj-new { min-height: 36px; }
+}
+
+@media (max-width: 820px) {
+  /* 44px, since opening a project is now the first thing you do in the pile. */
+  .dump-group-head { min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dump-group-caret { transition: none; }
 }
