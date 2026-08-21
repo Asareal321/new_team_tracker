@@ -488,7 +488,7 @@ begin
   delete from garden_flowers where id = f.id;
 
   insert into market_listings (seller_id, kind, item_key, price)
-  values (auth.uid(), 'flower', f.seed_key)
+  values (auth.uid(), 'flower', f.seed_key, _price)
   returning id into new_id;
 
   return new_id;
@@ -520,7 +520,7 @@ begin
   where user_id = auth.uid();
 
   insert into market_listings (seller_id, kind, item_key, price)
-  values (auth.uid(), 'packet', _packet_key)
+  values (auth.uid(), 'packet', _packet_key, _price)
   returning id into new_id;
 
   return new_id;

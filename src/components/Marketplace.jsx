@@ -148,8 +148,10 @@ export default function Marketplace() {
                         aria-pressed={on}
                         onClick={() => {
                           setPrice('')
+                          // One flower goes up, whatever the pile holds, so
+                          // the panel and the notice name it in the singular.
                           setPick(on ? null : {
-                            kind: 'flower', key, id: ids[0], name: plural(seed.name, ids.length),
+                            kind: 'flower', key, id: ids[0], name: seed.name,
                           })
                         }}
                       >
