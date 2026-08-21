@@ -1231,9 +1231,6 @@ function TaskDetail({
             />
             <div className="td-facts">
               <span className={`td-status s-${task.status}`}>{MOVE_LABELS[task.status]}</span>
-              {task.due_date && (
-                <span className={`td-fact ${dueClass(task.due_date)}`}>due {formatDate(task.due_date)}</span>
-              )}
               {/* The priority and "Unassigned" pills used to sit here. Both
                   described something the tile can no longer change, and the
                   second said "Unassigned" on every task of a board with nobody
@@ -1262,8 +1259,38 @@ function TaskDetail({
         </header>
 
         <div className="td-scroll">
+          {/* Done by. It was a read-only pill in the header until the tile
+              became the place a task is changed; an editable field and a fact
+              stating the same date would be the tile saying it twice, so the
+              field carries the overdue tint the pill used to. Dates move more
+              than anything else about a task, which is why it's here at all. */}
+          {!isArchived && (
+            <section className="td-section">
+              <span className="td-label">Done by</span>
+              <div className={`td-due ${dueClass(task.due_date)}`}>
+                <input
+                  type="date"
+                  className="td-duefield"
+                  value={task.due_date || ''}
+                  onChange={e => onUpdateTask?.({ due_date: e.target.value || null })}
+                  aria-label="Due date"
+                />
+                {task.due_date && (
+                  <>
+                    <span className="td-duenote">{formatDate(task.due_date)}</span>
+                    <button
+                      type="button"
+                      className="td-due-clear"
+                      onClick={() => onUpdateTask?.({ due_date: null })}
+                    >No date</button>
+                  </>
+                )}
+              </div>
+            </section>
+          )}
+
           {/* Project, as pills. The tile is where a task is changed now, so
-              the two things worth changing about one are both in it. */}
+              the things worth changing about one are all in it. */}
           {projects.length > 0 && !isArchived && (
             <section className="td-section">
               <span className="td-label">Project</span>

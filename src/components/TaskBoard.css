@@ -2702,3 +2702,38 @@
   .td-title-input { font-size: max(16px, 17px); }
   .td-projects .dump-pj { min-height: 36px; }
 }
+
+/* --- the task tile: due date ---------------------------------------------- */
+
+.td-due { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.td-duefield {
+  background: var(--bg-surface);
+  color: var(--text-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  min-height: 36px;
+}
+.td-duefield:focus { outline: none; border-color: var(--accent); }
+/* The tint the header pill used to carry, so urgency survived the move. */
+.td-due.overdue .td-duefield { border-color: var(--red-text); }
+.td-due.overdue .td-duenote { color: var(--red-text); }
+.td-due.today .td-duenote { color: var(--yellow-text); }
+.td-duenote { font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.td-due-clear {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--text-4);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  padding: 4px 2px;
+}
+.td-due-clear:hover { color: var(--accent); }
+
+@media (max-width: 820px) {
+  .td-duefield { font-size: 16px; min-height: 44px; }
+}
