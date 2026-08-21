@@ -552,23 +552,31 @@ html[data-theme="dark"] .coin-count {
 }
 .plot-act:focus-visible { outline: 2px solid #ffe066; outline-offset: 1px; }
 
+/* The grounds are the reverse of what you'd guess from the buttons' weight,
+   and it is the glyphs that decide it. A coin is pale gold and vanishes on
+   cream; a waste basket is dark grey and vanishes on charcoal. So each takes
+   the ground it contrasts with, and the labels — when there is room for them —
+   follow. */
 .plot-sell {
-  background: rgba(255, 253, 245, 0.96);
-  border: 1px solid #d8c4a3;
-  color: var(--ink);
+  background: rgba(18, 26, 24, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  color: #fff6e4;
+  backdrop-filter: blur(2px);
 }
-.plot-sell:hover { background: #fff; border-color: #b9a37c; }
+.plot-sell:hover {
+  background: rgba(18, 26, 24, 0.92);
+  border-color: rgba(255, 255, 255, 0.6);
+}
 
 /* Quiet until you go for it, then plainly destructive. */
 .plot-compost {
-  background: rgba(0, 0, 0, 0.42);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: rgba(255, 246, 228, 0.9);
-  backdrop-filter: blur(2px);
+  background: rgba(255, 253, 245, 0.94);
+  border: 1px solid #d8c4a3;
+  color: var(--ink);
 }
 .plot-compost:hover {
-  background: rgba(150, 40, 34, 0.9);
-  border-color: rgba(255, 255, 255, 0.5);
+  background: #96281f;
+  border-color: #7a1f18;
   color: #fff;
 }
 
@@ -617,8 +625,10 @@ html[data-theme="dark"] .growing-pot { background: radial-gradient(circle at 50%
 html[data-theme="dark"] .growing-bar { background: #1e2223; border-color: #3a4042; }
 html[data-theme="dark"] .garden-error  { background: #3a1b1b; color: #efaeae; border-color: #5c2626; }
 html[data-theme="dark"] .garden-notice { background: #16281f; color: #7fcb9a; border-color: #2c4a37; }
-html[data-theme="dark"] .plot-sell { background: rgba(38, 42, 44, 0.96); border-color: #454b4d; color: var(--ink); }
-html[data-theme="dark"] .plot-sell:hover { background: #333839; border-color: #5c6365; }
+/* The beds are dark soil in either theme, so these two keep their grounds —
+   what changes is only how far the light one is turned down. */
+html[data-theme="dark"] .plot-compost { background: rgba(232, 228, 218, 0.92); border-color: #9aa0a2; }
+html[data-theme="dark"] .plot-compost:hover { background: #a8332a; border-color: #86261f; color: #fff; }
 
 /* --- responsive & motion ------------------------------------------------ */
 

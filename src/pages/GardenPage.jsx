@@ -719,7 +719,7 @@ function FilledPlot({ index, flower, seed, onList, onCompost }) {
           aria-label={`Sell the ${seed.name.toLowerCase()}`}
           onClick={onList}
         >
-          <span aria-hidden="true">🏷</span>
+          <span aria-hidden="true">🪙</span>
           <span className="plot-act-label">Sell</span>
         </button>
         <button
