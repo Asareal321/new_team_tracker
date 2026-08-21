@@ -1,0 +1,27 @@
+.lf-modal {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 1.25rem;
+  width: min(400px, calc(100vw - 2rem));
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  box-shadow: var(--shadow-modal, 0 18px 40px rgba(0,0,0,0.28));
+}
+.lf-title { margin: 0; font-size: 1.05rem; color: var(--text-1); }
+.lf-body { margin: 0; font-size: 0.85rem; line-height: 1.55; color: var(--text-3); }
+.lf-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-4); }
+.lf-price {
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 0.55rem 0.7rem;
+  min-height: 44px;
+  font-family: inherit;
+  font-size: 16px;
+  background: var(--bg-surface);
+  color: var(--text-1);
+}
+.lf-price:focus { outline: none; border-color: var(--accent); }
+.lf-error { margin: 0; font-size: 0.8rem; color: var(--red-text); }
+.lf-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.3rem; }

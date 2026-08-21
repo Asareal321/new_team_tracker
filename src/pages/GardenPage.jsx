@@ -14,6 +14,7 @@ import PlotCluster from '../components/PlotCluster'
 import PackOpening from '../components/PackOpening'
 import FlowerGrown from '../components/FlowerGrown'
 import PacketArt from '../components/PacketArt'
+import ListFlowerModal from '../components/ListFlowerModal'
 import useDaylight from '../lib/useDaylight'
 import './GardenPage.css'
 
@@ -33,8 +34,9 @@ const GROWTH_TICKS = GROWTH_STAGES.slice(1).map(s => s.at).filter(at => at < 100
 
 export default function GardenPage() {
   const {
+    reload,
     state, flowers, ready,
-    plantSeed, placeFlower, moveFlower, sellGrown, sellPlanted, buyPacket, openPacket, expandGarden,
+    plantSeed, placeFlower, moveFlower, compostGrown, compostPlanted, buyPacket, openPacket, expandGarden,
   } = useGarden()
   // ?tab= lets anything link straight to a room rather than the front door.
   const [tab, setTab] = useState(() => {
@@ -64,6 +66,8 @@ export default function GardenPage() {
   // here rather than reading `growing` at render time means the piece finishes
   // on the flower it started with even if the slot is cleared underneath it.
   const [celebrating, setCelebrating] = useState(null)
+  // { flower, seed } — a bed on its way to the market, waiting for a price.
+  const [listing, setListing] = useState(null)
   const [tick, setTick] = useState(0)
 
   // Drive the countdown once a second while a seed is in the ground.
@@ -290,8 +294,15 @@ export default function GardenPage() {
                     >
                       Keep it
                     </button>
-                    <button className="garden-btn" onClick={() => run(sellGrown, v => `Sold for ${v} coins.`)}>
-                      Sell · {growing.sellValue} 🪙
+                    <button
+                      className="garden-btn"
+                      title="Clear the pot. Nothing comes back."
+                      onClick={() => {
+                        if (!window.confirm(`Compost the ${growing.name.toLowerCase()}? It's gone for good.`)) return
+                        run(compostGrown, n => `${n} composted.`)
+                      }}
+                    >
+                      Compost
                     </button>
                   </div>
                 )}
@@ -341,7 +352,9 @@ export default function GardenPage() {
                 <span className="seed-name">{seed.name}</span>
                 <span className="seed-rarity">{RARITY_NAMES[seed.rarity]}</span>
                 <span className="seed-meta">{formatDuration(seed.growSeconds)}</span>
-                <span className="seed-meta">sells for {seed.sellValue} 🪙</span>
+                {/* No coin figure. Nothing buys a flower automatically now —
+                    printing one would be a price nobody pays, and would put a
+                    floor under every price on the market besides. */}
                 {/* What the banked cloud time would actually do to *this*
                     species, so the choice is made on real numbers. */}
                 {overflow > 0 && !growing && (
@@ -408,7 +421,11 @@ export default function GardenPage() {
                         index={i}
                         flower={flower}
                         seed={seed}
-                        onSell={() => run(() => sellPlanted(flower.id), v => `Sold for ${v} coins.`)}
+                        onCompost={() => {
+                          if (!window.confirm(`Compost the ${seed.name.toLowerCase()}? It's gone for good.`)) return
+                          run(() => compostPlanted(flower.id), n => `${n} composted.`)
+                        }}
+                        onList={() => setListing({ flower, seed })}
                       />
                     )
                   }
@@ -490,7 +507,7 @@ export default function GardenPage() {
                         {found ? (
                           <>
                             <span className="herb-found">found {found}×</span>
-                            <span className="seed-meta">{seed.sellValue} 🪙 · {formatDuration(seed.growSeconds)}</span>
+                            <span className="seed-meta">{RARITY_NAMES[seed.rarity]} · {formatDuration(seed.growSeconds)}</span>
                           </>
                         ) : (
                           <span className="herb-found muted">undiscovered</span>
@@ -637,6 +654,20 @@ export default function GardenPage() {
       {/* The payoff for a finished grow, played when you choose to keep it —
           so it lands on a decision you made rather than interrupting you the
           moment a timer expired. The bed picker is armed on the way out. */}
+      {listing && (
+        <ListFlowerModal
+          flower={listing.flower}
+          seed={listing.seed}
+          onCancel={() => setListing(null)}
+          onDone={(name, price) => {
+            setListing(null)
+            // The bed is gone from the server; reload rather than guessing.
+            reload?.()
+            setNotice(`${name} is on the market for ${price} coins.`)
+          }}
+        />
+      )}
+
       {celebrating && (
         <FlowerGrown
           seed={celebrating}
@@ -662,7 +693,7 @@ export default function GardenPage() {
 
 // A planted bed: draggable so it can be rearranged, and droppable so another
 // bed can be swapped onto it.
-function FilledPlot({ index, flower, seed, onSell }) {
+function FilledPlot({ index, flower, seed, onList, onCompost }) {
   const { attributes, listeners, setNodeRef: dragRef, isDragging } = useDraggable({ id: flower.id })
   const { setNodeRef: dropRef, isOver } = useDroppable({ id: `plot-${index}` })
 
@@ -672,18 +703,23 @@ function FilledPlot({ index, flower, seed, onSell }) {
       className={`plot filled${isDragging ? ' is-dragging' : ''}${isOver ? ' is-over' : ''}`}
       style={{ '--rarity': RARITY_COLORS[seed.rarity] }}
     >
-      {/* The grab handle covers the bed but sits under the sell button, so
-          selling still works while any drag from the soil picks the bed up. */}
+      {/* The grab handle covers the bed but sits under the buttons, so they
+          still work while any drag from the soil picks the bed up. */}
       <span ref={dragRef} className="plot-grab" {...listeners} {...attributes} aria-label={`Move ${seed.name}`} />
       <PlotCluster seed={seed} />
       <span className="plot-name">{seed.name}</span>
-      <button
-        className="plot-sell"
-        title={`Sell ${seed.name} for ${seed.sellValue} coins`}
-        onClick={onSell}
-      >
-        Sell {seed.sellValue} 🪙
-      </button>
+      <div className="plot-actions">
+        <button
+          className="plot-sell"
+          title={`Put the ${seed.name.toLowerCase()} on the market`}
+          onClick={onList}
+        >Sell</button>
+        <button
+          className="plot-compost"
+          title={`Compost the ${seed.name.toLowerCase()} — nothing comes back`}
+          onClick={onCompost}
+        >Compost</button>
+      </div>
     </div>
   )
 }

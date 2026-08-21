@@ -1312,3 +1312,33 @@ html[data-theme="dark"] .award-card { background: rgba(255, 255, 255, 0.04); }
 @media (prefers-reduced-motion: reduce) {
   .tod-night .garden-sky::after { animation: none; opacity: 0.85; }
 }
+
+/* Two actions on a planted bed now: the market, or the compost heap. */
+.plot-actions {
+  position: absolute;
+  left: 0; right: 0; bottom: 6px;
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  opacity: 0;
+  transition: opacity 120ms;
+  z-index: 3;
+}
+.plot:hover .plot-actions,
+.plot-actions:focus-within { opacity: 1; }
+.plot-compost {
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-3);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.plot-compost:hover { border-color: var(--red-text); color: var(--red-text); }
+
+@media (max-width: 620px) {
+  /* No hover on a phone, so the actions are simply always there. */
+  .plot-actions { opacity: 1; }
+}

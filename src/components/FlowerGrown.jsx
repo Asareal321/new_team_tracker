@@ -320,7 +320,7 @@ function Plaque({ track, C, tier, seed }) {
         <div style={{
           background: CO.dueTint, color: CO.dueInk, borderRadius: 999,
           padding: '8px 20px', font: `600 18px/1.35 ${FONT_NUM}`, fontVariantNumeric: 'tabular-nums',
-        }}>worth {seed.sellValue.toLocaleString()} coins</div>
+        }}>{RARITY_NAMES[seed.rarity]}</div>
       </div>
     </div>
   )

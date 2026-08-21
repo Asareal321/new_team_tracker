@@ -787,30 +787,40 @@ export function GardenProvider({ children }) {
     }
   }, [flowers])
 
-  const sellGrown = useCallback(async () => {
+  // Composting, not selling.
+  //
+  // A flower used to convert to coins at a fixed rate, which made the shop the
+  // only thing flowers were for and set a floor under every price — nobody
+  // would ever accept less from a person than the game paid automatically.
+  // With a marketplace, what a flower is worth is what someone will give you
+  // for it, and that only means anything if the automatic buyer is gone.
+  //
+  // So the disposal route stays and the payout doesn't: composting clears the
+  // pot or the bed and returns nothing. It is for flowers you don't want,
+  // which is a real thing to need with a bounded garden.
+  const compostGrown = useCallback(async () => {
     const seed = seedByKey(stateRef.current?.growing_seed)
-    if (!seed) throw new Error('Nothing is ready to sell')
+    if (!seed) throw new Error('Nothing is ready')
     await clearGrowing({
-      coins: (stateRef.current?.coins || 0) + seed.sellValue,
-      stats: bumpStats({ flowersGrown: 1 }),
+      stats: bumpStats({ flowersGrown: 1, composted: 1 }),
       daily: bumpDaily({ grown: 1 }),
     })
-    return seed.sellValue
+    return seed.name
   }, [clearGrowing])
 
-  const sellPlanted = useCallback(async flowerId => {
+  const compostPlanted = useCallback(async flowerId => {
     const flower = flowers.find(f => f.id === flowerId)
     const seed = seedByKey(flower?.seed_key)
-    if (!flower || !seed) return 0
+    if (!flower || !seed) return null
     setFlowers(prev => prev.filter(f => f.id !== flowerId))
     const { error } = await supabase.from('garden_flowers').delete().eq('id', flowerId)
     if (error) {
       setFlowers(prev => [...prev, flower])
       throw error
     }
-    await save({ coins: (stateRef.current?.coins || 0) + seed.sellValue })
-    return seed.sellValue
-  }, [flowers, save])
+    await save({ stats: bumpStats({ composted: 1 }) })
+    return seed.name
+  }, [flowers, save, bumpStats])
 
   const unlockSeed = useCallback(async seedKey => {
     const seed = seedByKey(seedKey)
@@ -834,8 +844,12 @@ export function GardenProvider({ children }) {
     state, flowers, ready, seeds: SEEDS,
     quests: questView(state, todayBucket(state?.daily)),
     claimQuest, missingColumns,
+    // Re-read everything. Needed when a SECURITY DEFINER function has changed
+    // the garden behind the client's back — listing a flower on the market
+    // deletes the bed server-side, and nothing here would otherwise know.
+    reload: load,
     devResetOnboarding, devResetQuests, devCompleteQuests, devShowStreak,
-    spawnCloud, rewardTaskAdded, rewardTaskDone, recordDoingCleared, notify, setQuietMode, completeOnboarding, buyPacket, openPacket, plantSeed, placeFlower, moveFlower, sellGrown, sellPlanted, unlockSeed, expandGarden,
+    spawnCloud, rewardTaskAdded, rewardTaskDone, recordDoingCleared, notify, setQuietMode, completeOnboarding, buyPacket, openPacket, plantSeed, placeFlower, moveFlower, compostGrown, compostPlanted, unlockSeed, expandGarden,
     isDev, devOpen, openDevPanel: () => setDevOpen(true),
   }
 
