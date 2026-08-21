@@ -280,3 +280,75 @@ html[data-theme="dark"] .app-sidebar {
   overflow-y: auto;
 }
 .error-box .error-note { font-size: 0.78rem; color: var(--text-4); }
+
+/* --- the nav's attention signals ---------------------------------------- */
+/*
+   Two levels, and the difference is the point. `ready` means something is
+   finished and waiting for you, so it moves. `new` means something appeared,
+   so it sits there quietly. If everything pulsed, nothing would.
+
+   The glow is on the tab, the badge is on the icon, and the reason is in the
+   link's title — see lib/attention.js for what earns each one.                */
+
+.nav-btn { position: relative; }
+
+/* Not a colour change on its own: the rail's ink is already low-contrast in
+   places, and a colour shift alone is invisible to a good number of people. */
+.nav-btn.has-news { color: var(--rail-active-text); }
+
+.nav-btn.news-ready {
+  animation: nav-glow 2s ease-in-out infinite;
+}
+@keyframes nav-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(195, 247, 58, 0); }
+  50%      { box-shadow: 0 0 0 2px rgba(195, 247, 58, 0.55), 0 0 12px rgba(195, 247, 58, 0.35); }
+}
+/* The active tab already carries an inset bar; don't fight it. */
+.nav-btn.active.news-ready { animation: none; }
+
+.nav-news {
+  position: absolute;
+  top: 4px;
+  left: 22px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  border: 1.5px solid var(--rail-bg, var(--bg-surface));
+  pointer-events: none;
+}
+.nav-news-ready { background: #e0553f; color: #fff; }
+.nav-news-new   { background: var(--accent-on, #C3F73A); color: #10231f; }
+
+/* A dot, not a pill, when there is no number to show. The class comes from
+   the markup rather than :empty or :has — the badge always carries a
+   screen-reader span, so both of those matched even with a number in it. */
+.nav-news-dot {
+  min-width: 9px; width: 9px; height: 9px; padding: 0;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  /* Horizontal bar: the icon sits centred with the label hidden, so the badge
+     rides the icon's top-right rather than a phantom label's. */
+  .nav-news { top: 1px; left: 50%; margin-left: 4px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-btn.news-ready { animation: none; box-shadow: 0 0 0 2px rgba(195, 247, 58, 0.55); }
+}

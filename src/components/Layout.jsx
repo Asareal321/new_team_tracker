@@ -4,6 +4,8 @@ import { useAuth } from '../auth/AuthContext'
 import { useTeam } from '../context/TeamContext'
 import Tour from './Tour'
 import { tourDone, markTourDone, tourRequested, clearTourRequest, TOUR_EVENT } from '../lib/tourState'
+import useAttention from './useAttention'
+import { attentionTitle } from '../lib/attention'
 import { isIsolatedSession, isolatedSessionLabel } from '../supabase'
 import {
   IconBoard, IconDeadlines, IconCommunity, IconDashboard, IconGarden, IconAccount,
@@ -30,6 +32,7 @@ function getInitialTheme() {
 export default function Layout() {
   const { teams, currentTeam, currentTeamId, setCurrentTeam } = useTeam()
   const { user } = useAuth()
+  const { signals } = useAttention()
   const [theme, setTheme] = useState(getInitialTheme)
 
   // The walk lives here because it changes route as it goes — a page that
@@ -76,10 +79,29 @@ export default function Layout() {
           {NAV.map(item => {
             if (item.admin && !isAdmin) return null
             if (item.personal && currentTeamId) return null
+            // Why a tab is lit is said out loud, not just shown — the glow
+            // is the thing you notice, the title is the thing you act on.
+            const signal = signals[item.to]
+            const why = attentionTitle(signal)
             return (
-              <NavLink key={item.to} to={item.to} className={navClass} end={item.end} title={item.label}>
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `${navClass({ isActive })}${signal ? ` has-news news-${signal.level}` : ''}`}
+                end={item.end}
+                title={why ? `${item.label} — ${why}` : item.label}
+              >
                 <span className="nav-icon" aria-hidden="true"><item.Icon /></span>
                 <span className="nav-label">{item.label}</span>
+                {signal && (
+                  <span
+                    className={`nav-news nav-news-${signal.level}${signal.count > 0 ? '' : ' nav-news-dot'}`}
+                  >
+                    {signal.count > 0 ? signal.count : ''}
+                    <span className="sr-only">{why}</span>
+                  </span>
+                )}
               </NavLink>
             )
           })}
