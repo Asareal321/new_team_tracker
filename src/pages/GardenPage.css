@@ -1385,3 +1385,33 @@ html[data-theme="dark"] .award-card { background: rgba(255, 255, 255, 0.04); }
   /* No hover on a phone, so the actions are simply always there. */
   .plot-actions { opacity: 1; }
 }
+
+/* --- a room with something waiting in it -------------------------------- */
+/* Same two levels as the rail: `ready` pulses, `new` sits there. The rail's
+   garden tab is the roll-up of these, so a lit room is always reachable from
+   a lit tab. */
+
+.shelf-tab { position: relative; }
+
+.shelf-tab.news-ready { animation: shelf-glow 2s ease-in-out infinite; }
+@keyframes shelf-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(224, 85, 63, 0); }
+  50%      { box-shadow: 0 0 0 2px rgba(224, 85, 63, 0.55); }
+}
+.shelf-tab.on.news-ready { animation: none; }
+
+.shelf-news {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--bg-surface);
+}
+.shelf-news-ready { background: #e0553f; }
+.shelf-news-new   { background: #4f9d4a; }
+
+@media (prefers-reduced-motion: reduce) {
+  .shelf-tab.news-ready { animation: none; box-shadow: 0 0 0 2px rgba(224, 85, 63, 0.55); }
+}

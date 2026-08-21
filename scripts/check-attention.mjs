@@ -1,17 +1,20 @@
 // The nav's glow.
 //
-// The whole value of a signal is that it means something. Two failure modes
+// A signal is only worth anything if it means something. Two failure modes
 // kill it, and both are quiet:
 //
 //   • it glows when nothing is waiting, so people learn to ignore it;
 //   • it keeps glowing after you have been and looked, which is the same thing
 //     one step later.
 //
-// So the cases written down here are mostly about the glow going OUT.
+// So most of what is written down here is the glow going OUT. Clearing is by
+// signature: going to look records the cause you were shown, and the same
+// cause never glows twice — but a changed cause is news again.
 
 import {
-  attentionFor, seenAfterVisit, affordablePacketTier, attentionTitle,
-  ROUTE_GARDEN, ROUTE_COMMUNITY,
+  attentionFor, signatures, attentionTitle, affordablePacketTier,
+  ROUTE_BOARD, ROUTE_COMMUNITY, ROUTE_GARDEN,
+  GARDEN_GREENHOUSE, GARDEN_BEDS, GARDEN_HERBARIUM, GARDEN_SHOP,
 } from '../src/lib/attention.js'
 import { PACKETS } from '../src/lib/garden.js'
 
@@ -22,103 +25,132 @@ function ok(name, cond, detail = '') {
 }
 
 const HOUR = 3600
-// A grow that finished an hour ago.
-const done = {
-  growing_seed: 'daisy',
-  growing_started_at: new Date(Date.now() - 4 * HOUR * 1000).toISOString(),
-  growing_grow_seconds: 3 * HOUR,
-  coins: 0,
-}
-// A grow with time left on it.
-const growing = {
-  growing_seed: 'daisy',
-  growing_started_at: new Date(Date.now() - 1 * HOUR * 1000).toISOString(),
-  growing_grow_seconds: 3 * HOUR,
-  coins: 0,
-}
+const ago = h => new Date(Date.now() - h * HOUR * 1000).toISOString()
+
+const empty = { coins: 0, plot_count: 8, discovered: {}, packet_inventory: {} }
+const done = { ...empty, growing_seed: 'daisy', growing_started_at: ago(4), growing_grow_seconds: 3 * HOUR }
+const growing = { ...empty, growing_seed: 'daisy', growing_started_at: ago(1), growing_grow_seconds: 3 * HOUR }
+
+// Look at everything, so nothing is "new" any more.
+const seenAll = input => signatures(input)
 
 // — silence when there is nothing to say —
 
 ok('an empty app glows nowhere',
-  Object.keys(attentionFor({ state: { coins: 0 }, quests: [], community: {} })).length === 0)
+  Object.keys(attentionFor({ state: empty, flowers: [], quests: [], community: {} })).length === 0)
 
 ok('a flower still growing is not news',
-  !attentionFor({ state: growing, quests: [], community: {} })[ROUTE_GARDEN])
+  !attentionFor({ state: growing, flowers: [], quests: [], community: {} })[GARDEN_GREENHOUSE])
 
 ok('an unclaimable quest is not news',
-  !attentionFor({ state: { coins: 0 }, quests: [{ claimable: false }], community: {} })[ROUTE_GARDEN])
+  !attentionFor({ state: empty, flowers: [], quests: [{ claimable: false }], community: {} })[ROUTE_BOARD])
 
-// — the things that should speak up —
+// A first run must not open onto a lit-up rail. Everything incremental stays
+// quiet until there is a previous look to be newer than.
+const firstRun = attentionFor({
+  state: { ...empty, coins: 999_999, discovered: { daisy: 1 } },
+  flowers: [], quests: [], community: { othersListings: 5 },
+})
+ok('a first run does not glow for things that merely exist',
+  !firstRun[GARDEN_SHOP] && !firstRun[GARDEN_HERBARIUM] && !firstRun[ROUTE_COMMUNITY],
+  Object.keys(firstRun).join(', '))
 
-const a1 = attentionFor({ state: done, quests: [], community: {} })
-ok('a finished flower lights the garden', !!a1[ROUTE_GARDEN])
-ok('a finished flower is loud, not a dot', a1[ROUTE_GARDEN].level === 'ready')
-ok('it says which flower', /daisy/i.test(attentionTitle(a1[ROUTE_GARDEN])), attentionTitle(a1[ROUTE_GARDEN]))
+// — quests belong to the board, where they are claimed —
 
-const a2 = attentionFor({ state: { coins: 0 }, quests: [{ claimable: true }, { claimable: true }], community: {} })
-ok('claimable quests light the garden', a2[ROUTE_GARDEN]?.level === 'ready')
-ok('the count is carried for the badge', a2[ROUTE_GARDEN].count === 2)
+const q = attentionFor({ state: empty, flowers: [], quests: [{ claimable: true }, { claimable: true }], community: {} })
+ok('a finished quest lights the TASKBOARD, not the garden', !!q[ROUTE_BOARD] && !q[ROUTE_GARDEN])
+ok('a finished quest is loud', q[ROUTE_BOARD].level === 'ready')
+ok('the quest count rides the badge', q[ROUTE_BOARD].count === 2)
 
-const a3 = attentionFor({ state: { coins: 0, overflow_seconds: 900 }, quests: [], community: {} })
-ok('banked overflow time is loud', a3[ROUTE_GARDEN]?.level === 'ready')
+// — the garden's own rooms —
 
-const a4 = attentionFor({ state: { coins: 0 }, quests: [], community: { incoming: 1 } })
-ok('a friend request lights community', a4[ROUTE_COMMUNITY]?.level === 'ready')
-ok('the request count is carried', a4[ROUTE_COMMUNITY].count === 1)
+const g1 = attentionFor({ state: done, flowers: [], quests: [], community: {} })
+ok('a finished flower lights the greenhouse', g1[GARDEN_GREENHOUSE]?.level === 'ready')
+ok('it says which flower', /daisy/i.test(attentionTitle(g1[GARDEN_GREENHOUSE])))
+ok('and it lights the garden tab in the rail too', g1[ROUTE_GARDEN]?.level === 'ready')
 
-const a5 = attentionFor({ state: { coins: 0 }, quests: [], community: { othersListings: 3 } })
-ok('new listings light community quietly', a5[ROUTE_COMMUNITY]?.level === 'new')
+const g2 = attentionFor({
+  state: { ...empty, packet_inventory: { common: 2 } }, flowers: [], quests: [], community: {},
+})
+ok('packets waiting light the greenhouse', g2[GARDEN_GREENHOUSE]?.level === 'ready')
 
-// — a signal has to be able to go out —
+const full = { ...empty, plot_count: 3 }
+const g3 = attentionFor({ state: full, flowers: [{}, {}, {}], quests: [], community: {} })
+ok('a full garden lights the beds', g3[GARDEN_BEDS]?.level === 'ready')
+ok('a garden with room does not',
+  !attentionFor({ state: full, flowers: [{}, {}], quests: [], community: {} })[GARDEN_BEDS])
+
+// — going to look is what puts it out —
+
+const doneInput = { state: done, flowers: [], quests: [], community: {} }
+const afterGreenhouse = attentionFor({ ...doneInput, seen: seenAll(doneInput) })
+ok('visiting clears the greenhouse glow', !afterGreenhouse[GARDEN_GREENHOUSE])
+ok('visiting clears the rail glow with it', !afterGreenhouse[ROUTE_GARDEN])
+
+// The rail can be put out on its own — that is the whole point of the roll-up.
+const railOnly = attentionFor({
+  ...doneInput,
+  seen: { [ROUTE_GARDEN]: signatures(doneInput)[GARDEN_GREENHOUSE] },
+})
+ok('visiting the garden clears the rail but leaves the room lit',
+  !railOnly[ROUTE_GARDEN] && !!railOnly[GARDEN_GREENHOUSE])
+
+// — but a changed cause is news again —
+
+const twoQuests = { state: empty, flowers: [], quests: [{ claimable: true }], community: {} }
+const seenOne = seenAll(twoQuests)
+ok('the same finished quest does not glow twice',
+  !attentionFor({ ...twoQuests, seen: seenOne })[ROUTE_BOARD])
+ok('but a SECOND finished quest does',
+  attentionFor({
+    state: empty, flowers: [], quests: [{ claimable: true }, { claimable: true }],
+    community: {}, seen: seenOne,
+  })[ROUTE_BOARD]?.level === 'ready')
+
+const otherFlower = { ...done, growing_seed: 'tulip' }
+ok('a different flower finishing is news again',
+  attentionFor({ state: otherFlower, flowers: [], quests: [], community: {}, seen: seenAll(doneInput) })[GARDEN_GREENHOUSE]?.level === 'ready')
+
+// — the shop —
 
 const coinPacket = PACKETS.find(p => p.currency === 'coins')
-const rich = { coins: coinPacket.cost }
-const affordTier = affordablePacketTier(rich)
+const poor = { ...empty, coins: 0 }
+const rich = { ...empty, coins: coinPacket.cost }
+const seenPoor = seenAll({ state: poor, flowers: [], quests: [], community: {} })
 
-ok('a newly affordable packet is news',
-  attentionFor({ state: rich, quests: [], community: {} })[ROUTE_GARDEN]?.level === 'new')
+ok('a newly affordable packet lights the shop',
+  attentionFor({ state: rich, flowers: [], quests: [], community: {}, seen: { ...seenPoor, [GARDEN_SHOP]: 'tier:-1' } })[GARDEN_SHOP]?.level === 'new')
 
-const seenGarden = seenAfterVisit(ROUTE_GARDEN, { state: rich })
-ok('after visiting, the same packet is not news again',
-  !attentionFor({ state: rich, quests: [], community: {}, seen: { [ROUTE_GARDEN]: seenGarden } })[ROUTE_GARDEN],
-  JSON.stringify(seenGarden))
+const richInput = { state: rich, flowers: [], quests: [], community: {} }
+ok('after visiting the shop it goes quiet',
+  !attentionFor({ ...richInput, seen: seenAll(richInput) })[GARDEN_SHOP])
 
-const richer = { coins: 10_000_000 }
+const richer = { ...empty, coins: 10_000_000 }
+const richerInput = { state: richer, flowers: [], quests: [], community: {} }
 ok('being rich forever does not glow forever',
-  !attentionFor({
-    state: richer, quests: [], community: {},
-    seen: { [ROUTE_GARDEN]: seenAfterVisit(ROUTE_GARDEN, { state: richer }) },
-  })[ROUTE_GARDEN])
+  !attentionFor({ ...richerInput, seen: seenAll(richerInput) })[GARDEN_SHOP])
+ok('affordablePacketTier finds the best reachable packet', affordablePacketTier(richer) === PACKETS.length - 1)
 
-const market = { othersListings: 3 }
-const seenMarket = seenAfterVisit(ROUTE_COMMUNITY, { community: market })
-ok('after visiting, the same listings are not news again',
-  !attentionFor({ state: { coins: 0 }, quests: [], community: market, seen: { [ROUTE_COMMUNITY]: seenMarket } })[ROUTE_COMMUNITY])
+// — the herbarium —
 
-ok('but one MORE listing is news again',
-  attentionFor({
-    state: { coins: 0 }, quests: [], community: { othersListings: 4 },
-    seen: { [ROUTE_COMMUNITY]: seenMarket },
-  })[ROUTE_COMMUNITY]?.level === 'new')
+const herb = { ...empty, discovered: { daisy: 1 } }
+const herbInput = { state: herb, flowers: [], quests: [], community: {} }
+ok('a new species lights the herbarium',
+  attentionFor({ state: { ...empty, discovered: { daisy: 1, tulip: 1 } }, flowers: [], quests: [], community: {}, seen: seenAll(herbInput) })[GARDEN_HERBARIUM]?.level === 'new')
+ok('the same species does not light it twice',
+  !attentionFor({ ...herbInput, seen: seenAll(herbInput) })[GARDEN_HERBARIUM])
 
-// A friend request is a person waiting on you, so looking at the tab is not
-// the same as dealing with it. It must survive a visit.
-ok('a friend request survives a visit — only answering it clears it',
-  attentionFor({
-    state: { coins: 0 }, quests: [], community: { incoming: 1, othersListings: 0 },
-    seen: { [ROUTE_COMMUNITY]: seenAfterVisit(ROUTE_COMMUNITY, { community: { incoming: 1 } }) },
-  })[ROUTE_COMMUNITY]?.level === 'ready')
+// — community —
 
-// Likewise a finished flower: it is still finished after you glance at the tab.
-ok('a finished flower survives a visit',
-  attentionFor({
-    state: done, quests: [], community: {},
-    seen: { [ROUTE_GARDEN]: seenAfterVisit(ROUTE_GARDEN, { state: done }) },
-  })[ROUTE_GARDEN]?.level === 'ready')
-
-// — your own listings are not news to you —
-ok('your own listing is not news',
-  !attentionFor({ state: { coins: 0 }, quests: [], community: { othersListings: 0, mine: 5 } })[ROUTE_COMMUNITY])
+const req = { state: empty, flowers: [], quests: [], community: { incoming: 1 } }
+ok('a friend request lights community', attentionFor(req)[ROUTE_COMMUNITY]?.level === 'ready')
+ok('the request count rides the badge', attentionFor(req)[ROUTE_COMMUNITY].count === 1)
+ok('visiting clears it — the request is still there, the news is not',
+  !attentionFor({ ...req, seen: seenAll(req) })[ROUTE_COMMUNITY])
+ok('a second request is news again',
+  attentionFor({ state: empty, flowers: [], quests: [], community: { incoming: 2 }, seen: seenAll(req) })[ROUTE_COMMUNITY]?.level === 'ready')
+ok('your own listings are not news to you',
+  !attentionFor({ state: empty, flowers: [], quests: [], community: { othersListings: 0, mine: 5 } })[ROUTE_COMMUNITY])
 
 console.log(`\n${pass}/${pass + fail} passed`)
 process.exit(fail ? 1 : 0)

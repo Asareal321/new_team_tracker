@@ -16,6 +16,8 @@ import FlowerGrown from '../components/FlowerGrown'
 import PacketArt from '../components/PacketArt'
 import ListFlowerModal from '../components/ListFlowerModal'
 import useDaylight from '../lib/useDaylight'
+import { useAttention } from '../components/useAttention'
+import { attentionTitle } from '../lib/attention'
 import './GardenPage.css'
 
 const TABS = [
@@ -43,6 +45,11 @@ export default function GardenPage() {
     const want = new URLSearchParams(window.location.search).get('tab')
     return TABS.some(t => t.key === want) ? want : 'garden'
   })
+  // The same signals the rail runs on, one level down: a room glows for what
+  // is waiting inside it, and going in is what puts it out.
+  const { signals, markSeen } = useAttention()
+  useEffect(() => { markSeen(`garden:${tab}`) }, [tab, markSeen])
+
   // The sky follows the local clock, and keeps following it while the tab
   // stays open.
   const phase = useDaylight()
@@ -194,18 +201,28 @@ export default function GardenPage() {
         </header>
 
         <nav className="shelf-tabs" role="tablist" aria-label="Garden rooms">
-          {TABS.map(t => (
-            <button
-              key={t.key}
-              role="tab"
-              aria-selected={tab === t.key}
-              className={`shelf-tab${tab === t.key ? ' on' : ''}`}
-              onClick={() => setTab(t.key)}
-            >
-              {t.label}
-              {counts[t.key] && <span className="shelf-count">{counts[t.key]}</span>}
-            </button>
-          ))}
+          {TABS.map(t => {
+            const signal = signals[`garden:${t.key}`]
+            const why = attentionTitle(signal)
+            return (
+              <button
+                key={t.key}
+                role="tab"
+                aria-selected={tab === t.key}
+                className={`shelf-tab${tab === t.key ? ' on' : ''}${signal ? ` has-news news-${signal.level}` : ''}`}
+                title={why || undefined}
+                onClick={() => setTab(t.key)}
+              >
+                {t.label}
+                {counts[t.key] && <span className="shelf-count">{counts[t.key]}</span>}
+                {signal && (
+                  <span className={`shelf-news shelf-news-${signal.level}`}>
+                    <span className="sr-only">{why}</span>
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </nav>
 
         {error && <p className="garden-error">{error}</p>}

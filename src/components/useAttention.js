@@ -3,17 +3,19 @@ import { useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useGarden } from '../context/GardenContext'
 import { myFriends, marketOpen, isUnmigrated } from '../lib/community'
-import { attentionFor, seenAfterVisit } from '../lib/attention'
-import { readSeen, writeSeen } from '../lib/seenState'
+import { attentionFor, signatures } from '../lib/attention'
+import { readSeen, writeSeen, SEEN_EVENT } from '../lib/seenState'
 
 // How often to ask the server whether anything happened. Friend requests and
 // listings are other people's actions, so there is nothing local to react to.
 // A minute is often enough to feel live and rare enough to be free.
 const POLL_MS = 60_000
 
-export default function useAttention() {
+// Everything a signal can be computed from. Gathered once here so the rail and
+// the garden's own tabs are answering the same question.
+export function useAttention() {
   const { user } = useAuth()
-  const { state, quests } = useGarden() || {}
+  const { state, flowers, quests } = useGarden() || {}
   const location = useLocation()
 
   const [community, setCommunity] = useState(null)
@@ -22,6 +24,13 @@ export default function useAttention() {
   const stopped = useRef(false)
 
   useEffect(() => { setSeen(readSeen(user?.id)) }, [user?.id])
+
+  // Another copy of this hook wrote something. Catch up.
+  useEffect(() => {
+    const sync = () => setSeen(readSeen(user?.id))
+    window.addEventListener(SEEN_EVENT, sync)
+    return () => window.removeEventListener(SEEN_EVENT, sync)
+  }, [user?.id])
 
   const poll = useCallback(async () => {
     if (!user || stopped.current) return
@@ -32,8 +41,6 @@ export default function useAttention() {
         othersListings: (listings || []).filter(l => !l.mine).length,
       })
     } catch (err) {
-      // Without the community migration there is nothing to report, and
-      // retrying every minute would only fill the console.
       if (isUnmigrated(err)) stopped.current = true
       setCommunity({ incoming: 0, othersListings: 0 })
     }
@@ -42,23 +49,27 @@ export default function useAttention() {
   useEffect(() => {
     poll()
     const id = setInterval(poll, POLL_MS)
-    // Coming back to the tab is exactly when you want it to be current.
     const onWake = () => { if (document.visibilityState === 'visible') poll() }
     document.addEventListener('visibilitychange', onWake)
     return () => { clearInterval(id); document.removeEventListener('visibilitychange', onWake) }
   }, [poll])
 
-  // Visiting a place is what marks its news as seen. Done on arrival rather
-  // than departure, because a glance is the whole interaction for most of it.
-  useEffect(() => {
-    if (!user) return
-    const patch = seenAfterVisit(location.pathname, { state, community })
-    if (!patch || Object.keys(patch).length === 0) return
-    setSeen(writeSeen(user.id, location.pathname, patch))
-  }, [location.pathname, user, state, community])
+  const input = { state, flowers, quests, community }
 
-  // A route the user is standing on shouldn't shout at them.
-  const signals = attentionFor({ state, quests, community, seen })
-  delete signals[location.pathname]
-  return { signals, refresh: poll }
+  // Going to look is what puts a glow out: record the cause you were shown.
+  const markSeen = useCallback(scope => {
+    if (!user || !scope) return
+    const sig = signatures({ state, flowers, quests, community })[scope]
+    // A scope with nothing to say still gets a record, so the next thing that
+    // happens there counts as new rather than as a first sighting.
+    setSeen(writeSeen(user.id, scope, sig ?? ''))
+  }, [user, state, flowers, quests, community])
+
+  // The rail's routes clear themselves by being navigated to.
+  useEffect(() => { markSeen(location.pathname) }, [location.pathname, markSeen])
+
+  const signals = attentionFor({ ...input, seen })
+  return { signals, markSeen, refresh: poll }
 }
+
+export default useAttention
