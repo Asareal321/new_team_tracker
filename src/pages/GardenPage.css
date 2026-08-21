@@ -1415,3 +1415,49 @@ html[data-theme="dark"] .award-card { background: rgba(255, 255, 255, 0.04); }
 @media (prefers-reduced-motion: reduce) {
   .shelf-tab.news-ready { animation: none; box-shadow: 0 0 0 2px rgba(224, 85, 63, 0.55); }
 }
+
+/* --- banked clouds ------------------------------------------------------ */
+/* Finished tasks put clouds by rather than throwing them at you. This is the
+   pile, and the button is the only thing that puts them on screen. */
+
+.cloud-bank {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.7rem 0.85rem;
+  margin-bottom: 0.9rem;
+  border-radius: var(--r-md, 12px);
+  border: 2px solid #bcd9ea;
+  background: linear-gradient(180deg, #eaf5fb 0%, #dcecf6 100%);
+}
+html[data-theme="dark"] .cloud-bank {
+  border-color: #3b4c57;
+  background: linear-gradient(180deg, #26333b 0%, #1f2a31 100%);
+}
+
+.cloud-bank-sky { display: flex; flex-shrink: 0; }
+/* Overlapped into a bank rather than a row — the number is in the words. */
+.cloud-bank-puff {
+  font-size: 1.4rem;
+  line-height: 1;
+  margin-left: calc(var(--n) * -0.55rem);
+  animation: cloud-bob 3.5s ease-in-out infinite;
+  animation-delay: calc(var(--n) * 260ms);
+}
+@keyframes cloud-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+
+.cloud-bank-say { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.cloud-bank-say strong { font-size: 0.92rem; color: var(--text-1); }
+.cloud-bank-say span { font-size: 0.76rem; color: var(--text-4); line-height: 1.4; }
+
+@media (max-width: 620px) {
+  .cloud-bank { flex-wrap: wrap; }
+  .cloud-bank-say { flex-basis: 100%; order: 3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cloud-bank-puff { animation: none; }
+}

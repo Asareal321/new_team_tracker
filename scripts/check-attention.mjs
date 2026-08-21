@@ -140,6 +140,25 @@ ok('a new species lights the herbarium',
 ok('the same species does not light it twice',
   !attentionFor({ ...herbInput, seen: seenAll(herbInput) })[GARDEN_HERBARIUM])
 
+// — banked clouds —
+//
+// Clouds are put by instead of interrupting, so the greenhouse is the only
+// thing that says they exist. If this signal is wrong they are invisible.
+
+const banked = { ...empty, stats: { pendingClouds: 3 } }
+const bankedInput = { state: banked, flowers: [], quests: [], community: {} }
+ok('waiting clouds light the greenhouse',
+  attentionFor(bankedInput)[GARDEN_GREENHOUSE]?.level === 'ready')
+ok('the cloud count rides the badge', attentionFor(bankedInput)[GARDEN_GREENHOUSE].count === 3)
+ok('and they light the rail too', attentionFor(bankedInput)[ROUTE_GARDEN]?.level === 'ready')
+ok('letting them in puts it out',
+  !attentionFor({ state: { ...empty, stats: { pendingClouds: 0 } }, flowers: [], quests: [], community: {} })[GARDEN_GREENHOUSE])
+ok('one more cloud is news again',
+  attentionFor({
+    state: { ...empty, stats: { pendingClouds: 4 } }, flowers: [], quests: [], community: {},
+    seen: seenAll(bankedInput),
+  })[GARDEN_GREENHOUSE]?.level === 'ready')
+
 // — community —
 
 const req = { state: empty, flowers: [], quests: [], community: { incoming: 1 } }

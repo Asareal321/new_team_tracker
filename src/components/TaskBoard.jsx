@@ -1588,7 +1588,7 @@ function Braindump({ items, bands, laneCounts, projectName, projects = [], dragA
   // same reason the composer's chips are: a dump run is usually one project's
   // worth of thinking, and re-picking it every line would be the friction the
   // braindump exists to avoid.
-  const [captureProject, setCaptureProject] = useState(null)
+
   // When the task should be done by. Not sticky, unlike the project: a run of
   // captures is usually one project's worth of thinking but rarely one
   // deadline's, and a date silently carried on to the next task is a wrong
@@ -1636,20 +1636,14 @@ function Braindump({ items, bands, laneCounts, projectName, projects = [], dragA
     setProjectBusy(true)
     try {
       const id = await onAddProject({ name, status: 'active' })
-      // Select it: you named it because this is where the thing you're typing
-      // belongs.
-      if (id) setCaptureProject(id)
       setNewProject(null)
+      // You named it because it is where the thing you're typing belongs, so
+      // if there is something typed, this files it there and is done.
+      if (id && draft.trim()) await capture(id)
     } catch (err) {
       setNotice(err?.message || 'Could not add that project.')
     } finally { setProjectBusy(false) }
   }
-
-  // A project that's been deleted shouldn't leave the next capture pointing at
-  // nothing.
-  useEffect(() => {
-    if (captureProject && !projects.some(p => p.id === captureProject)) setCaptureProject(null)
-  }, [projects, captureProject])
 
   // Selection follows the pile: if the selected item leaves, take the first
   // one that's left so a triage run never needs the mouse between items.
@@ -1682,18 +1676,27 @@ function Braindump({ items, bands, laneCounts, projectName, projects = [], dragA
     return () => window.removeEventListener('keydown', onKey)
   }, [bands, selected, sortInto])
 
-  async function submit(e) {
-    e.preventDefault()
+  // Filing IS submitting. Picking a project used to be a separate choice you
+  // made before pressing Add, which meant two clicks to do one thing — so the
+  // pill is the button now, and which pill you press is where it lands.
+  const capture = useCallback(async projectId => {
     const title = draft.trim()
     if (!title || busy) return
     setBusy(true)
     try {
-      await onCapture(title, captureProject, captureDue || null)
+      await onCapture(title, projectId, captureDue || null)
       setDraft('')
       setCaptureDue('')
       setNotice('')
     }
     finally { setBusy(false) }
+  }, [draft, busy, onCapture, captureDue])
+
+  // Enter files it unsorted. Reaching for a pill is the deliberate act; the
+  // keyboard shouldn't have to guess which one you meant.
+  function submit(e) {
+    e.preventDefault()
+    capture(null)
   }
 
   return (
@@ -1714,33 +1717,28 @@ function Braindump({ items, bands, laneCounts, projectName, projects = [], dragA
               placeholder="Dump it here — one line, one task"
               aria-label="Capture a task"
             />
-            <button type="submit" className="bb-btn primary" disabled={!draft.trim() || busy}>Add</button>
           </form>
 
-          {/* Where the next capture lands. Directly under the field because
-              it's part of the same act — you pick it once and keep typing.
-              "Unfiled" is always offered and is the default, so the pile can
-              still take a thought that doesn't belong anywhere yet. */}
-          {/* The whole of filing a capture: which project, and when it's due.
-              Both sit under the field because both are part of the same act of
-              writing the thing down — this is the only way into a task now, so
-              anything that can't wait for triage has to be reachable here. */}
-          <div className="dump-projects" role="group" aria-label="File captures under">
-            <span className="dump-plabel">File under</span>
+          {/* The pills are the submit button. Each one both files the capture
+              and adds it, so writing a task down and saying where it belongs
+              is one click rather than two. They are dead until there is
+              something to file, which is what stops them reading as a filter. */}
+          <div className="dump-projects" role="group" aria-label="Add this task to">
+            <span className="dump-plabel">{draft.trim() ? 'Add it to' : 'Type a task, then pick where'}</span>
             <div className="dump-pills">
               <button
                 type="button"
-                className={`dump-pj${captureProject === null ? ' selected' : ''}`}
-                aria-pressed={captureProject === null}
-                onClick={() => setCaptureProject(null)}
+                className="dump-pj dump-pj-go"
+                disabled={!draft.trim() || busy}
+                onClick={() => capture(null)}
               >Unfiled</button>
               {projects.map(p => (
                 <button
                   key={p.id}
                   type="button"
-                  className={`dump-pj${captureProject === p.id ? ' selected' : ''}`}
-                  aria-pressed={captureProject === p.id}
-                  onClick={() => setCaptureProject(captureProject === p.id ? null : p.id)}
+                  className="dump-pj dump-pj-go"
+                  disabled={!draft.trim() || busy}
+                  onClick={() => capture(p.id)}
                 >
                   <span className="dump-pjdot" style={{ background: projectDotColor(p.id) }} />
                   {p.name}

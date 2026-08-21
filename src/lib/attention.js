@@ -85,6 +85,13 @@ function raw({ state, flowers, quests, community }) {
   if ((state?.overflow_seconds ?? 0) > 0) {
     add(GARDEN_GREENHOUSE, 'ready', 'overflow', 'Banked time is waiting for a seed')
   }
+  // Clouds your finished tasks earned, waiting to be let in.
+  const pending = state?.stats?.pendingClouds || 0
+  if (pending > 0) {
+    add(GARDEN_GREENHOUSE, 'ready', `clouds:${pending}`,
+      pending === 1 ? 'A cloud is waiting' : `${pending} clouds are waiting`, pending)
+  }
+
   const packets = packetsHeld(state)
   if (packets > 0) {
     add(GARDEN_GREENHOUSE, 'ready', `packets:${packets}`,

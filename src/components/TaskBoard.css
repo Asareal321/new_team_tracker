@@ -2735,3 +2735,32 @@
 @media (max-width: 820px) {
   .td-duefield { font-size: 16px; min-height: 44px; }
 }
+
+/* --- the braindump's pills are its submit button ------------------------ */
+/*
+   Picking a project used to be a choice you made *before* pressing Add, which
+   was two clicks for one intention. Now each pill both files the capture and
+   adds it. That makes them buttons that do something irreversible, so they
+   have to look dead when there is nothing to file — otherwise an empty field
+   plus a row of live-looking pills reads as a filter over the pile below.    */
+
+.dump-pj-go:disabled {
+  opacity: 0.45;
+  cursor: default;
+  border-style: dashed;
+}
+.dump-pj-go:disabled:hover { border-color: var(--bb-border); }
+
+/* Live, they are the primary action on this screen. */
+.dump-pj-go:not(:disabled) {
+  border-color: var(--bb-wood);
+  font-weight: 600;
+}
+.dump-pj-go:not(:disabled):hover {
+  background: var(--bb-wood);
+  color: var(--bb-wood-ink);
+  border-color: var(--bb-wood-edge);
+}
+.dump-pj-go:not(:disabled):hover .dump-pjdot {
+  box-shadow: 0 0 0 1.5px var(--bb-wood-ink);
+}

@@ -373,6 +373,22 @@ export function GardenProvider({ children }) {
     setClouds(prev => prev.filter(c => c.id !== id))
   }, [])
 
+  // Let the banked ones in. The count is zeroed as they are released rather
+  // than as they are popped: they are on screen now, and a reload that lost
+  // both the bank and the clouds would be worse than one that lost neither.
+  const releaseBankedClouds = useCallback(async () => {
+    const waiting = stateRef.current?.stats?.pendingClouds || 0
+    if (waiting < 1) return 0
+    setClouds(prev => [
+      ...prev,
+      ...Array.from({ length: waiting }, () => ({
+        id: crypto.randomUUID(), startTier: 1, preview: false,
+      })),
+    ])
+    await commit({ stats: { ...(stateRef.current?.stats || {}), pendingClouds: 0 } })
+    return waiting
+  }, [commit])
+
   // A popped cloud shaves time off whatever is growing, scaled by the rarity
   // tier it reached. With nothing planted the effort still counts — it
   // converts to coins instead.
@@ -579,6 +595,12 @@ export function GardenProvider({ children }) {
   // Finishing a task earns a cloud rather than a flat payout, so what it's
   // worth is the cloud's own roll. Past the daily cap the work still counts
   // toward the streak and the stats — only the cloud stops.
+  //
+  // The cloud is banked, not shown. A cloud takes the middle of the screen
+  // until it is tapped out, which is right for one and wrong for a run of
+  // six — clearing a backlog turned into six interruptions. So finishing puts
+  // one aside, the greenhouse says how many are waiting, and you let them in
+  // when you are ready for them.
   const rewardTaskDone = useCallback(async () => {
     const cur = stateRef.current
     if (!cur) return null
@@ -600,23 +622,32 @@ export function GardenProvider({ children }) {
     const packets = { ...(cur.packet_inventory || {}) }
     if (reward?.packetKey) packets[reward.packetKey] = (packets[reward.packetKey] || 0) + 1
 
+    // Quiet mode still takes the cash instead, and a capped day banks nothing.
+    const banks = underCap && !quiet
+
     await commit({
       coins: (cur.coins || 0) + paidQuiet + (reward?.coins || 0),
       ...(reward?.packetKey ? { packet_inventory: packets } : {}),
       daily: { ...daily, clouds: daily.clouds + (underCap ? 1 : 0), done: (daily.done || 0) + 1 },
       streak: nextStreak,
-      stats: bumpStats({ tasksDone: 1 }),
+      // pendingClouds is not a statistic. It lives in the stats bag because
+      // that bag is jsonb and already saved — a column of its own would mean
+      // another migration standing between this and working.
+      stats: bumpStats({ tasksDone: 1, ...(banks ? { pendingClouds: 1 } : {}) }),
     })
 
-    // The panel holds the screen, so the cloud waits behind it rather than
-    // arriving underneath it. Dismissing the panel releases the cloud.
+    // Nothing takes the screen now — the cloud is already put by. All that is
+    // left is to say so.
     const releaseCloud = () => {
       if (!underCap) {
         notify(`☁️ That's all ${DAILY_CAPS.clouds} clouds for today — back tomorrow`, 'capped')
         return
       }
       if (quiet) { notify(`+${paidQuiet} 🪙 (quiet mode)`); return }
-      spawnCloud()
+      const waiting = (stateRef.current?.stats?.pendingClouds || 0)
+      notify(waiting > 1
+        ? `☁️ ${waiting} clouds waiting in the greenhouse`
+        : '☁️ A cloud is waiting in the greenhouse')
     }
 
     if (reward) {
@@ -626,14 +657,14 @@ export function GardenProvider({ children }) {
         totalCoins: (cur.coins || 0) + paidQuiet + reward.coins,
         release: releaseCloud,
       })
-      return { cloud: underCap && !quiet, streak: nextStreak.current }
+      return { cloud: banks, streak: nextStreak.current }
     }
 
     releaseCloud()
     if (!underCap) return { cloud: false, capped: true }
     if (quiet) return { cloud: false, quiet: true }
     return { cloud: true }
-  }, [commit, bumpStats, notify, spawnCloud])
+  }, [commit, bumpStats, notify])
 
   // Buy a packet and roll it. The roll happens client-side, which is fine for
   // a single-player cosmetic economy — nothing here is competitive and the row
@@ -849,7 +880,7 @@ export function GardenProvider({ children }) {
     // deletes the bed server-side, and nothing here would otherwise know.
     reload: load,
     devResetOnboarding, devResetQuests, devCompleteQuests, devShowStreak,
-    spawnCloud, rewardTaskAdded, rewardTaskDone, recordDoingCleared, notify, setQuietMode, completeOnboarding, buyPacket, openPacket, plantSeed, placeFlower, moveFlower, compostGrown, compostPlanted, unlockSeed, expandGarden,
+    spawnCloud, releaseBankedClouds, rewardTaskAdded, rewardTaskDone, recordDoingCleared, notify, setQuietMode, completeOnboarding, buyPacket, openPacket, plantSeed, placeFlower, moveFlower, compostGrown, compostPlanted, unlockSeed, expandGarden,
     isDev, devOpen, openDevPanel: () => setDevOpen(true),
   }
 

@@ -39,6 +39,7 @@ export default function GardenPage() {
     reload,
     state, flowers, ready,
     plantSeed, placeFlower, moveFlower, compostGrown, compostPlanted, buyPacket, openPacket, expandGarden,
+    releaseBankedClouds,
   } = useGarden()
   // ?tab= lets anything link straight to a room rather than the front door.
   const [tab, setTab] = useState(() => {
@@ -48,6 +49,8 @@ export default function GardenPage() {
   // The same signals the rail runs on, one level down: a room glows for what
   // is waiting inside it, and going in is what puts it out.
   const { signals, markSeen } = useAttention()
+  const [releasing, setReleasing] = useState(false)
+  const pendingClouds = state?.stats?.pendingClouds || 0
   useEffect(() => { markSeen(`garden:${tab}`) }, [tab, markSeen])
 
   // The sky follows the local clock, and keeps following it while the tab
@@ -252,6 +255,33 @@ export default function GardenPage() {
         {/* --- greenhouse: the one grow slot, plus everything not yet planted --- */}
         {tab === 'greenhouse' && (
         <section className="garden-panel tabbed greenhouse">
+          {/* The clouds your finished tasks earned, waiting until you want
+              them. A cloud takes the middle of the screen until it's tapped
+              out, which is right for one and wrong for a run of six. */}
+          {pendingClouds > 0 && (
+            <div className="cloud-bank">
+              <span className="cloud-bank-sky" aria-hidden="true">
+                {Array.from({ length: Math.min(pendingClouds, 5) }, (_, n) => (
+                  <span key={n} className="cloud-bank-puff" style={{ '--n': n }}>☁️</span>
+                ))}
+              </span>
+              <div className="cloud-bank-say">
+                <strong>
+                  {pendingClouds === 1 ? 'A cloud is waiting' : `${pendingClouds} clouds are waiting`}
+                </strong>
+                <span>Tap each one out — every tap can promote it a tier.</span>
+              </div>
+              <button
+                className="garden-btn primary"
+                disabled={releasing}
+                onClick={async () => {
+                  setReleasing(true)
+                  try { await releaseBankedClouds() } finally { setReleasing(false) }
+                }}
+              >{releasing ? 'One moment…' : 'Let them in'}</button>
+            </div>
+          )}
+
           {/* Banked cloud time with nowhere to go yet. It's stated up front
               because the choice of which seed receives it is the user's, and an
               unexplained head start on a plant would just look like a bug. */}
