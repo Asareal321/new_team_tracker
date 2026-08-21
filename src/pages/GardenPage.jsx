@@ -708,17 +708,29 @@ function FilledPlot({ index, flower, seed, onList, onCompost }) {
       <span ref={dragRef} className="plot-grab" {...listeners} {...attributes} aria-label={`Move ${seed.name}`} />
       <PlotCluster seed={seed} />
       <span className="plot-name">{seed.name}</span>
+      {/* One bar, two matched halves. The labels drop out on a small bed —
+          the garden grows sideways and the beds shrink to about 48px at full
+          size, where two words cannot fit — so each button leads with a glyph
+          and keeps its title and aria-label either way. */}
       <div className="plot-actions">
         <button
-          className="plot-sell"
+          className="plot-act plot-sell"
           title={`Put the ${seed.name.toLowerCase()} on the market`}
+          aria-label={`Sell the ${seed.name.toLowerCase()}`}
           onClick={onList}
-        >Sell</button>
+        >
+          <span aria-hidden="true">🏷</span>
+          <span className="plot-act-label">Sell</span>
+        </button>
         <button
-          className="plot-compost"
+          className="plot-act plot-compost"
           title={`Compost the ${seed.name.toLowerCase()} — nothing comes back`}
+          aria-label={`Compost the ${seed.name.toLowerCase()}`}
           onClick={onCompost}
-        >Compost</button>
+        >
+          <span aria-hidden="true">🗑</span>
+          <span className="plot-act-label">Compost</span>
+        </button>
       </div>
     </div>
   )

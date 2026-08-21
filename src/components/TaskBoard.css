@@ -1103,8 +1103,6 @@
   font-size: 0.85rem;
 }
 .response-form-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
-  to   { transform: translateX(0);    opacity: 1; }
-}
 
 
 /* ═══ Beech & Baize taskboard ══════════════════════════════════════════════

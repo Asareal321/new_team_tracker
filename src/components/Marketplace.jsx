@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useGarden } from '../context/GardenContext'
 import { seedByKey, packetByKey, RARITY_NAMES, RARITY_COLORS } from '../lib/garden'
 import { marketOpen, buyListing, cancelListing, listPacket, isUnmigrated } from '../lib/community'
+import ListFlowerModal from './ListFlowerModal'
 import './Marketplace.css'
 
 // What a listing is of, resolved from its key. A listing stores a seed_key or a
@@ -21,7 +22,7 @@ function itemOf(listing) {
 }
 
 export default function Marketplace() {
-  const { state, reload } = useGarden() || {}
+  const { state, flowers, reload } = useGarden() || {}
   const coins = state?.coins ?? 0
 
   const [listings, setListings] = useState([])
@@ -31,6 +32,7 @@ export default function Marketplace() {
   const [notice, setNotice] = useState('')
   const [sellPacket, setSellPacket] = useState(null)
   const [packetPrice, setPacketPrice] = useState('')
+  const [sellFlower, setSellFlower] = useState(null)
 
   const refresh = useCallback(async () => {
     try {
@@ -78,6 +80,13 @@ export default function Marketplace() {
     finally { setBusy(null) }
   }
 
+  // Grown flowers, as things you could sell. The garden's own Sell button
+  // opens the same dialog — this is the second door into it, for people who
+  // came to the market to sell rather than to the garden to tidy up.
+  const heldFlowers = (flowers || [])
+    .map(f => ({ flower: f, seed: seedByKey(f.seed_key) }))
+    .filter(f => f.seed)
+
   // Packets you hold, as things you could sell.
   const heldPackets = Object.entries(state?.packet_inventory || {})
     .filter(([, n]) => n > 0)
@@ -106,6 +115,24 @@ export default function Marketplace() {
         Flowers and packets, priced by whoever is selling them. Put a flower up from your
         garden; take anything of yours back whenever you like.
       </p>
+
+      {heldFlowers.length > 0 && (
+        <div className="mk-sell">
+          <span className="mk-sell-label">Sell a flower</span>
+          <div className="mk-sell-row">
+            {heldFlowers.map(({ flower, seed }) => (
+              <button
+                key={flower.id}
+                className="mk-chip"
+                style={{ borderColor: RARITY_COLORS[seed.rarity] }}
+                onClick={() => setSellFlower({ flower, seed })}
+              >
+                <span aria-hidden="true">{seed.emoji}</span>{seed.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {heldPackets.length > 0 && (
         <div className="mk-sell">
@@ -180,6 +207,19 @@ export default function Marketplace() {
           )
         })}
       </div>
+
+      {sellFlower && (
+        <ListFlowerModal
+          flower={sellFlower.flower}
+          seed={sellFlower.seed}
+          onCancel={() => setSellFlower(null)}
+          onDone={async (name, price) => {
+            setSellFlower(null)
+            setNotice(`${name} is on the market at ${price} coins.`)
+            await Promise.all([refresh(), reload?.()])
+          }}
+        />
+      )}
     </section>
   )
 }

@@ -523,22 +523,54 @@ html[data-theme="dark"] .coin-count {
   margin-top: 0.15rem;
 }
 
-.plot-sell {
-  position: absolute;
-  bottom: 5px;
-  font-family: inherit;
-  background: rgba(255, 253, 245, 0.95);
-  border: 2px solid #d8c4a3;
-  border-radius: 999px;
-  color: var(--ink);
-  font-size: 0.6rem;
-  font-weight: 800;
-  cursor: pointer;
-  padding: 0.1rem 0.45rem;
-  opacity: 0;
-  transition: opacity 120ms;
+.plot {
+  /* So the action bar can drop its labels on a small bed. The garden grows
+     sideways and the beds shrink with it; at 24 plots a bed is about 48px. */
+  container-type: inline-size;
 }
-.plot.filled:hover .plot-sell, .plot-sell:focus-visible { opacity: 1; }
+
+/* The two actions on a planted bed are one control each, cut from the same
+   cloth: same height, same radius, same type. Only the fill separates them —
+   Sell is the one you mean, Compost is the one you don't. */
+.plot-act {
+  flex: 0 1 auto;
+  min-width: 0;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 120ms, border-color 120ms, color 120ms;
+}
+.plot-act:focus-visible { outline: 2px solid #ffe066; outline-offset: 1px; }
+
+.plot-sell {
+  background: rgba(255, 253, 245, 0.96);
+  border: 1px solid #d8c4a3;
+  color: var(--ink);
+}
+.plot-sell:hover { background: #fff; border-color: #b9a37c; }
+
+/* Quiet until you go for it, then plainly destructive. */
+.plot-compost {
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: rgba(255, 246, 228, 0.9);
+  backdrop-filter: blur(2px);
+}
+.plot-compost:hover {
+  background: rgba(150, 40, 34, 0.9);
+  border-color: rgba(255, 255, 255, 0.5);
+  color: #fff;
+}
 
 /* --- night garden ------------------------------------------------------- */
 
@@ -585,7 +617,8 @@ html[data-theme="dark"] .growing-pot { background: radial-gradient(circle at 50%
 html[data-theme="dark"] .growing-bar { background: #1e2223; border-color: #3a4042; }
 html[data-theme="dark"] .garden-error  { background: #3a1b1b; color: #efaeae; border-color: #5c2626; }
 html[data-theme="dark"] .garden-notice { background: #16281f; color: #7fcb9a; border-color: #2c4a37; }
-html[data-theme="dark"] .plot-sell { background: rgba(38, 42, 44, 0.95); border-color: #454b4d; color: var(--ink); }
+html[data-theme="dark"] .plot-sell { background: rgba(38, 42, 44, 0.96); border-color: #454b4d; color: var(--ink); }
+html[data-theme="dark"] .plot-sell:hover { background: #333839; border-color: #5c6365; }
 
 /* --- responsive & motion ------------------------------------------------ */
 
@@ -600,7 +633,6 @@ html[data-theme="dark"] .plot-sell { background: rgba(38, 42, 44, 0.95); border-
   /* No hover on a phone — the name and price would be unreachable.
      The grid is in the selector to outrank the hide rule, which is defined
      further down the file at otherwise equal specificity. */
-  .plot-sell { opacity: 1; }
   .plot-grid .plot.filled .plot-name { opacity: 1; }
   .sky-sun { width: 48px; height: 48px; right: 24px; }
 }
@@ -714,7 +746,7 @@ html[data-theme="dark"] .seed-tray .coin-count { color: #A9E07D; }
    name has to sit above the blooms rather than beside them. */
 .plot.filled { position: relative; justify-content: flex-end; }
 .plot-name { position: relative; z-index: 20; }
-.plot-sell { z-index: 21; }
+.plot-actions { z-index: 21; }
 
 @media (prefers-reduced-motion: reduce) {
   .packet-result { animation: none; }
@@ -818,7 +850,6 @@ html[data-theme="dark"] .seed-tray .coin-count { color: #A9E07D; }
 }
 .plot-grab:active { cursor: grabbing; }
 
-.plot-sell { position: relative; z-index: 3; }
 /* Above the blooms, but transparent to the pointer — a drag begun on the
    label should still pick the bed up. */
 .plot-name { position: relative; z-index: 2; pointer-events: none; }
@@ -826,7 +857,7 @@ html[data-theme="dark"] .seed-tray .coin-count { color: #A9E07D; }
 /* The bed left behind while its flower is in hand. */
 .plot.is-dragging .cluster,
 .plot.is-dragging .plot-name,
-.plot.is-dragging .plot-sell { opacity: 0.25; }
+.plot.is-dragging .plot-actions { opacity: 0.25; }
 
 /* Where it would land. */
 .plot.is-over {
@@ -1314,29 +1345,31 @@ html[data-theme="dark"] .award-card { background: rgba(255, 255, 255, 0.04); }
 }
 
 /* Two actions on a planted bed now: the market, or the compost heap. */
+/* One bar across the foot of the bed, on a scrim so both buttons read against
+   whatever is blooming behind them. */
 .plot-actions {
   position: absolute;
-  left: 0; right: 0; bottom: 6px;
+  left: 0; right: 0; bottom: 0;
   display: flex;
   justify-content: center;
-  gap: 5px;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 0 0 9px 9px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0));
   opacity: 0;
   transition: opacity 120ms;
   z-index: 3;
 }
-.plot:hover .plot-actions,
+.plot.filled:hover .plot-actions,
 .plot-actions:focus-within { opacity: 1; }
-.plot-compost {
-  border: 1px solid var(--border);
-  background: var(--bg-surface);
-  color: var(--text-3);
-  border-radius: 999px;
-  padding: 2px 9px;
-  font-family: inherit;
-  font-size: 11px;
-  cursor: pointer;
+
+/* Below about 96px there is no room for two words, so the glyphs carry it and
+   the accessible name — which was never the visible text — carries the rest. */
+@container (max-width: 96px) {
+  .plot-act-label { display: none; }
+  .plot-act { padding: 0 6px; }
 }
-.plot-compost:hover { border-color: var(--red-text); color: var(--red-text); }
 
 @media (max-width: 620px) {
   /* No hover on a phone, so the actions are simply always there. */
