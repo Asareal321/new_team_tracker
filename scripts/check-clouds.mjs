@@ -59,6 +59,55 @@ ok('a missing bag reads as zero', pendingClouds({}) === 0)
 ok('a missing state reads as zero', pendingClouds(null) === 0)
 ok('a negative can never be reported', pendingClouds({ stats: { pendingClouds: -2 } }) === 0)
 
+// — two writers in one tick —
+//
+// This is the bug that made a banked cloud vanish. Finishing a task from Doing
+// runs two writers back to back, and both rebuild the whole stats object from
+// a ref. If that ref only updates when React re-renders, the second one reads
+// the pre-write state and silently undoes the first: the toast said a cloud
+// was waiting and the greenhouse was empty.
+//
+// Simulated rather than mocked — the shape of the mistake is what matters.
+
+function makeStore({ refUpdatesOnWrite }) {
+  let rendered = { stats: {} }   // what React has committed
+  let ref = rendered             // what writers read
+  return {
+    read: () => ref,
+    write(patch) {
+      const next = { ...ref, ...patch }
+      if (refUpdatesOnWrite) ref = next   // the fix
+      rendered = next
+    },
+    render() { ref = rendered },          // React catching up, later
+    get result() { return rendered },
+  }
+}
+
+function twoWriters(store) {
+  const bump = patch => {
+    const cur = store.read().stats || {}
+    const next = { ...cur }
+    for (const [k, v] of Object.entries(patch)) next[k] = (next[k] || 0) + v
+    return next
+  }
+  // rewardTaskDone: banks a cloud
+  store.write({ stats: bump({ tasksDone: 1, pendingClouds: 1 }) })
+  // recordDoingCleared: same tick, rebuilds stats from the same ref
+  store.write({ stats: bump({ doingClears: 1 }) })
+  store.render()
+  return store.result.stats
+}
+
+const broken = twoWriters(makeStore({ refUpdatesOnWrite: false }))
+ok('the old ordering really did drop the cloud (regression witness)',
+  !broken.pendingClouds, JSON.stringify(broken))
+
+const fixed = twoWriters(makeStore({ refUpdatesOnWrite: true }))
+ok('writing to the ref keeps the banked cloud', fixed.pendingClouds === 1, JSON.stringify(fixed))
+ok('and the second writer still records its own work', fixed.doingClears === 1)
+ok('and the first writer keeps its own work too', fixed.tasksDone === 1)
+
 // — what the user is told —
 
 ok('one waiting cloud is announced in the singular', /A cloud is waiting/.test(cloudNotice(normal, 1).text))

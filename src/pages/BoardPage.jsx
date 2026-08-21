@@ -303,11 +303,14 @@ export default function BoardPage() {
   // Rewards land once the completion modal is out of the way, so the cloud gets
   // the centre of the screen to itself. Both pay on every board — the garden
   // belongs to the account, so work done on a team board counts the same.
-  function dismissDoneTask() {
+  async function dismissDoneTask() {
     const cleared = doneTask?.fromDoing
     setDoneTask(null)
-    rewardTaskDone()
-    if (cleared) recordDoingCleared()
+    // Sequenced, not fired together: both rebuild the same stats object, so
+    // overlapping them means whichever lands second wins and the other's
+    // work is lost.
+    await rewardTaskDone()
+    if (cleared) await recordDoingCleared()
   }
 
   async function updateTask(id, updates) {

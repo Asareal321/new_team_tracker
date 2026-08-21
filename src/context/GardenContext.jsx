@@ -169,6 +169,15 @@ export function GardenProvider({ children }) {
   const [devLog, setDevLog] = useState([])
   // Every cloud a user pops posts a reward. Keeping the latest state in a ref
   // lets those writes read fresh values without re-creating the callbacks.
+  //
+  // Assigned on render AND on every write — see save(). Render alone is not
+  // enough: setState does not land until React re-renders, so two writes in
+  // one tick both read the pre-write state and the second silently undoes the
+  // first. That is not hypothetical. Finishing a task from Doing calls
+  // rewardTaskDone() and recordDoingCleared() back to back; the second rebuilt
+  // `stats` from the stale ref and dropped the cloud the first had just
+  // banked, so the toast said a cloud was waiting and the greenhouse was
+  // empty.
   const stateRef = useRef(null)
   stateRef.current = state
 
@@ -215,6 +224,9 @@ export function GardenProvider({ children }) {
   const save = useCallback(async patch => {
     if (!user) return
     const next = { ...(stateRef.current || DEFAULT_STATE), ...patch, user_id: user.id }
+    // Before setState, so anything else writing in this same tick builds on
+    // this write rather than on what was last rendered.
+    stateRef.current = next
     setState(next)
     const { user_id, ...fields } = next
 
