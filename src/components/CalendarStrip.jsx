@@ -28,8 +28,8 @@ export default function CalendarStrip({ enabled, connected, block, matched, erro
       <div className="cal-strip">
         <span className="cal-icon" aria-hidden="true">📅</span>
         <span className="cal-say">
-          <strong>Connect Google Calendar.</strong> Read-only, and only for as long as
-          this tab is open — trakkit never writes to your calendar.
+          <strong>Connect Google Calendar.</strong> Read-only — trakkit never writes to
+          your calendar, and you can disconnect whenever you like.
         </span>
         <button className="bb-btn primary" onClick={connectCalendar}>Connect</button>
         <button className="bb-btn" onClick={() => onToggle(false)}>Turn off</button>

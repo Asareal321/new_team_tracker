@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { planFill, activeBlock } from '../lib/calendarFill'
-import { fetchTodaysEvents, isConnected, clearToken, CalendarAuthError } from '../lib/googleCalendar'
+import {
+  fetchTodaysEvents, fetchViaServer, hasStoredConnection, isConnected,
+  clearToken, CalendarAuthError,
+} from '../lib/googleCalendar'
 import { localDay } from '../lib/garden'
 
 // Watching the calendar and filling the board from it.
@@ -43,9 +46,18 @@ export default function useCalendarFill({ tasks, projects, onApply }) {
   latest.current = { tasks, projects, onApply }
 
   const poll = useCallback(async () => {
-    if (!enabled || !isConnected()) return
+    if (!enabled) return
     try {
-      const events = await fetchTodaysEvents()
+      // Server first: it holds a refresh token and can always mint a working
+      // access token, so it is the only route that survives the hour. The
+      // browser token is the fallback for before the Edge Function exists —
+      // and fetchViaServer returns null rather than throwing for that case,
+      // so a missing deployment is not mistaken for a lost connection.
+      let events = await fetchViaServer()
+      if (events === null) {
+        if (!isConnected()) return
+        events = await fetchTodaysEvents()
+      }
       setError('')
       const now = new Date()
       const current = activeBlock(events, now.getTime())
@@ -69,6 +81,8 @@ export default function useCalendarFill({ tasks, projects, onApply }) {
       await apply(moves, { project, block: current })
       setLastFilled({ project: project.name, count: moves.filter(m => m.status !== 'braindump').length })
     } catch (err) {
+      // Only a real authorisation failure ends the connection. Everything
+      // else is this minute's problem, not the connection's.
       if (err instanceof CalendarAuthError) { setConnected(false); clearToken() }
       setError(err.message)
     }
@@ -83,11 +97,18 @@ export default function useCalendarFill({ tasks, projects, onApply }) {
     return () => { clearInterval(id); document.removeEventListener('visibilitychange', onWake) }
   }, [enabled, poll])
 
-  // Coming back from the Google round-trip, the token lands in sessionStorage
-  // before this mounts — but only after the auth event fires, so re-check.
+  // Connected means "there is a stored connection, OR this tab still holds a
+  // usable token". Checked on a timer because the token lands asynchronously
+  // after the Google round-trip, once the auth event fires.
   useEffect(() => {
-    const id = setInterval(() => setConnected(isConnected()), 2000)
-    return () => clearInterval(id)
+    let alive = true
+    const check = async () => {
+      const stored = await hasStoredConnection()
+      if (alive) setConnected(stored || isConnected())
+    }
+    check()
+    const id = setInterval(check, 15_000)
+    return () => { alive = false; clearInterval(id) }
   }, [])
 
   const toggle = useCallback(on => {

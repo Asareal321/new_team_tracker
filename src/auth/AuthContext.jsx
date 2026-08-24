@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../supabase'
-import { CALENDAR_SCOPE, saveToken, clearToken } from '../lib/googleCalendar'
+import { CALENDAR_SCOPE, saveToken, clearToken, storeRefreshToken } from '../lib/googleCalendar'
 
 const AuthContext = createContext(null)
 
@@ -20,11 +20,17 @@ export function AuthProvider({ children }) {
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      // Supabase surfaces the Google access token exactly once, on the sign-in
-      // that granted it — it is absent from every later session read. So it is
-      // caught here or not at all.
+      // Supabase surfaces both Google tokens exactly once, on the sign-in that
+      // granted them — they are absent from every later session read. So they
+      // are caught here or not at all.
       if (newSession?.provider_token) {
         saveToken(newSession.provider_token, newSession.provider_token_expires_in)
+      }
+      // The refresh token is the whole difference between a connection that
+      // lasts an hour and one that lasts. It goes straight to the server and
+      // is never kept here.
+      if (newSession?.provider_refresh_token) {
+        storeRefreshToken(newSession.provider_refresh_token)
       }
       setSession(newSession)
       if (newSession) fetchProfile(newSession.user.id)
@@ -70,14 +76,20 @@ export function AuthProvider({ children }) {
   }
 
   // Re-runs the Google round-trip asking for calendar.readonly on top of
-  // sign-in. Consent is forced because Google silently omits the scope on a
-  // repeat authorisation otherwise, which looks exactly like a broken button.
+  // sign-in.
+  //
+  // access_type=offline is what asks Google for a refresh token, and without
+  // it there is nothing to store and the connection can only ever be
+  // temporary. prompt=consent goes with it: Google issues a refresh token on
+  // the FIRST consent only, so a repeat authorisation without this returns an
+  // access token and no refresh token — which looks like it worked and then
+  // quietly expires an hour later.
   function connectCalendar() {
     return supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         scopes: CALENDAR_SCOPE,
-        queryParams: { access_type: 'online', prompt: 'consent' },
+        queryParams: { access_type: 'offline', prompt: 'consent' },
         redirectTo: window.location.origin + window.location.pathname + window.location.search,
       },
     })

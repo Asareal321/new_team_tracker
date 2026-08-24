@@ -1,18 +1,24 @@
 // Reading today's calendar.
 //
-// Scope and lifetime, stated up front because both are deliberate:
+// calendar.readonly and nothing else: this reads event titles and times to
+// decide what goes on your board, and never writes to a calendar.
 //
-//   • calendar.readonly, and nothing else. This feature reads event titles and
-//     times to decide what to put on your board. It never writes to a calendar.
-//   • The token lives in sessionStorage, not localStorage. Supabase hands back
-//     a Google access token once, at sign-in, and does not refresh it — so the
-//     connection is good for about an hour and dies with the tab. That matches
-//     what this feature is: the board reacts while trakkit is open. Keeping the
-//     token per-tab and short-lived is the honest storage for that, and it
-//     keeps a third party's access token out of long-lived storage.
+// Two routes, and the difference is how long a connection lasts.
 //
-// Making this survive a closed tab means storing a Google refresh token
-// server-side, which is a different feature with a much larger blast radius.
+//   • Server (preferred). A refresh token is stored server-side and the
+//     calendar-events Edge Function mints a fresh access token per request.
+//     This is what makes the connection permanent, and it is the only way:
+//     exchanging a refresh token needs the Google client secret, and a secret
+//     in a browser is not a secret.
+//   • Browser (fallback). The access token Supabase hands over at sign-in,
+//     held in sessionStorage. Good for under an hour and gone when the tab is
+//     discarded — which on a phone is far sooner than that. This exists only
+//     so the feature still works before the Edge Function is deployed.
+//
+// The browser path is deliberately the fallback, not the default. Reconnecting
+// twice an hour is not a connection.
+
+import { supabase } from '../supabase'
 
 export const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly'
 
@@ -46,6 +52,30 @@ export function clearToken() {
   try { sessionStorage.removeItem(KEY) } catch { /* nothing to clear */ }
 }
 
+// The stored, permanent connection. Never returns a token — there is no way
+// to read one back, by design (see migration-google-calendar.sql).
+export async function hasStoredConnection() {
+  try {
+    const { data, error } = await supabase.rpc('google_calendar_connected')
+    if (error) return false
+    return !!data
+  } catch { return false }
+}
+
+// Hand the refresh token over once and forget it. Supabase gives it to the
+// browser whether we want it or not; the least we can do is not keep it.
+export async function storeRefreshToken(token) {
+  if (!token) return false
+  const { error } = await supabase.rpc('store_google_refresh_token', { _token: token })
+  return !error
+}
+
+export async function disconnect() {
+  clearToken()
+  try { await supabase.rpc('disconnect_google_calendar') } catch { /* already gone */ }
+}
+
+// Only tells you about this tab's borrowed token. Prefer hasStoredConnection.
 export function isConnected() {
   return !!readToken()
 }
@@ -69,6 +99,25 @@ export class CalendarAuthError extends Error {}
 // Today's events on the primary calendar. Cancelled events are excluded by
 // singleEvents + the status check; recurring ones are expanded to instances so
 // a weekly "Product" block is a real 1–2pm today rather than a rule.
+// Ask the server. Returns null when the function isn't deployed, so the caller
+// can fall back rather than treating a missing deployment as a lost
+// connection.
+export async function fetchViaServer() {
+  const { data, error } = await supabase.functions.invoke('calendar-events')
+  if (error) {
+    const status = error?.context?.status
+    // 428: connected once, but the stored token no longer works.
+    if (status === 428) throw new CalendarAuthError('Google Calendar needs connecting again.')
+    // Anything else — not deployed, cold start, network — is not proof that
+    // the connection is gone.
+    return null
+  }
+  if (data?.error === 'not_connected' || data?.error === 'reconnect_required') {
+    throw new CalendarAuthError('Google Calendar needs connecting again.')
+  }
+  return data?.events ?? null
+}
+
 export async function fetchTodaysEvents({ now = new Date(), token = readToken() } = {}) {
   if (!token) throw new CalendarAuthError('Not connected to Google Calendar')
 
