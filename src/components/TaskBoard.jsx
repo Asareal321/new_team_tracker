@@ -152,6 +152,7 @@ export default function TaskBoard({
   currentUserId, currentTeamId,
   onAdd, onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees,
   onRespondToAssignment, onResolveChangeRequest, onTaskDone, onManageProjects, onAddProject,
+  calendarSlot,
 }) {
   const [activeTab, setActiveTab] = useState('board')
 
@@ -305,6 +306,7 @@ export default function TaskBoard({
         dumpTasks={dumpTasks}
         onCapture={captureToDump}
         onSortFromDump={sortFromDump}
+        calendarSlot={calendarSlot}
         peopleFilter={{
           show: showPeopleFilter,
           me: meMember,
@@ -339,7 +341,7 @@ export default function TaskBoard({
 function PriorityBoard({
   tasks, pendingTasks, currentUserId, onRespondToAssignment, onResolveChangeRequest,
   activeTab, setActiveTab, byStatus, peopleFilter,
-  dumpTasks, onCapture, onSortFromDump,
+  dumpTasks, onCapture, onSortFromDump, calendarSlot,
   projectName, projects, updatesForTask, resolveAssignees, teamMembers,
   onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees, onTaskDone, onManageProjects, onAddProject,
 }) {
@@ -626,6 +628,10 @@ function PriorityBoard({
         ) : (
           <div className="board-bands">
             {zoneNotice && <div className="zone-notice">{zoneNotice}</div>}
+
+            {/* Passed in rather than built here: the calendar belongs to the
+                personal board and TaskBoard also serves team boards. */}
+            {calendarSlot}
 
 
             <GreenhouseStrip />

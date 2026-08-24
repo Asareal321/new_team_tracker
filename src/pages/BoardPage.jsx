@@ -8,6 +8,8 @@ import PersonalProjectsModal from '../components/PersonalProjectsModal'
 import Onboarding from '../components/Onboarding'
 import { setVisibility } from '../lib/community'
 import { requestTour } from '../lib/tourState'
+import useCalendarFill from '../components/useCalendarFill'
+import CalendarStrip from '../components/CalendarStrip'
 
 function DoneTaskModal({ task, tasks = [], projects, onAdd, onUpdateProject, onPromote, onDismiss }) {
   const [nextTitle, setNextTitle] = useState('')
@@ -313,6 +315,18 @@ export default function BoardPage() {
     if (cleared) await recordDoingCleared()
   }
 
+  // Apply a calendar plan as one batch. Written straight to the database and
+  // then re-read, rather than optimistically: six rows moving at once is one
+  // visible change, and a half-applied plan would be worse than none.
+  const applyCalendarPlan = useCallback(async (moves) => {
+    if (!moves.length) return
+    await Promise.all(moves.map(m =>
+      supabase.from('tasks').update({ status: m.status }).eq('id', m.id)))
+    await fetchTasks()
+  }, [fetchTasks])
+
+  const calendar = useCalendarFill({ tasks, projects, onApply: applyCalendarPlan })
+
   async function updateTask(id, updates) {
     await supabase.from('tasks').update(updates).eq('id', id)
   }
@@ -437,6 +451,17 @@ export default function BoardPage() {
           setDoneTask({ task, fromDoing: clearedDoing })
           respawnRecurring(task)
         }}
+        calendarSlot={!currentTeamId ? (
+          <CalendarStrip
+            enabled={calendar.enabled}
+            connected={calendar.connected}
+            block={calendar.block}
+            error={calendar.error}
+            lastFilled={calendar.lastFilled}
+            onToggle={calendar.toggle}
+            onRefresh={calendar.refresh}
+          />
+        ) : null}
       />
       {doneTask && (
         <DoneTaskModal

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../supabase'
+import { CALENDAR_SCOPE, saveToken, clearToken } from '../lib/googleCalendar'
 
 const AuthContext = createContext(null)
 
@@ -19,6 +20,12 @@ export function AuthProvider({ children }) {
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      // Supabase surfaces the Google access token exactly once, on the sign-in
+      // that granted it — it is absent from every later session read. So it is
+      // caught here or not at all.
+      if (newSession?.provider_token) {
+        saveToken(newSession.provider_token, newSession.provider_token_expires_in)
+      }
       setSession(newSession)
       if (newSession) fetchProfile(newSession.user.id)
       else { setProfile(null); setLoading(false) }
@@ -58,7 +65,22 @@ export function AuthProvider({ children }) {
   }
 
   function signOut() {
+    clearToken()
     return supabase.auth.signOut()
+  }
+
+  // Re-runs the Google round-trip asking for calendar.readonly on top of
+  // sign-in. Consent is forced because Google silently omits the scope on a
+  // repeat authorisation otherwise, which looks exactly like a broken button.
+  function connectCalendar() {
+    return supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        scopes: CALENDAR_SCOPE,
+        queryParams: { access_type: 'online', prompt: 'consent' },
+        redirectTo: window.location.origin + window.location.pathname + window.location.search,
+      },
+    })
   }
 
   async function refreshProfile() {
@@ -73,6 +95,7 @@ export function AuthProvider({ children }) {
     signUp,
     signIn,
     signInWithGoogle,
+    connectCalendar,
     signOut,
     refreshProfile,
   }

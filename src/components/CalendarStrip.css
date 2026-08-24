@@ -1,0 +1,29 @@
+/* The calendar's say over the board. Sits above the bands because that is what
+   it changes, and carries its own off switch — anything that rearranges your
+   work unprompted should be switchable off from where it does it. */
+
+.cal-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0.8rem;
+  margin-bottom: 0.85rem;
+  border-radius: var(--r-md, 10px);
+  border: 1px solid var(--bb-border, var(--border));
+  background: var(--bb-surface, var(--bg-surface));
+  font-size: 13px;
+  color: var(--bb-on-surface, var(--text-1));
+}
+.cal-strip.off { border-style: dashed; color: var(--bb-muted, var(--text-4)); }
+/* Following a block is a live state, so it reads as one. */
+.cal-strip.live { border-color: var(--bb-accent, var(--accent)); }
+
+.cal-icon { font-size: 1rem; flex-shrink: 0; }
+.cal-say { flex: 1; min-width: 0; line-height: 1.45; }
+.cal-note { color: var(--bb-muted, var(--text-4)); }
+.cal-error { color: var(--red-text, #96281f); }
+
+@media (max-width: 700px) {
+  .cal-strip { flex-wrap: wrap; }
+  .cal-say { flex-basis: 100%; order: -1; }
+}
