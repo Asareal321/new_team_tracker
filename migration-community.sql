@@ -358,6 +358,7 @@ create or replace function normalise_name(_name text)
 returns text
 language sql
 immutable
+set search_path = public
 as $$
   -- Leetspeak first, then everything that is not a letter becomes a space, so
   -- "f.u.c.k" and "sh1t" collapse to the words they are pretending not to be.
@@ -373,6 +374,7 @@ create or replace function name_has_profanity(_name text)
 returns boolean
 language plpgsql
 immutable
+set search_path = public
 as $$
 declare
   words text[] := array[
@@ -408,10 +410,21 @@ begin
 end;
 $$;
 
+-- search_path is not optional here, and its absence broke signup entirely.
+--
+-- This trigger fires on the insert into profiles, and that insert happens
+-- inside Supabase's own handle_new_user trigger on auth.users — which is
+-- SECURITY DEFINER with search_path set to ''. Inherited, that made the
+-- unqualified call to name_has_profanity unresolvable, the trigger raised,
+-- and the whole signup came back as "Database error saving new user". The
+-- calls are schema-qualified as well, so this holds however it is invoked.
 create or replace function check_display_name()
 returns trigger
 language plpgsql
+set search_path = public
 as $$
+declare
+  bad boolean := false;
 begin
   if new.display_name is null then return new; end if;
   if length(btrim(new.display_name)) < 2 then
@@ -420,7 +433,17 @@ begin
   if length(btrim(new.display_name)) > 32 then
     raise exception 'that name is too long';
   end if;
-  if name_has_profanity(new.display_name) then
+
+  -- The filter is a courtesy; an account is not. If the check itself fails for
+  -- some reason of its own, let the name through rather than refuse to create
+  -- the user — that asymmetry is the whole lesson of this bug.
+  begin
+    bad := public.name_has_profanity(new.display_name);
+  exception when others then
+    bad := false;
+  end;
+
+  if bad then
     raise exception 'that name is not allowed';
   end if;
   return new;
