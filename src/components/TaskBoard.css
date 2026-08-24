@@ -1723,6 +1723,9 @@
 .tray-slot:disabled { opacity: 0.5; cursor: not-allowed; }
 .tray-key {
   font-family: var(--bb-num);
+  /* Tabular, so a 1 and a 4 are the same width and the column of keys is a
+     column rather than four boxes of slightly different sizes. */
+  font-variant-numeric: tabular-nums;
   font-size: 11px;
   color: var(--bb-muted);
   border: 1px solid var(--bb-border);
@@ -1745,6 +1748,21 @@
   color: var(--bb-flag-ink);
 }
 .tray-discard:disabled { opacity: 0.45; cursor: not-allowed; }
+/* Now a numbered row like the slots above it, because it answers to a number
+   like they do. It keeps the red and stays borderless — one of these four
+   cannot be undone, and it should not look like the other three. */
+.tray-discard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  /* Matches the slots' box exactly — same padding, and a transparent border
+     standing in for theirs — so the 4 lands directly under the 1, 2 and 3. */
+  padding: 8px 12px;
+  border: 1px solid transparent;
+}
+.tray-discard .tray-name { color: var(--bb-flag-ink); font-weight: 700; }
+.tray-discard .tray-key { color: var(--bb-flag-ink); border-color: var(--bb-flag-ink); opacity: 0.7; }
 
 /* --- greenhouse strip ----------------------------------------------------- */
 

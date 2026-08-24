@@ -1669,18 +1669,31 @@ function Braindump({ items, bands, laneCounts, projectName, projects = [], dragA
     } finally { setBusy(false) }
   }, [items, selected, busy, onSort])
 
-  // 1–3 send the selected item to the matching band. Ignored while typing, or
-  // the capture field would be unusable.
+  // Discard sits one past the last band, so the slots and the bin are one
+  // numbered run rather than a run plus an exception.
+  const discardKey = bands.length + 1
+
+  // 1–3 send the selected item to the matching band, 4 discards it. Ignored
+  // while typing, or the capture field would be unusable.
   useEffect(() => {
     function onKey(e) {
       if (selected == null) return
       if (e.target && /input|textarea/i.test(e.target.tagName)) return
+      if (e.key === String(discardKey)) {
+        e.preventDefault()
+        // Not a delete — this opens the same confirmation the bin and the
+        // swipe open. A destructive key that fired on one press would be a
+        // bad idea next to three that are all reversible.
+        const item = items.find(i => i.id === selected)
+        if (item) onDeleteItem(item)
+        return
+      }
       const i = bands.findIndex((_, n) => String(n + 1) === e.key)
       if (i >= 0) { e.preventDefault(); sortInto(bands[i].key) }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [bands, selected, sortInto])
+  }, [bands, selected, sortInto, discardKey, items, onDeleteItem])
 
   // Filing IS submitting. Picking a project used to be a separate choice you
   // made before pressing Add, which meant two clicks to do one thing — so the
@@ -1893,11 +1906,14 @@ function Braindump({ items, bands, laneCounts, projectName, projects = [], dragA
               const item = items.find(i => i.id === selected)
               if (item) onDeleteItem(item)
             }}
-          >Discard selected</button>
+          >
+            <span className="tray-key">{discardKey}</span>
+            <span className="tray-name">Discard selected</span>
+          </button>
           <p className="tray-note">
             {selected == null
               ? 'Nothing selected — click an item on the left.'
-              : `1 selected · hit a slot or press its number.`}
+              : `1 selected · hit a slot or press its number. ${discardKey} discards.`}
           </p>
         </div>
         )}
