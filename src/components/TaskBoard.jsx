@@ -356,12 +356,20 @@ function PriorityBoard({
   // The two writes are ordered: the occupant leaves first, so the band is never
   // momentarily over its limit. If the second write fails the board is left
   // with a free slot rather than a lost task.
-  async function performSwap(victim) {
+  async function performSwap(victim, destination = BRAINDUMP) {
     const { task, status } = swap
     setSwap(null)
-    await onUpdate(victim.id, { status: BRAINDUMP })
+    await onUpdate(victim.id, { status: destination })
     await onUpdate(task.id, { status })
-    setZoneNotice(`Swapped — “${victim.title}” is in the braindump.`)
+    // Sending something to Done here is a completion like any other. Anything
+    // less would make this a quiet way to finish work without the streak, the
+    // cloud or the count noticing — the drag into Done already does this.
+    if (destination === 'done' && victim.status !== 'done') onTaskDone?.(victim)
+    setZoneNotice(
+      destination === BRAINDUMP
+        ? `Swapped — “${victim.title}” is back in the braindump.`
+        : `Swapped — “${victim.title}” moved to ${MOVE_LABELS[destination]}.`,
+    )
   }
   const [draftUpdates, setDraftUpdates] = useState(() => {
     try { return JSON.parse(localStorage.getItem('trakkit-drafts') || '{}') } catch { return {} }
@@ -484,6 +492,7 @@ function PriorityBoard({
             status={swap.status}
             occupants={getColumnTasks(swap.status).filter(t => t.id !== swap.task.id)}
             projectName={projectName}
+            isFull={isFull}
             onSwap={performSwap}
             onCancel={() => setSwap(null)}
           />
@@ -1405,16 +1414,77 @@ function TaskDetail({
 // should let you say so.
 //
 // So a blocked move opens this instead: the band's current occupants, one of
-// which steps aside to the braindump so the incoming task can take its place.
-// Nothing is deleted and nothing is auto-chosen — the point of the WIP limit is
-// that dropping something is a decision, and this makes you make it rather than
+// which steps aside so the incoming task can take its place. Nothing is
+// deleted and nothing is auto-chosen — the point of the WIP limit is that
+// dropping something is a decision, and this makes you make it rather than
 // making it for you.
-function SwapPicker({ incoming, status, occupants, projectName, onSwap, onCancel }) {
+//
+// Two questions, not one. It used to answer the second for you: whatever
+// stepped aside went to the braindump. But swapping the two things you are
+// working on is the common case — "this is done, that starts now" — and being
+// sent to the pile to fish it out again was the wrong end of the board. So you
+// pick who moves, then where they go.
+function SwapPicker({ incoming, status, occupants, projectName, isFull, onSwap, onCancel }) {
   const [busy, setBusy] = useState(null)
+  const [victim, setVictim] = useState(null)
 
-  async function choose(victim) {
-    setBusy(victim.id)
-    try { await onSwap(victim) } finally { setBusy(null) }
+  // Everywhere except the band being vacated. Ordered as the board reads.
+  const destinations = ['done', 'in_progress', 'todo', BRAINDUMP]
+    .filter(d => d !== status)
+    .map(key => ({
+      key,
+      label: MOVE_LABELS[key],
+      // The braindump is the one place that is never full — that is what it is
+      // for, and it is why it can always be the way out.
+      full: key !== BRAINDUMP && isFull(key),
+    }))
+
+  async function send(dest) {
+    setBusy(dest)
+    try { await onSwap(victim, dest) } finally { setBusy(null) }
+  }
+
+  if (victim) {
+    return (
+      <div className="modal-overlay" onClick={onCancel}>
+        <div className="swap-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"
+          aria-label={`Where does ${victim.title} go?`}>
+          <p className="swap-eyebrow">Stepping aside</p>
+          <h3 className="swap-heading">Where does “{victim.title}” go?</h3>
+          <p className="swap-body">
+            It keeps its notes and updates wherever it lands.
+          </p>
+
+          <div className="swap-list">
+            {destinations.map(d => (
+              <button
+                key={d.key}
+                className="swap-option"
+                disabled={!!busy || d.full}
+                onClick={() => send(d.key)}
+                title={d.full ? `${d.label} is full too` : undefined}
+              >
+                <span className="swap-option-body">
+                  <span className="swap-option-title">{d.label}</span>
+                  {d.full && <span className="swap-option-meta">Full — nothing can go here</span>}
+                  {d.key === 'done' && !d.full && (
+                    <span className="swap-option-meta">Counts as finished, and pays out</span>
+                  )}
+                </span>
+                <span className="swap-option-cta">{busy === d.key ? '…' : 'Send →'}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="swap-foot swap-foot-split">
+            <button className="bb-btn" onClick={() => setVictim(null)} disabled={!!busy}>
+              Pick someone else
+            </button>
+            <button className="bb-btn" onClick={onCancel} disabled={!!busy}>Cancel</button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -1424,13 +1494,12 @@ function SwapPicker({ incoming, status, occupants, projectName, onSwap, onCancel
         <p className="swap-eyebrow">{MOVE_LABELS[status]} is full</p>
         <h3 className="swap-heading">Make room for “{incoming.title}”</h3>
         <p className="swap-body">
-          Pick what steps aside. It goes to the braindump, keeping its notes and
-          updates, and can come back whenever you want it.
+          Pick what steps aside — you&rsquo;ll say where it goes next.
         </p>
 
         <div className="swap-list">
           {occupants.map(t => (
-            <button key={t.id} className="swap-option" disabled={!!busy} onClick={() => choose(t)}>
+            <button key={t.id} className="swap-option" disabled={!!busy} onClick={() => setVictim(t)}>
               <span className={`status-dot ${t.priority || 'medium'}`} />
               <span className="swap-option-body">
                 <span className="swap-option-title">{t.title}</span>
@@ -1438,7 +1507,7 @@ function SwapPicker({ incoming, status, occupants, projectName, onSwap, onCancel
                   <span className="swap-option-meta">{projectName(t.project_id) || 'Unknown project'}</span>
                 )}
               </span>
-              <span className="swap-option-cta">{busy === t.id ? '…' : 'Swap out →'}</span>
+              <span className="swap-option-cta">Move this →</span>
             </button>
           ))}
         </div>
