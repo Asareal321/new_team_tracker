@@ -6,7 +6,7 @@
 // do, and never touching work that belongs where it is.
 
 import {
-  normaliseTitle, stripLeadIn, matchProject, activeBlock, pickOrder, planFill,
+  normaliseTitle, matchProject, activeBlock, pickOrder, planFill,
   BRAINDUMP, UP_NEXT, DOING,
 } from '../src/lib/calendarFill.js'
 import { MAX_DOING, MAX_UP_NEXT } from '../src/lib/boardLimits.js'
@@ -19,8 +19,9 @@ function ok(name, cond, detail = '') {
 
 const PROJECTS = [
   { id: 'p1', name: 'Product' },
-  { id: 'p2', name: 'Marketing' },
+  { id: 'p2', name: 'BCG' },
   { id: 'p3', name: 'McKinsey' },
+  { id: 'p4', name: 'Marketing' },
 ]
 const TODAY = '2026-08-24'
 // A fixed source, so "random" is checkable.
@@ -32,14 +33,35 @@ ok('a bare project name matches', matchProject('Product', PROJECTS)?.id === 'p1'
 ok('"Work on Product" matches', matchProject('Work on Product', PROJECTS)?.id === 'p1')
 ok('case is ignored', matchProject('PRODUCT', PROJECTS)?.id === 'p1')
 ok('emoji and punctuation are ignored', matchProject('🚀 Product!', PROJECTS)?.id === 'p1')
-ok('"Focus on Marketing" matches', matchProject('Focus on Marketing', PROJECTS)?.id === 'p2')
+ok('"Focus on Marketing" matches', matchProject('Focus on Marketing', PROJECTS)?.id === 'p4')
 ok('"Deep work on Product" matches', matchProject('Deep work on Product', PROJECTS)?.id === 'p1')
-ok('nested lead-ins are stripped', stripLeadIn('work on doing Product') === 'product')
 
-// Not guessing is the whole point — a wrong guess rearranges your board.
+// The case this was rebuilt for. A calendar holds sentences, not labels, and
+// requiring the title to EQUAL the project name meant almost nothing matched:
+// a real day of entries produced zero fills while the strip claimed to be
+// following along.
+ok('a project named inside a sentence matches',
+  matchProject('Case with Jake from BCG', PROJECTS)?.id === 'p2')
+ok('so does one at the front', matchProject('Product sync with Sam', PROJECTS)?.id === 'p1')
+ok('and one in the middle', matchProject('Prep McKinsey deck for Friday', PROJECTS)?.id === 'p3')
+
+// Whole words, not substrings — this is what keeps the looser rule honest.
+ok('"Production planning" does not match Product',
+  matchProject('Production planning', PROJECTS) === null)
+ok('"Products" does not match Product', matchProject('Products review', PROJECTS) === null)
+
+// Not guessing is still the point — a wrong guess rearranges your board.
 ok('an unrelated event matches nothing', matchProject('Dentist', PROJECTS) === null)
-ok('a partial name does NOT match', matchProject('Product launch review', PROJECTS) === null)
 ok('a lead-in on its own matches nothing', matchProject('Work on', PROJECTS) === null)
+ok('a time and a name match nothing', matchProject('1:1 with Sam', PROJECTS) === null)
+
+// Two projects named at once: no way to tell which the hour is for.
+ok('an ambiguous title matches nothing',
+  matchProject('BCG and McKinsey sync', PROJECTS) === null)
+// Unless one is plainly more specific than the other.
+const NESTED = [{ id: 'a', name: 'McKinsey' }, { id: 'b', name: 'McKinsey Phase 2' }]
+ok('the more specific name wins',
+  matchProject('McKinsey Phase 2 review', NESTED)?.id === 'b')
 ok('an empty title matches nothing', matchProject('', PROJECTS) === null)
 ok('a null title does not throw', matchProject(null, PROJECTS) === null)
 ok('no projects means no match', matchProject('Product', []) === null)
@@ -149,6 +171,47 @@ ok('a displaced task is not immediately re-filled',
   !sd.moves.some(m => m.id === 'other' && m.status !== BRAINDUMP))
 ok('no task is moved twice in one plan',
   new Set(sd.moves.map(m => m.id)).size === sd.moves.length)
+
+// — displacement is bounded by what there is to replace with —
+//
+// The board full of one project, a block naming another, and nothing of that
+// other project waiting. Clearing the board would leave it empty, which is
+// strictly worse than the mismatched board it started with.
+
+const fullOfProduct = [
+  ...Array.from({ length: MAX_DOING }, (_, i) => ({ id: `D${i}`, status: DOING, project_id: 'p1' })),
+  ...Array.from({ length: MAX_UP_NEXT }, (_, i) => ({ id: `U${i}`, status: UP_NEXT, project_id: 'p1' })),
+]
+ok('an empty pile never empties the board',
+  planFill({ block: { title: 'Case with Jake from BCG' }, projects: PROJECTS, tasks: fullOfProduct, today: TODAY, rand: fixedRand }).moves.length === 0)
+
+const oneWaiting = [
+  ...fullOfProduct,
+  { id: 'bcg1', status: BRAINDUMP, project_id: 'p2', due_date: null },
+]
+const one = planFill({ block: { title: 'BCG' }, projects: PROJECTS, tasks: oneWaiting, today: TODAY, rand: fixedRand })
+ok('one waiting task evicts exactly one', one.moves.filter(m => m.status === BRAINDUMP).length === 1)
+ok('and seats it', one.moves.filter(m => m.status !== BRAINDUMP).length === 1)
+// The band you sit down in should hold the hour's work, so Doing is the first
+// thing swapped, not the last.
+ok('Doing is the first band handed over',
+  one.moves.find(m => m.status === BRAINDUMP)?.id.startsWith('D'),
+  JSON.stringify(one.moves))
+ok('and the single task lands in Doing',
+  one.moves.find(m => m.status !== BRAINDUMP)?.status === DOING)
+ok('the board never shrinks', one.moves.filter(m => m.status === BRAINDUMP).length
+  <= one.moves.filter(m => m.status !== BRAINDUMP).length)
+
+const threeWaiting = [
+  ...fullOfProduct,
+  ...Array.from({ length: 3 }, (_, i) => ({ id: `b${i}`, status: BRAINDUMP, project_id: 'p2', due_date: null })),
+]
+const three = planFill({ block: { title: 'BCG' }, projects: PROJECTS, tasks: threeWaiting, today: TODAY, rand: fixedRand })
+ok('three waiting evict exactly three', three.moves.filter(m => m.status === BRAINDUMP).length === 3)
+ok('Doing is filled before Up next',
+  three.moves.filter(m => m.status === DOING).length === MAX_DOING)
+ok('and the third goes to Up next',
+  three.moves.filter(m => m.status === UP_NEXT).length === 1)
 
 // — a thin pile —
 

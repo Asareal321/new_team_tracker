@@ -456,6 +456,7 @@ export default function BoardPage() {
             enabled={calendar.enabled}
             connected={calendar.connected}
             block={calendar.block}
+            matched={calendar.matched}
             error={calendar.error}
             lastFilled={calendar.lastFilled}
             onToggle={calendar.toggle}

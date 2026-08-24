@@ -12,8 +12,10 @@
 //
 // The rules, in the order they matter:
 //
-//   • A block only counts if its title names a project you actually have.
-//     No match means the block is ignored, never guessed at.
+//   • A block only counts if its title NAMES a project you actually have —
+//     as whole words, anywhere in the title. Real calendar entries are
+//     sentences ("Case with Jake from BCG"), not labels, so requiring the
+//     title to *equal* the project name meant almost nothing ever matched.
 //   • Work you put on the board yourself outranks the calendar, but only if it
 //     belongs to the block. Tasks from other projects go back to the pile;
 //     tasks from this one stay and count toward the six.
@@ -28,13 +30,6 @@ export const BRAINDUMP = 'braindump'
 export const UP_NEXT = 'todo'
 export const DOING = 'in_progress'
 
-// Lead-ins people put in front of a project name. Stripped so that "Work on
-// Product", "product", and "🚀 Product time" all land on the same project.
-const LEAD_INS = [
-  'work on', 'working on', 'focus on', 'focus', 'block', 'blocked',
-  'deep work', 'deep work on', 'time for', 'do', 'doing', 'on',
-]
-
 // Everything that isn't a letter or a digit becomes a space, so emoji,
 // punctuation and stray brackets can't stop a title matching.
 export function normaliseTitle(title) {
@@ -44,34 +39,44 @@ export function normaliseTitle(title) {
     .trim()
 }
 
-export function stripLeadIn(title) {
-  let out = normaliseTitle(title)
-  // Longest first, so "deep work on" wins over "deep work" and then "on".
-  const ordered = [...LEAD_INS].sort((a, b) => b.length - a.length)
-  let changed = true
-  while (changed) {
-    changed = false
-    for (const lead of ordered) {
-      if (out === lead) return ''
-      if (out.startsWith(`${lead} `)) {
-        out = out.slice(lead.length + 1).trim()
-        changed = true
-        break
-      }
+// Does `needle` appear in `hay` as a run of whole words?
+function containsRun(hay, needle) {
+  if (!needle.length || needle.length > hay.length) return false
+  for (let i = 0; i <= hay.length - needle.length; i++) {
+    let all = true
+    for (let j = 0; j < needle.length; j++) {
+      if (hay[i + j] !== needle[j]) { all = false; break }
     }
+    if (all) return true
   }
-  return out
+  return false
 }
 
-// Which project a calendar event is about, or null. Exact match on the
-// normalised name — a fuzzy match here would quietly rearrange the board for
-// an event that had nothing to do with it, which is much worse than doing
-// nothing.
+// Which project a calendar event is about, or null.
+//
+// Matched on whole words rather than on the whole string. "Case with Jake from
+// BCG" is what a calendar actually contains, and an exact-match rule ignored
+// every entry like it. Words, not substrings, so "Production planning" does
+// not match a project called Product — the false positives that a substring
+// search invites are the ones that would quietly rearrange your board for an
+// event that had nothing to do with it.
+//
+// When two projects both appear, the longer name wins: "McKinsey Phase 2" is
+// more specific than "McKinsey". When two equally specific names both appear,
+// there is no way to tell which the hour is for, so nothing happens.
 export function matchProject(title, projects = []) {
-  const wanted = stripLeadIn(title)
-  if (!wanted) return null
-  const hit = projects.find(p => normaliseTitle(p.name) === wanted)
-  return hit || null
+  const tokens = normaliseTitle(title).split(' ').filter(Boolean)
+  if (!tokens.length) return null
+
+  const hits = []
+  for (const p of projects) {
+    const want = normaliseTitle(p.name).split(' ').filter(Boolean)
+    if (want.length && containsRun(tokens, want)) hits.push({ project: p, size: want.length })
+  }
+  if (!hits.length) return null
+  hits.sort((a, b) => b.size - a.size)
+  if (hits.length > 1 && hits[0].size === hits[1].size) return null
+  return hits[0].project
 }
 
 // The event covering `now`, if any. All-day events are ignored: a day-long
@@ -112,33 +117,60 @@ export function planFill({ block, projects = [], tasks = [], today, rand = Math.
   const project = block ? matchProject(block.title, projects) : null
   if (!project) return { project: null, moves: [] }
 
-  const moves = []
   const onBoard = tasks.filter(t => t.status === UP_NEXT || t.status === DOING)
 
-  // Work from another project goes back to the pile to make room. Work from
-  // this one stays exactly where it is and counts toward the capacity.
+  // Work from this project stays exactly where it is and counts toward the
+  // capacity. Everything else on the board is a candidate for displacement —
+  // but only a candidate, see below.
   const kept = { [UP_NEXT]: [], [DOING]: [] }
+  const others = { [UP_NEXT]: [], [DOING]: [] }
   for (const t of onBoard) {
     if (t.project_id === project.id) kept[t.status].push(t)
-    else moves.push({ id: t.id, status: BRAINDUMP, reason: 'displaced' })
+    else others[t.status].push(t)
   }
 
-  const displacedIds = new Set(moves.map(m => m.id))
-  const pool = tasks.filter(t =>
-    t.project_id === project.id
-    && (t.status === BRAINDUMP || displacedIds.has(t.id))
-    && !kept[UP_NEXT].includes(t)
-    && !kept[DOING].includes(t))
+  const keptTotal = kept[UP_NEXT].length + kept[DOING].length
+  const othersTotal = others[UP_NEXT].length + others[DOING].length
+  const TOTAL = MAX_DOING + MAX_UP_NEXT
 
+  const pool = tasks.filter(t => t.project_id === project.id && t.status === BRAINDUMP)
   const ordered = pickOrder(pool, { today, rand })
 
-  // Doing is filled first: it is the band you are actually working out of, and
-  // a block that only half-fills should leave you something to start on.
+  // How many we can actually seat, which is the crux: displacement is bounded
+  // by what there is to put in the freed seats.
+  //
+  // Clearing the board and then discovering the pile has nothing of this
+  // project in it would leave you staring at an empty board — strictly worse
+  // than the mismatched one you had. So work out the fills first and evict
+  // only enough to seat them. No tasks to bring in, nothing is moved at all.
+  const placeCount = Math.min(ordered.length, TOTAL - keptTotal)
+  const freeNow = TOTAL - keptTotal - othersTotal
+  let toEvict = Math.max(0, placeCount - freeNow)
+
+  const moves = []
+  // Evicted in the same order the seats get filled — Doing first.
+  //
+  // The gentler-looking alternative, emptying Up next and leaving Doing alone,
+  // produced a board whose Doing band was still last hour's project. Sitting
+  // down in a BCG hour to find Product in front of you is the exact thing this
+  // feature exists to stop, and nothing is lost either way: an evicted task
+  // goes back to the pile, not away.
+  for (const band of [DOING, UP_NEXT]) {
+    for (const t of others[band]) {
+      if (toEvict <= 0) break
+      moves.push({ id: t.id, status: BRAINDUMP, reason: 'displaced' })
+      others[band] = others[band].filter(x => x !== t)
+      toEvict--
+    }
+  }
+
+  // Doing is filled first: it is the band you work out of, and a block that
+  // only half-fills should still leave you something to start on.
   let n = 0
   for (const band of [DOING, UP_NEXT]) {
     const limit = band === DOING ? MAX_DOING : MAX_UP_NEXT
-    const room = limit - kept[band].length
-    for (let i = 0; i < room && n < ordered.length; i++, n++) {
+    const room = limit - kept[band].length - others[band].length
+    for (let i = 0; i < room && n < placeCount; i++, n++) {
       moves.push({ id: ordered[n].id, status: band, reason: 'filled' })
     }
   }

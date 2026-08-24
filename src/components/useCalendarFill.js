@@ -29,6 +29,10 @@ export default function useCalendarFill({ tasks, projects, onApply }) {
   const [enabled, setEnabled] = useState(calendarFillEnabled)
   const [connected, setConnected] = useState(isConnected)
   const [block, setBlock] = useState(null)
+  // The project the block names, if any. Separate from `block` because "there
+  // is a block" and "the block means something to the board" are different
+  // facts, and the strip used to show the first while implying the second.
+  const [matched, setMatched] = useState(null)
   const [error, setError] = useState('')
   const [lastFilled, setLastFilled] = useState(null)
 
@@ -46,7 +50,7 @@ export default function useCalendarFill({ tasks, projects, onApply }) {
       const now = new Date()
       const current = activeBlock(events, now.getTime())
       setBlock(current)
-      if (!current) return
+      if (!current) { setMatched(null); return }
 
       // One fill per block per day. Ending a block does nothing by design, so
       // this is the only guard against re-filling what you just worked out of.
@@ -57,6 +61,7 @@ export default function useCalendarFill({ tasks, projects, onApply }) {
       const { project, moves } = planFill({
         block: current, projects: p, tasks: t, today: localDay(now),
       })
+      setMatched(project)
       if (!project) return
       actedOn.current.add(stamp)
       if (moves.length === 0) return
@@ -88,8 +93,8 @@ export default function useCalendarFill({ tasks, projects, onApply }) {
   const toggle = useCallback(on => {
     setCalendarFillEnabled(on)
     setEnabled(on)
-    if (!on) { setBlock(null); setLastFilled(null) }
+    if (!on) { setBlock(null); setMatched(null); setLastFilled(null) }
   }, [])
 
-  return { enabled, connected, block, error, lastFilled, toggle, refresh: poll }
+  return { enabled, connected, block, matched, error, lastFilled, toggle, refresh: poll }
 }

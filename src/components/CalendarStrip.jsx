@@ -7,7 +7,7 @@ import './CalendarStrip.css'
 // one reason: it moves your work without being asked. Anything that does that
 // has to say so where the moving happens, and be switchable off in one click
 // from the same place.
-export default function CalendarStrip({ enabled, connected, block, error, lastFilled, onToggle, onRefresh }) {
+export default function CalendarStrip({ enabled, connected, block, matched, error, lastFilled, onToggle, onRefresh }) {
   const { connectCalendar } = useAuth()
 
   if (!enabled) {
@@ -38,11 +38,18 @@ export default function CalendarStrip({ enabled, connected, block, error, lastFi
   }
 
   return (
-    <div className={`cal-strip${block ? ' live' : ''}`}>
+    <div className={`cal-strip${block && matched ? ' live' : ''}`}>
       <span className="cal-icon" aria-hidden="true">📅</span>
       <span className="cal-say">
         {error ? <span className="cal-error">{error}</span>
-          : block ? <><strong>{block.title}</strong> — the board is following your calendar.</>
+          : block && matched ? <><strong>{block.title}</strong> — filling from <b>{matched.name}</b>.</>
+          // A block that names no project you have is the common case, and
+          // saying "following your calendar" here was a plain untruth: it had
+          // matched nothing and moved nothing.
+          : block ? (
+            <><strong>{block.title}</strong> — no project of yours is named in that.
+            {' '}<span className="cal-note">Rename the event or the project so they share a word.</span></>
+          )
           : 'No block right now. The board is yours.'}
         {lastFilled && !error && (
           <span className="cal-note"> Filled {lastFilled.count} from {lastFilled.project}.</span>
