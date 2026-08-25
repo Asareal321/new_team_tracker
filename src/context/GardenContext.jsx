@@ -460,13 +460,24 @@ export function GardenProvider({ children }) {
   // Onboarding plants the chosen seed directly — it deliberately bypasses the
   // seed-tray cost, because the whole point is that you own a plant before you
   // have finished (or even written) a single task.
-  const completeOnboarding = useCallback(async seedKey => {
+  // `perkPackets` is what onboarding promised in exchange for something — at
+  // present, going public. Granted in the same write that marks onboarding
+  // done, so there is no window where the account is set up and the packet is
+  // owed. Guarded by `onboarded` on the way in: this runs once per account,
+  // and re-running it is the one way it could be farmed.
+  const completeOnboarding = useCallback(async (seedKey, { perkPackets = [] } = {}) => {
+    if (stateRef.current?.onboarded) return
     const seed = seedByKey(seedKey)
     const discovered = { ...(stateRef.current?.discovered || {}) }
     if (seed) discovered[seed.key] = (discovered[seed.key] || 0) + 1
+
+    const packets = { ...(stateRef.current?.packet_inventory || {}) }
+    for (const key of perkPackets) packets[key] = (packets[key] || 0) + 1
+
     await save({
       onboarded: true,
       discovered,
+      ...(perkPackets.length ? { packet_inventory: packets } : {}),
       ...(seed ? {
         growing_seed: seed.key,
         growing_started_at: new Date().toISOString(),

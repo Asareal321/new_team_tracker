@@ -7,6 +7,9 @@ import TaskBoard, { MAX_UP_NEXT } from '../components/TaskBoard'
 import PersonalProjectsModal from '../components/PersonalProjectsModal'
 import Onboarding from '../components/Onboarding'
 import { setVisibility } from '../lib/community'
+// Named here rather than inline so the onboarding copy and the grant cannot
+// promise two different packets.
+import { PUBLIC_PROFILE_PACKET } from '../lib/rewards'
 import { requestTour } from '../lib/tourState'
 import useCalendarFill from '../components/useCalendarFill'
 import CalendarStrip from '../components/CalendarStrip'
@@ -497,7 +500,12 @@ export default function BoardPage() {
             // migration. An unmigrated database shouldn't cost you the setup —
             // private is the default there anyway.
             try { await setVisibility(user.id, !!isPublic) } catch { /* not migrated yet */ }
-            await completeOnboarding(seedKey)
+            // The public-profile packet is granted in the same write that
+            // marks onboarding done, so the promise and the account are never
+            // out of step.
+            await completeOnboarding(seedKey, {
+              perkPackets: isPublic ? [PUBLIC_PROFILE_PACKET] : [],
+            })
             await fetchTasks()
             // The walk starts on the board and ends in the garden, so it is
             // Layout's to run, not this page's.

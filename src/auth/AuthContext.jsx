@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import { CALENDAR_SCOPE, saveToken, clearToken, storeRefreshToken } from '../lib/googleCalendar'
+import { pendingReferral, clearReferral } from '../lib/referral'
+import { claimReferral } from '../lib/community'
 
 const AuthContext = createContext(null)
 
@@ -33,7 +35,7 @@ export function AuthProvider({ children }) {
         storeRefreshToken(newSession.provider_refresh_token)
       }
       setSession(newSession)
-      if (newSession) fetchProfile(newSession.user.id)
+      if (newSession) { fetchProfile(newSession.user.id); redeemReferral() }
       else { setProfile(null); setLoading(false) }
     })
 
@@ -42,6 +44,16 @@ export function AuthProvider({ children }) {
       subscription.unsubscribe()
     }
   }, [])
+
+  // Spend the parked code, if there is one. The server refuses a second claim,
+  // a self-claim, and an unknown code, so this is safe to call on every sign-in
+  // — and it is cleared either way, because retrying a code the server has
+  // already declined would mean doing it on every load forever.
+  async function redeemReferral() {
+    if (!pendingReferral()) return
+    try { await claimReferral(pendingReferral()) } catch { /* unmigrated, or refused */ }
+    clearReferral()
+  }
 
   async function fetchProfile(userId) {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()

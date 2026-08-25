@@ -209,3 +209,79 @@
 .onb-choice.picked { border-color: var(--accent); background: var(--accent-bg, var(--bg-subtle)); }
 .onb-choice-name { font-size: 0.9rem; font-weight: 650; color: var(--text-1); }
 .onb-choice-meta { font-size: 0.76rem; line-height: 1.45; color: var(--text-4); }
+
+/* --- the first packet ---------------------------------------------------- */
+/* The packet is the button. Nothing else on the screen competes with it,
+   because tearing it open is the only thing to do here. */
+.onb-packet {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.4rem auto 0.6rem;
+  padding: 0.8rem 1.4rem 1rem;
+  border: 2px dashed var(--rarity, var(--border));
+  border-radius: 16px;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 140ms, background 140ms;
+}
+.onb-packet:hover:not(:disabled) { transform: translateY(-2px); background: rgba(0, 0, 0, 0.02); }
+.onb-packet:active:not(:disabled) { transform: translateY(0); }
+.onb-packet:disabled { cursor: default; }
+.onb-packet-cta {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+/* What came out. The ring is the rarity, so a lucky pull looks lucky before
+   the words say so. */
+.onb-pull {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.9rem 1rem 0.4rem;
+  text-align: center;
+}
+.onb-pull-emoji {
+  font-size: 4rem;
+  line-height: 1;
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.25));
+  animation: onb-pop 420ms cubic-bezier(0.22, 1.2, 0.36, 1);
+}
+@keyframes onb-pop {
+  from { transform: scale(0.4); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+.onb-pull-name { margin: 0.4rem 0 0; font-size: 1.15rem; font-weight: 800; color: var(--text-1); }
+.onb-pull-meta {
+  margin: 0 0 0.5rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--rarity, var(--text-4));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onb-pull-emoji { animation: none; }
+  .onb-packet:hover:not(:disabled) { transform: none; }
+}
+
+/* The perk on the public choice. Inside the button, because it is part of what
+   you are choosing rather than a footnote about it. */
+.onb-choice-perk {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+  padding: 0.18rem 0.5rem;
+  border-radius: var(--r-pill, 999px);
+  background: var(--accent-bg, #eaf5df);
+  color: var(--accent, #071013);
+  font-size: 0.72rem;
+  font-weight: 700;
+}

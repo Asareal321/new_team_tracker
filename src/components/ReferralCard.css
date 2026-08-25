@@ -1,0 +1,88 @@
+.rf-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 1rem 1.1rem 1.15rem;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+.rf-head { display: flex; align-items: center; gap: 0.75rem; }
+.rf-title { margin: 0; font-size: 1rem; font-weight: 650; color: var(--text-1); }
+.rf-prize {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--r-pill);
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+.rf-explain { margin: 0; font-size: 0.78rem; color: var(--text-4); line-height: 1.5; }
+.rf-won {
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  border-radius: var(--r-sm, 8px);
+  background: var(--green-bg, #e8f5e2);
+  color: var(--green-text, #2f6b23);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* Three pips and a sentence. The pips are the shape of the deal — three, then
+   a packet — which a bare number never showed. */
+.rf-progress { display: flex; align-items: center; gap: 0.3rem; }
+.rf-pip {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: transparent;
+}
+.rf-pip.on { background: var(--accent); border-color: var(--accent); }
+.rf-count {
+  margin-left: 0.45rem;
+  font-size: 0.78rem;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.rf-linkrow { display: flex; gap: 0.5rem; }
+.rf-link {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 0.45rem 0.7rem;
+  min-height: 40px;
+  font-family: inherit;
+  /* 16px or iOS zooms on focus and never zooms back. */
+  font-size: 16px;
+  background: var(--bg-subtle);
+  color: var(--text-2);
+}
+.rf-link:focus { outline: none; border-color: var(--accent); }
+.rf-btn {
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  padding: 0.4rem 0.9rem;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--bg-surface);
+  color: var(--text-1);
+  white-space: nowrap;
+}
+.rf-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+.rf-fine { margin: 0; font-size: 0.72rem; color: var(--text-4); }
+.rf-migrate { margin: 0; font-size: 0.8rem; color: var(--text-4); line-height: 1.5; }
+
+@media (max-width: 480px) {
+  .rf-linkrow { flex-wrap: wrap; }
+  .rf-btn { width: 100%; }
+}

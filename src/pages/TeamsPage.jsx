@@ -6,6 +6,7 @@ import { useTeam } from '../context/TeamContext'
 import { projectColorIndex, projectDotColor } from '../lib/projectColors'
 import CommunityPeople from '../components/CommunityPeople'
 import Marketplace from '../components/Marketplace'
+import ReferralCard from '../components/ReferralCard'
 import './TeamsPage.css'
 
 const PROJECT_STATUSES = ['active', 'on_hold', 'completed']
@@ -332,6 +333,7 @@ export default function TeamsPage() {
       <div className="team-detail-col">
         {/* Above the community itself: a garden is yours, not a community's. */}
         <CommunityPeople />
+        <ReferralCard />
         <Marketplace />
 
         {!currentTeam ? (

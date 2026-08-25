@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import {
-  SEEDS, RARITY_COLORS, RARITY_NAMES, PACKETS,
+  RARITY_COLORS, RARITY_NAMES, PACKETS,
   CLOUD_TIERS, CLOUD_MAX_TAPS, GROWTH_STAGES, DAILY_CAPS,
-  ADD_TASK_REWARD, formatDuration,
+  ADD_TASK_REWARD, formatDuration, rollPacket, seedByKey, packetByKey,
 } from '../lib/garden'
 import { MAX_DOING, MAX_UP_NEXT } from './TaskBoard'
+import PacketArt from './PacketArt'
 import Trak from './Trak'
 import './Onboarding.css'
 
@@ -19,15 +20,27 @@ import './Onboarding.css'
 // limits rather than typed into the copy — a tour that quietly goes out of date
 // with the balance is worse than no tour.
 
-const STARTER_KEYS = ['daisy', 'tulip', 'orchid']
+// The cheapest packet — the one you can actually afford again tomorrow, so
+// the first pull teaches the loop rather than a one-off.
+const STARTER_PACKET = PACKETS[0]
 
-const SETUP_STEPS  = ['hello', 'seed', 'planted', 'grow', 'economy', 'limits', 'profile', 'projects', 'task']
+// What a public profile is worth. A directory nobody is in is not a community,
+// so the thing being asked for is real and the thank-you should be too — an
+// epic packet, not a token. Stated on the choice rather than sprung afterwards:
+// a reward you only learn about once you have chosen is not an incentive, it
+// is a surprise.
+const PUBLIC_REWARD = packetByKey('epic')
+
+const SETUP_STEPS  = ['hello', 'packet', 'planted', 'grow', 'economy', 'limits', 'profile', 'projects', 'task']
 const REPLAY_STEPS = ['hello', 'grow', 'economy', 'limits', 'board', 'projects']
 
 export default function Onboarding({ displayName, mode = 'setup', onFinish, onClose }) {
   const steps = mode === 'replay' ? REPLAY_STEPS : SETUP_STEPS
   const [i, setI] = useState(0)
   const [pick, setPick] = useState(null)
+  // The seed the first packet gave up, once it has been torn open.
+  const [opened, setOpened] = useState(null)
+  const [tearing, setTearing] = useState(false)
   const [projectName, setProjectName] = useState('')
   const [firstTask, setFirstTask] = useState('')
   // Private by default. Being listed is a choice you make, not one you have to
@@ -36,8 +49,22 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
+  // The roll is real: the same odds table the shop uses, so a lucky first
+  // pull is genuinely lucky rather than staged. The pause is only so the
+  // packet reads as being opened rather than as a value appearing.
+  function tearOpen() {
+    if (tearing || opened) return
+    setTearing(true)
+    const seed = seedByKey(rollPacket(STARTER_PACKET.key))
+    setTimeout(() => {
+      setOpened(seed)
+      setPick(seed.key)
+      setTearing(false)
+    }, 620)
+  }
+
   const step = steps[i]
-  const chosen = SEEDS.find(s => s.key === pick)
+  const chosen = opened || seedByKey(pick)
   const next = () => setI(n => Math.min(n + 1, steps.length - 1))
   const back = () => setI(n => Math.max(n - 1, 0))
 
@@ -65,7 +92,12 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
     setBusy(true)
     setError('')
     try {
-      await onFinish({ seedKey: pick || STARTER_KEYS[0], projectName: '', firstTask: '', isPublic })
+      // Skipping still leaves a garden with something in it: roll rather than
+      // hand out a fixed seed, so a bailed-out setup is not a worse account.
+      await onFinish({
+        seedKey: pick || rollPacket(STARTER_PACKET.key),
+        projectName: '', firstTask: '', isPublic,
+      })
     } catch (e) {
       setError(e?.message || String(e))
       setBusy(false)
@@ -89,32 +121,47 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
           </Scene>
         )}
 
-        {step === 'seed' && (
-          <Scene mood="point" title="Pick something to grow">
-            <p className="onb-body">
-              Start with a seed. Rarer species take longer and sell for more — a
-              daisy is the gentle one.
-            </p>
-            <div className="onb-seeds">
-              {STARTER_KEYS.map(key => {
-                const seed = SEEDS.find(s => s.key === key)
-                return (
-                  <button
-                    key={key}
-                    className={`onb-seed${pick === key ? ' picked' : ''}`}
-                    style={{ '--rarity': RARITY_COLORS[seed.rarity] }}
-                    onClick={() => setPick(key)}
-                    aria-pressed={pick === key}
-                  >
-                    <span className="onb-seed-emoji">{seed.emoji}</span>
-                    <span className="onb-seed-name">{seed.name}</span>
-                    <span className="onb-seed-meta">
-                      {RARITY_NAMES[seed.rarity]} · {formatDuration(seed.growSeconds)}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
+        {/* A packet, not a menu.
+            Picking from three named seeds asked a question nobody could answer
+            yet — you have no idea what a Tulip is worth before you have played.
+            It also taught the wrong thing: packets are how you actually get
+            seeds, so the first one should be a packet, opened with real odds.
+            A rarer roll here is a better first minute than any pick. */}
+        {step === 'packet' && (
+          <Scene mood={opened ? 'happy' : 'point'} title={opened ? 'Look at that.' : 'A packet to start you off'}>
+            {!opened ? (
+              <>
+                <p className="onb-body">
+                  Every seed you plant comes out of a packet. Here is your first —
+                  a <strong>{STARTER_PACKET.name.toLowerCase()}</strong>, on the house.
+                </p>
+                <button
+                  className="onb-packet"
+                  style={{ '--rarity': RARITY_COLORS[STARTER_PACKET.rarity] }}
+                  onClick={tearOpen}
+                  disabled={tearing}
+                  aria-label={`Open the ${STARTER_PACKET.name.toLowerCase()}`}
+                >
+                  <PacketArt packet={STARTER_PACKET} size={tearing ? 132 : 120} />
+                  <span className="onb-packet-cta">{tearing ? 'Opening…' : 'Tear it open'}</span>
+                </button>
+                <p className="onb-body onb-fine">
+                  The odds are printed on every packet. This one is mostly common
+                  ground — but it can drop anything.
+                </p>
+              </>
+            ) : (
+              <div className="onb-pull" style={{ '--rarity': RARITY_COLORS[opened.rarity] }}>
+                <span className="onb-pull-emoji">{opened.emoji}</span>
+                <p className="onb-pull-name">{opened.name}</p>
+                <p className="onb-pull-meta">
+                  {RARITY_NAMES[opened.rarity]} · {formatDuration(opened.growSeconds)} to grow
+                </p>
+                <p className="onb-body">
+                  That is yours. I&rsquo;ll put it in the ground and start the clock.
+                </p>
+              </div>
+            )}
           </Scene>
         )}
 
@@ -217,10 +264,15 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
                 <span className="onb-choice-meta">
                   Listed for anyone to browse and add. Friends still have to be accepted.
                 </span>
+                <span className="onb-choice-perk">
+                  <span aria-hidden="true">{PUBLIC_REWARD.emoji}</span>
+                  {PUBLIC_REWARD.name} on the house
+                </span>
               </button>
             </div>
             <p className="onb-body onb-fine">
               Either way you can change it whenever you like — I&rsquo;ll show you where.
+              {' '}Turning it off later doesn&rsquo;t take the packet back.
             </p>
           </Scene>
         )}
@@ -308,10 +360,10 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
           ) : (
             <button
               className="btn-primary"
-              disabled={busy || (step === 'seed' && !pick)}
+              disabled={busy || (step === 'packet' && !opened)}
               onClick={next}
             >
-              {step === 'seed' ? 'Plant it' : 'Next'}
+              {step === 'packet' ? 'Plant it' : 'Next'}
             </button>
           )}
         </div>

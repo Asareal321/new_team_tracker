@@ -53,6 +53,14 @@ export const listPacket = (packetKey, price) =>
   rpc('list_packet', { _packet_key: packetKey, _price: price })
 
 export const cancelListing = id => rpc('cancel_listing', { _id: id })
+
+// --- referrals ------------------------------------------------------------
+
+export const myReferralCode = () => rpc('my_referral_code')
+export const referralStats = () => rpc('referral_stats')
+export const claimReferral = code => rpc('claim_referral', { _code: code })
+export const claimReferralPackets = (packetKey, per) =>
+  rpc('claim_referral_packets', { _packet_key: packetKey, _per: per })
 export const buyListing = id => rpc('buy_listing', { _id: id })
 
 // — your own profile —
