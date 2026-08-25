@@ -91,6 +91,9 @@ export default function Layout() {
                   `${navClass({ isActive })}${signal ? ` has-news news-${signal.level}` : ''}`}
                 end={item.end}
                 title={why ? `${item.label} — ${why}` : item.label}
+                /* The tour points at these and waits for you to click one, so
+                   they need a name that doesn't change with the active class. */
+                data-tour={`nav-${item.label.toLowerCase()}`}
               >
                 <span className="nav-icon" aria-hidden="true"><item.Icon /></span>
                 <span className="nav-label">{item.label}</span>

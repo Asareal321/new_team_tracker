@@ -25,8 +25,11 @@ import { attentionTitle } from '../lib/attention'
 import './GardenPage.css'
 
 const TABS = [
-  { key: 'greenhouse', label: 'Greenhouse', Icon: IconGreenhouse },
+  // Garden first: it is the room you are looking at when the page opens, and
+  // it was the only tab you had to travel LEFT to reach while everything else
+  // was to the right of it.
   { key: 'garden', label: 'Garden', Icon: IconBeds },
+  { key: 'greenhouse', label: 'Greenhouse', Icon: IconGreenhouse },
   { key: 'herbarium', label: 'Herbarium', Icon: IconHerbarium },
   { key: 'awards', label: 'Awards', Icon: IconAwards },
   { key: 'shop', label: 'Shop', Icon: IconShop },
@@ -214,6 +217,7 @@ export default function GardenPage() {
                 aria-selected={tab === t.key}
                 className={`shelf-tab${tab === t.key ? ' on' : ''}${signal ? ` has-news news-${signal.level}` : ''}`}
                 title={why ? `${t.label} — ${why}` : t.label}
+                data-tour={`room-${t.key}`}
                 onClick={() => setTab(t.key)}
               >
                 <span className="shelf-icon" aria-hidden="true"><t.Icon /></span>

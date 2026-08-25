@@ -1,43 +1,53 @@
 // The guided walk through the tabs, as data.
 //
 // The first tour was seven screens of dense paragraphs in a modal, which meant
-// you finished it without ever having seen the app underneath. This one points
-// at the real thing: each step names a route and a selector, and the overlay
-// puts a hole over that element. Nothing here is a mock — if a selector stops
-// matching, the step degrades to a plain card rather than lying about where
-// something is.
+// you finished it without ever having seen the app underneath. The second one
+// pointed at real elements but drove itself — it teleported you between tabs
+// while you watched. This one makes you do the travelling: a step can name an
+// `act`, and then the tour waits for you to perform it on the real control.
+// You arrive in the archive because you clicked Archived, so you know where
+// Archived is.
 //
-// Two rules, both checked by scripts/check-tour.mjs:
+// Fields:
+//   route   — where the step is shown. The tour only navigates here itself
+//             when the step has no `act` to get you there.
+//   anchor  — selectors tried in order; the first that matches gets the hole.
+//   act     — 'click' waits for a click on the anchor before advancing.
+//             Every waiting step still has a Next button, so it can't trap you.
+//   mood    — which Trak.
+//
+// Three rules, all checked by scripts/check-tour.mjs:
 //   • every body is short. The whole reason there are many steps is that each
 //     one says one thing; a long body here is the old tour growing back.
 //   • every route is one the app actually serves.
+//   • a step that changes route is reached by a click, not by a redirect.
 
-export const TOUR_ROUTES = ['/', '/community', '/garden']
+export const TOUR_ROUTES = ['/', '/deadlines', '/garden', '/community', '/account']
 
 // The most a step may say. Roughly a spoken sentence.
 export const MAX_BODY = 130
 
-// `anchor` is tried in order — the first selector that matches wins, so a step
-// can name a phone element and a desktop one without branching.
+const NAV = {
+  taskboard: '[data-tour="nav-taskboard"]',
+  deadlines: '[data-tour="nav-deadlines"]',
+  community: '[data-tour="nav-community"]',
+  garden: '[data-tour="nav-garden"]',
+  account: '[data-tour="nav-account"]',
+}
+
 export const TOUR_STEPS = [
   // — the board ————————————————————————————————————————————————
   {
     key: 'rail', route: '/', mood: 'point',
     anchor: ['.sidebar-nav'],
     title: 'These are your tabs',
-    body: 'Six places. We are going to walk three of them.',
+    body: 'You are going to click through them yourself. I will only point.',
   },
   {
     key: 'strip', route: '/', mood: 'happy',
     anchor: ['.greenhouse-strip'],
     title: 'I live up here',
     body: 'Whatever is most worth doing right now, I say it on this strip.',
-  },
-  {
-    key: 'bar', route: '/', mood: 'idle',
-    anchor: ['.gh-bar'],
-    title: 'Your flower, growing',
-    body: 'It fills on a real clock. Finishing tasks makes clouds, and clouds cut the wait.',
   },
   {
     key: 'done', route: '/', mood: 'happy',
@@ -63,80 +73,190 @@ export const TOUR_STEPS = [
     title: 'Moving work',
     body: 'The chevrons send a task forward or back. Tap the task itself to edit it.',
   },
+
+  // — the braindump, and a project ————————————————————————————
+  {
+    key: 'dump-open', route: '/', mood: 'point', act: 'click',
+    anchor: ['.tab-dump'],
+    title: 'Open the braindump',
+    body: 'Click Braindump. It is the tab where nothing is limited.',
+  },
   {
     key: 'dump', route: '/', mood: 'think',
-    anchor: ['.tab-dump', '.tabs'],
-    title: 'The braindump',
-    body: 'Everything you thought of, filed under a project. No limit here.',
+    anchor: ['.dump-capture', '.dump-pile'],
+    title: 'Everything you thought of',
+    body: 'Type it here. No dates, no order — just get it out of your head.',
+  },
+  {
+    key: 'pills', route: '/', mood: 'point',
+    anchor: ['.dump-pills'],
+    title: 'The pills are the button',
+    body: 'You do not press Add. You press the project it belongs to, and that files it.',
+  },
+  {
+    key: 'newproject', route: '/', mood: 'happy', act: 'click',
+    anchor: ['.dump-pj-new'],
+    title: 'Make yourself a project',
+    body: 'Click + New project and name something you are actually working on.',
+  },
+  {
+    key: 'calendar', route: '/', mood: 'think',
+    anchor: ['.cal-strip', '.dump-pills'],
+    title: 'Projects meet your calendar',
+    body: 'Put a project name in a Google Calendar event and its tasks move onto the board at that hour.',
+  },
+
+  // — the archive ————————————————————————————————————————————
+  {
+    key: 'archive-open', route: '/', mood: 'point', act: 'click',
+    anchor: ['.tab-archived'],
+    title: 'Now open Archived',
+    body: 'Click Archived. Nothing you finish is thrown away.',
+  },
+  {
+    key: 'archive', route: '/', mood: 'idle',
+    anchor: ['.archive-cal', '.archive-cal-grid'],
+    title: 'Everything you finished',
+    body: 'Laid out by the day you finished it, month by month.',
+  },
+  {
+    key: 'archive-search', route: '/', mood: 'think',
+    anchor: ['.arc-search'],
+    title: 'And it is searchable',
+    body: 'Title, notes, project, updates. Old projects stay here for good.',
+  },
+  {
+    key: 'board-back', route: '/', mood: 'point', act: 'click',
+    anchor: ['.tab-board'],
+    title: 'Back to the board',
+    body: 'Click Board. That is the whole taskboard.',
+  },
+
+  // — deadlines ————————————————————————————————————————————————
+  {
+    key: 'deadlines-go', route: '/', mood: 'point', act: 'click',
+    anchor: [NAV.deadlines],
+    title: 'Click Deadlines',
+    body: 'Second tab down. Anything you gave a date to is waiting there.',
+  },
+  {
+    key: 'upcoming', route: '/deadlines', mood: 'idle',
+    anchor: ['.dl-upcoming'],
+    title: 'What is coming',
+    body: 'Sorted by date, nearest first. That is most of what this tab is for.',
+  },
+  {
+    key: 'views', route: '/deadlines', mood: 'point',
+    anchor: ['.dl-views'],
+    title: 'Today, week, month',
+    body: 'Three zoom levels on the same dates. Pick whichever you think in.',
+  },
+
+  // — the garden, room by room ————————————————————————————————
+  {
+    key: 'garden-go', route: '/deadlines', mood: 'happy', act: 'click',
+    anchor: [NAV.garden],
+    title: 'Click Garden',
+    body: 'This is the part that pays you for finishing things.',
+  },
+  {
+    key: 'beds', route: '/garden', mood: 'happy',
+    anchor: ['.plot-grid', '.field-panel'],
+    title: 'Your garden',
+    body: 'Every flower you have grown, in the ground. Tap one for its name and its options.',
+  },
+  {
+    key: 'greenhouse-go', route: '/garden', mood: 'point', act: 'click',
+    anchor: ['[data-tour="room-greenhouse"]'],
+    title: 'Click the greenhouse',
+    body: 'Second icon along. It is where a seed becomes a flower.',
+  },
+  {
+    key: 'greenhouse', route: '/garden', mood: 'idle',
+    anchor: ['.growing-pot', '.greenhouse'],
+    title: 'One seed at a time',
+    body: 'It fills on a real clock. Clouds you banked pop here and cut the wait.',
+  },
+  {
+    key: 'herbarium-go', route: '/garden', mood: 'point', act: 'click',
+    anchor: ['[data-tour="room-herbarium"]'],
+    title: 'Click the herbarium',
+    body: 'Your record of species, kept even after you sell the flower.',
+  },
+  {
+    key: 'awards-go', route: '/garden', mood: 'point', act: 'click',
+    anchor: ['[data-tour="room-awards"]'],
+    title: 'Click awards',
+    body: 'Streaks and quests. Long runs pay better than single days.',
+  },
+  {
+    key: 'shop-go', route: '/garden', mood: 'happy', act: 'click',
+    anchor: ['[data-tour="room-shop"]'],
+    title: 'Click the shop',
+    body: 'Last icon. Coins buy packets, and a packet is a roll with printed odds.',
   },
 
   // — community ————————————————————————————————————————————————
   {
-    key: 'community', route: '/community', mood: 'point',
-    anchor: ['.cp-card'],
-    title: 'This is Community',
-    body: 'Friends, and a market. Nobody sees your garden until you let them.',
+    key: 'community-go', route: '/garden', mood: 'point', act: 'click',
+    anchor: [NAV.community],
+    title: 'Click Community',
+    body: 'Friends, a market, and the reason to bring people with you.',
   },
   {
-    key: 'visibility', route: '/community', mood: 'think',
-    anchor: ['.cp-visibility'],
-    title: 'Public or private',
-    body: 'You chose this a moment ago. This is where you change your mind.',
+    key: 'referrals', route: '/community', mood: 'happy',
+    anchor: ['.rf-card'],
+    title: 'Bring three friends',
+    body: 'Your link is here. Every three people who join hands you an heirloom packet.',
   },
   {
-    key: 'find', route: '/community', mood: 'point',
-    anchor: ['.cp-tabs'],
+    key: 'people', route: '/community', mood: 'think',
+    anchor: ['.cp-tabs', '.cp-card'],
     title: 'Finding people',
-    body: 'Browse the public list, or search a name. Part of a name is enough.',
+    body: 'Browse the public list or search a name. Nobody sees your garden until you let them.',
   },
   {
     key: 'market', route: '/community', mood: 'happy',
     anchor: ['.mk-card'],
     title: 'The marketplace',
-    body: 'Flowers and seed packets, priced by whoever is selling them.',
-  },
-  {
-    key: 'sell', route: '/community', mood: 'point',
-    anchor: ['.mk-sell', '.mk-list'],
-    title: 'Selling',
     body: 'Pick something you hold, name your price, put it up. Take it back any time.',
   },
 
-  // — the garden ————————————————————————————————————————————————
+  // — account ————————————————————————————————————————————————
   {
-    key: 'garden', route: '/garden', mood: 'happy',
-    anchor: ['.plot-grid', '.field-panel'],
-    title: 'Your garden',
-    body: 'Every flower you have grown, in the ground. Drag a bed to rearrange it.',
+    key: 'account-go', route: '/community', mood: 'point', act: 'click',
+    anchor: [NAV.account],
+    title: 'Last one — click Account',
+    body: 'Everything you can change about how this works is on one page.',
   },
   {
-    key: 'plot', route: '/garden', mood: 'point',
-    anchor: ['.plot.filled', '.plot'],
-    title: 'A bed',
-    body: 'Hover one for two choices: sell it on the market, or compost it.',
+    key: 'identity', route: '/account', mood: 'idle',
+    anchor: ['[data-tour="acct-identity"]'],
+    title: 'Your name',
+    body: 'This is the name friends see. Change it whenever you like.',
   },
   {
-    key: 'growing', route: '/garden', mood: 'idle',
-    anchor: ['.growing-pot', '.greenhouse'],
-    title: 'What is growing',
-    body: 'One seed at a time. This is the same flower the board strip was counting.',
+    key: 'workspace', route: '/account', mood: 'think',
+    anchor: ['[data-tour="acct-workspace"]'],
+    title: 'Workspace and theme',
+    body: 'Switch between your personal board and a community board, and go dark.',
   },
   {
-    key: 'shop', route: '/garden', mood: 'think',
-    anchor: ['.seed-packet', '.shop-panel'],
-    title: 'Packets',
-    body: 'Coins buy packets. A packet is a roll, not a species — the odds are printed on it.',
+    key: 'quiet', route: '/account', mood: 'idle',
+    anchor: ['[data-tour="acct-quiet"]'],
+    title: 'Quiet mode',
+    body: 'Turns the game down. Finished tasks pay coins instead of taking the screen.',
   },
   {
-    key: 'herbarium', route: '/garden', mood: 'happy',
-    anchor: ['.herbarium-panel'],
-    title: 'The herbarium',
-    body: 'Every species you have ever seen, kept even after you sell the flower.',
+    key: 'replay', route: '/account', mood: 'happy',
+    anchor: ['[data-tour="acct-tour"]'],
+    title: 'And you can redo this',
+    body: 'Take the tour again from here any time. Nothing is changed by it.',
   },
   {
-    key: 'done-tour', route: '/garden', mood: 'happy',
+    key: 'done-tour', route: '/account', mood: 'happy',
     anchor: null,
     title: 'That is the place',
-    body: 'Add a task, finish it, tap the cloud. I will be on the strip if you need me.',
+    body: 'Finish a task, pop the cloud, grow the thing. I will be on the strip.',
   },
 ]

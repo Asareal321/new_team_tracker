@@ -10,6 +10,7 @@ import { setVisibility } from '../lib/community'
 // Named here rather than inline so the onboarding copy and the grant cannot
 // promise two different packets.
 import { PUBLIC_PROFILE_PACKET } from '../lib/rewards'
+import { sampleTasks, seededClouds } from '../lib/sampleTasks'
 import { requestTour } from '../lib/tourState'
 import useCalendarFill from '../components/useCalendarFill'
 import CalendarStrip from '../components/CalendarStrip'
@@ -496,6 +497,20 @@ export default function BoardPage() {
             if (firstTask) {
               await addTask({ title: firstTask, notes: '', status: 'todo', priority: 'high', due_date: null, project_id: projectId, assigneeIds: [user.id] })
             }
+            // A week of plausible work, so the tour has real bands, real dates
+            // and a real archive to point at instead of five empty panels. It
+            // goes in as one insert rather than through addTask: seeding is not
+            // fifteen things you did, and it shouldn't pay out fifteen sprouts.
+            const seed = sampleTasks({ projectId })
+            try {
+              await supabase.from('tasks').insert(
+                seed.map((t, n) => ({ ...t, user_id: user.id, team_id: null, position: (n + 1) * 1000 }))
+              )
+              // The finished ones are worth their clouds, exactly as they would
+              // have been if you had ticked them off yourself. They bank, and
+              // the greenhouse lights up for you to pop them.
+              for (let n = 0; n < seededClouds(seed); n++) await rewardTaskDone()
+            } catch { /* a seeded board is a nicety, never a blocker */ }
             // Visibility is a community feature, so it needs the community
             // migration. An unmigrated database shouldn't cost you the setup —
             // private is the default there anyway.

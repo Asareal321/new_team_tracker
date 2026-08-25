@@ -85,3 +85,13 @@
 @media (prefers-reduced-motion: reduce) {
   .tour-mask, .tour-ring, .tour-card { transition: none; }
 }
+
+/* Said on the steps that hand control back to you. Quieter than the body —
+   it is an instruction about the app, not another thing to read. */
+.tour-waiting {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--accent, #4a8f5b);
+}

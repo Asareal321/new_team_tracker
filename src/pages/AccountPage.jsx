@@ -60,7 +60,7 @@ export default function AccountPage() {
     <div className="account-page">
       <h2>Account</h2>
 
-      <form className="account-card" onSubmit={handleSave}>
+      <form className="account-card" data-tour="acct-identity" onSubmit={handleSave}>
         <label>Email
           <input value={user.email} disabled />
         </label>
@@ -102,7 +102,7 @@ export default function AccountPage() {
         </div>
       )}
 
-      <div className="account-card settings-card">
+      <div className="account-card settings-card" data-tour="acct-workspace">
         <div>
           <strong>Workspace</strong>
           <p className="dev-card-hint">Which board you're looking at, and how the app looks.</p>
@@ -122,7 +122,7 @@ export default function AccountPage() {
         </div>
       </div>
 
-      <div className="account-card settings-card">
+      <div className="account-card settings-card" data-tour="acct-quiet">
         <div>
           <strong>Quiet mode</strong>
           <p className="dev-card-hint">
@@ -144,7 +144,7 @@ export default function AccountPage() {
       {/* Two different things, deliberately. The rules are worth re-reading;
           where everything lives is worth being shown again, on the real
           screens rather than in a diagram of them. */}
-      <div className="account-card settings-card">
+      <div className="account-card settings-card" data-tour="acct-tour">
         <div>
           <strong>Show me round again</strong>
           <p className="dev-card-hint">

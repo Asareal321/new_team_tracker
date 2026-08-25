@@ -31,7 +31,11 @@ const STARTER_PACKET = PACKETS[0]
 // is a surprise.
 const PUBLIC_REWARD = packetByKey('epic')
 
-const SETUP_STEPS  = ['hello', 'packet', 'planted', 'grow', 'economy', 'limits', 'profile', 'projects', 'task']
+// The packet is last. It is the moment worth ending on — everything before it
+// is explanation, and explanation should not stand between you and the thing
+// you came for. `planted` follows it because the seed only exists once the
+// packet is open.
+const SETUP_STEPS  = ['hello', 'grow', 'economy', 'limits', 'profile', 'projects', 'task', 'packet', 'planted']
 const REPLAY_STEPS = ['hello', 'grow', 'economy', 'limits', 'board', 'projects']
 
 export default function Onboarding({ displayName, mode = 'setup', onFinish, onClose }) {
@@ -171,7 +175,12 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
               Your {chosen?.name.toLowerCase()} is in the ground. It grows on a real clock —
               about {formatDuration(chosen?.growSeconds || 0)} if you leave it be.
             </p>
-            <p className="onb-body">But you don&rsquo;t have to leave it be.</p>
+            {/* Last screen of setup now that the packet closes it, so this
+                hands off to the walk instead of leading into another rule. */}
+            <p className="onb-body">
+              But you don&rsquo;t have to leave it be. Finish something and the clouds
+              do the rest — come on, I&rsquo;ll show you where everything is.
+            </p>
           </Scene>
         )}
 
@@ -346,12 +355,13 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
         <div className="onb-actions">
           {i > 0 && <button className="btn-ghost" disabled={busy} onClick={back}>Back</button>}
 
+          {/* `task` is no longer the end — the packet is — so writing a first
+              task is now a step you can pass through rather than the finish
+              line. Skip advances instead of committing. */}
           {step === 'task' ? (
             <>
-              <button className="btn-ghost" disabled={busy} onClick={() => { setFirstTask(''); finish() }}>Skip</button>
-              <button className="btn-primary" disabled={busy || !firstTask.trim()} onClick={finish}>
-                {busy ? 'Setting up…' : 'Start'}
-              </button>
+              <button className="btn-ghost" disabled={busy} onClick={() => { setFirstTask(''); next() }}>Skip</button>
+              <button className="btn-primary" disabled={busy || !firstTask.trim()} onClick={next}>Next</button>
             </>
           ) : i === steps.length - 1 ? (
             <button className="btn-primary" disabled={busy} onClick={finish}>

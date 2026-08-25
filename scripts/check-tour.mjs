@@ -51,19 +51,61 @@ ok('each tab is visited once, in one run', order.length === new Set(order).size,
 const SOURCES = [
   'src/components/TaskBoard.jsx', 'src/components/Layout.jsx',
   'src/components/CommunityPeople.jsx', 'src/components/Marketplace.jsx',
+  'src/components/CalendarStrip.jsx', 'src/components/ReferralCard.jsx',
   'src/pages/GardenPage.jsx', 'src/pages/TeamsPage.jsx',
+  'src/pages/DeadlinesPage.jsx', 'src/pages/AccountPage.jsx',
 ]
 const src = SOURCES.map(f => { try { return readFileSync(f, 'utf8') } catch { return '' } }).join('\n')
 // `band-${status}` is built at runtime from the board's own keys.
 const RUNTIME = ['band-todo', 'band-in_progress', 'band-done']
 
+// The nav links and the garden rooms are named by a data-tour attribute built
+// from a value in a list, so what the source contains is the value, not the
+// whole attribute — `nav-garden` comes from the label, `room-shop` from the key.
+function needle(sel) {
+  const attr = sel.match(/^\[data-tour="([^"]+)"\]$/)
+  if (!attr) return sel.replace(/^\./, '')
+  const [, value] = attr
+  const [, tail] = value.match(/^(?:nav|room|acct)-(.+)$/) || [null, value]
+  return value.startsWith('acct-') ? value : tail
+}
+
 for (const s of TOUR_STEPS) {
   for (const sel of s.anchor || []) {
-    const cls = sel.replace(/^\./, '')
-    const found = RUNTIME.includes(cls) || new RegExp(`[\`"'\\s]${cls}[\`"'\\s$]`).test(src)
+    const cls = needle(sel)
+    const found = RUNTIME.includes(cls)
+      || new RegExp(`[\`"'\\s>]${cls}[\`"'\\s<$]`, 'i').test(src)
     ok(`"${s.key}" points at a real element (${sel})`, found)
   }
 }
+
+// — you do the travelling —
+//
+// The point of this version of the tour is that it never zaps you between
+// tabs. So any step that lands on a route different from the one before it has
+// to have been reached by a click you performed on the step before.
+
+let prevRoute = null
+for (const s of TOUR_STEPS) {
+  if (prevRoute && s.route !== prevRoute) {
+    const opener = TOUR_STEPS[TOUR_STEPS.indexOf(s) - 1]
+    ok(`"${s.key}" is reached by clicking, not by a redirect`, opener?.act === 'click',
+      `${prevRoute} → ${s.route} with no click step`)
+  }
+  prevRoute = s.route
+}
+
+// A click step that pointed at nothing would leave you staring at a card that
+// says \"your turn\" with nothing to press.
+for (const s of TOUR_STEPS) {
+  if (s.act) {
+    ok(`"${s.key}" is a click on something`, s.act === 'click' && (s.anchor?.length ?? 0) > 0)
+  }
+}
+
+ok('the walk makes you click at least ten times',
+  TOUR_STEPS.filter(s => s.act === 'click').length >= 10,
+  `${TOUR_STEPS.filter(s => s.act === 'click').length} click steps`)
 
 // The last step is the only one allowed to have no anchor — it is the goodbye.
 const anchorless = TOUR_STEPS.filter(s => !s.anchor)

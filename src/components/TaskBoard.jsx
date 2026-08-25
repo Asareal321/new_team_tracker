@@ -569,7 +569,7 @@ function PriorityBoard({
               </>
             )}
             <button
-              className={`tab ${activeTab === 'board' ? 'active' : ''}`}
+              className={`tab tab-board ${activeTab === 'board' ? 'active' : ''}`}
               onClick={() => setActiveTab('board')}
             >
               <span className="status-dot todo" />

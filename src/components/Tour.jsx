@@ -15,6 +15,13 @@ import './Tour.css'
 // anchor is a poll with a deadline, and missing it is not an error — the step
 // simply centres itself and says its piece. A tour that blocks on a selector
 // would be a tour that traps you.
+//
+// A step may also say `act: 'click'`, which means the tour stops driving and
+// waits for you to click the thing it is pointing at — that is how you get to
+// the archive, the garden rooms and the other tabs. The masks are four panels
+// around the hole rather than one sheet with a cut-out, so the highlighted
+// control is genuinely clickable. The Next button stays on those steps too:
+// waiting is the intent, trapping never is.
 
 const FIND_TIMEOUT = 1600
 const PAD = 8
@@ -43,10 +50,29 @@ export default function Tour({ onDone }) {
   const next = useCallback(() => (atEnd ? end() : setI(n => n + 1)), [atEnd, end])
   const back = useCallback(() => setI(n => Math.max(0, n - 1)), [])
 
-  // Route first. The anchor hunt below waits for whatever this renders.
+  // Route only when the step isn't asking you to travel yourself. A click step
+  // that pointed at the Garden tab and then jumped there anyway would be the
+  // old tour wearing a hint.
   useEffect(() => {
+    if (step.act === 'click') return
     if (step.route && location.pathname !== step.route) navigate(step.route)
-  }, [step.route, location.pathname, navigate])
+  }, [step.act, step.route, location.pathname, navigate])
+
+  // Waiting for the click. Matching on the selector rather than on the element
+  // we measured, because the control usually re-renders on the way (the tab
+  // gains `active`, the nav link gains `active`) and the node we held is gone
+  // by the time the event lands.
+  useEffect(() => {
+    if (step.act !== 'click') return undefined
+    const onClick = e => {
+      const hit = (step.anchor || []).some(sel => e.target.closest?.(sel))
+      // Let the app's own handler run first — it is the thing doing the
+      // navigating; we only follow it.
+      if (hit) setTimeout(() => setI(n => (n + 1 <= steps.length - 1 ? n + 1 : n)), 0)
+    }
+    document.addEventListener('click', onClick, true)
+    return () => document.removeEventListener('click', onClick, true)
+  }, [i, step.act, step.anchor, steps.length])
 
   // Find the thing this step is about, giving the page time to produce it.
   useEffect(() => {
@@ -59,7 +85,7 @@ export default function Tour({ onDone }) {
     if (!step.anchor) { setSearching(false); return undefined }
 
     const hunt = () => {
-      if (step.route && location.pathname !== step.route) {
+      if (step.act !== 'click' && step.route && location.pathname !== step.route) {
         raf = requestAnimationFrame(hunt)
         return
       }
@@ -79,7 +105,7 @@ export default function Tour({ onDone }) {
     }
     raf = requestAnimationFrame(hunt)
     return () => cancelAnimationFrame(raf)
-  }, [i, step.anchor, step.route, location.pathname])
+  }, [i, step.anchor, step.act, step.route, location.pathname])
 
   // Keep the hole over the element if the page moves under it.
   useEffect(() => {
@@ -133,6 +159,7 @@ export default function Tour({ onDone }) {
         n={i + 1}
         total={steps.length}
         atEnd={atEnd}
+        waiting={step.act === 'click'}
         onNext={next}
         onBack={i > 0 ? back : null}
         onEnd={end}
@@ -143,7 +170,7 @@ export default function Tour({ onDone }) {
 
 // Placed under the hole when there is room, above it when there isn't, and in
 // the middle of the screen when there is no hole at all.
-function TourCard({ step, hole, searching, n, total, atEnd, onNext, onBack, onEnd }) {
+function TourCard({ step, hole, searching, n, total, atEnd, waiting, onNext, onBack, onEnd }) {
   const [size, setSize] = useState({ w: 320, h: 200 })
   const ref = useRef(null)
 
@@ -177,13 +204,19 @@ function TourCard({ step, hole, searching, n, total, atEnd, onNext, onBack, onEn
       </div>
       <p className="tour-body">{step.body}</p>
       {searching && step.anchor && <p className="tour-hunting">Looking for it…</p>}
+      {waiting && !searching && <p className="tour-waiting">Your turn — click it.</p>}
 
       <div className="tour-actions">
         <button className="tour-skip" onClick={onEnd}>Skip the tour</button>
         <span className="tour-spacer" />
         {onBack && <button className="btn-ghost tour-btn" onClick={onBack}>Back</button>}
-        <button className="btn-primary tour-btn" onClick={onNext}>
-          {atEnd ? 'Done' : 'Next'}
+        {/* Present even while waiting for the click, so a control that has
+            gone missing can never strand you mid-walk. */}
+        <button
+          className={`tour-btn ${waiting ? 'btn-ghost' : 'btn-primary'}`}
+          onClick={onNext}
+        >
+          {atEnd ? 'Done' : waiting ? 'Skip this' : 'Next'}
         </button>
       </div>
     </div>
