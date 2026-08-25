@@ -199,14 +199,24 @@ export function DeadlinesCalendar({ tasks, projects, members, currentUserId, sho
       )}
 
       <div className="dl-toolbar">
-        <div className="dl-monthnav">
-          <button className="dl-navbtn" aria-label="Previous month" onClick={() => { setCursor(new Date(year, month - 1, 1)); setSelectedDay(null) }}>‹</button>
-          <span className="dl-month">{MONTHS[month]} {year}</span>
-          <button className="dl-navbtn" aria-label="Next month" onClick={() => { setCursor(new Date(year, month + 1, 1)); setSelectedDay(null) }}>›</button>
-          <button className="dl-today-btn" onClick={goToday}>Today</button>
-          <div className="dl-viewtoggle" role="group" aria-label="View">
-            <button className={view === 'week' ? 'active' : ''} onClick={() => setView('week')}>Week</button>
-            <button className={view === 'month' ? 'active' : ''} onClick={() => setView('month')}>Month</button>
+        {/* Two lines: what you are looking at, then how. They used to share a
+            line and wrap unpredictably — the month would jump as the view
+            changed, which made the heading feel unstable. */}
+        <div className="dl-titleline">
+          <div className="dl-monthnav">
+            <button className="dl-navbtn" aria-label="Previous month" onClick={() => { setCursor(new Date(year, month - 1, 1)); setSelectedDay(null) }}>‹</button>
+            <span className="dl-month">{MONTHS[month]} {year}</span>
+            <button className="dl-navbtn" aria-label="Next month" onClick={() => { setCursor(new Date(year, month + 1, 1)); setSelectedDay(null) }}>›</button>
+          </div>
+          {/* Today is an action and Week/Month are a choice, so Today keeps a
+              gap from the pair rather than reading as a third option. */}
+          <div className="dl-views" role="group" aria-label="View">
+            <button className="dl-pill dl-pill-action" onClick={goToday}>Today</button>
+            <span className="dl-views-gap" aria-hidden="true" />
+            <button className={`dl-pill${view === 'week' ? ' active' : ''}`}
+              aria-pressed={view === 'week'} onClick={() => setView('week')}>Week</button>
+            <button className={`dl-pill${view === 'month' ? ' active' : ''}`}
+              aria-pressed={view === 'month'} onClick={() => setView('month')}>Month</button>
           </div>
         </div>
         {overdue.length > 0 && (
@@ -222,7 +232,6 @@ export function DeadlinesCalendar({ tasks, projects, members, currentUserId, sho
           {overdue.map(t => (
             <div key={t.id} className="dl-overdue-item">
               <span className="dl-late">{daysBetween(t.due_date, today)}d late</span>
-              <span className="dl-od-dot" style={{ background: priorityColor(t.priority) }} />
               <span className="dl-od-title">{t.title}</span>
               <span className="dl-od-date">{formatDate(t.due_date)}</span>
               {resolveAssignees(t).slice(0, 1).map(m => <span key={m.id} className="dl-od-av">{initials(m.display_name)}</span>)}
@@ -230,6 +239,29 @@ export function DeadlinesCalendar({ tasks, projects, members, currentUserId, sho
           ))}
         </div>
       )}
+
+      {/* Above the calendar, not below it. What is due next is the reason
+          you opened this page; the grid is for locating it. On a phone the
+          old order buried the list under a week's worth of scrolling. */}
+      <div className="dl-upcoming">
+        <h3>Upcoming deadlines</h3>
+        {upcomingDates.length === 0 ? (
+          <p className="empty-hint">Nothing due from today onward.</p>
+        ) : (
+          upcomingDates.map(date => (
+            <div key={date} className="dl-up-group">
+              <div className="dl-up-date">
+                {relativeDateLabel(date, today)}
+                <span className="dl-up-full">{new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+              </div>
+              {upcomingByDate[date].map(e => e.type === 'project'
+                ? <ProjectRow key={'p' + e.item.id} project={e.item} />
+                : <TaskRow key={'t' + e.item.id} task={e.item} assignees={resolveAssignees(e.item)} />
+              )}
+            </div>
+          ))
+        )}
+      </div>
 
       {view === 'week' && (
         <div className="dl-week">
@@ -248,7 +280,6 @@ export function DeadlinesCalendar({ tasks, projects, members, currentUserId, sho
                 <div className="dl-wbody">
                   {dayTasks.map(t => (
                     <div key={t.id} className="dl-wtask" title={t.title}>
-                      <span className="dl-od-dot" style={{ background: priorityColor(t.priority) }} />
                       <span className="dl-wtitle">{t.title}</span>
                     </div>
                   ))}
@@ -311,31 +342,8 @@ export function DeadlinesCalendar({ tasks, projects, members, currentUserId, sho
         </div>
       )}
 
-      <div className="dl-upcoming">
-        <h3>Upcoming deadlines</h3>
-        {upcomingDates.length === 0 ? (
-          <p className="empty-hint">Nothing due from today onward.</p>
-        ) : (
-          upcomingDates.map(date => (
-            <div key={date} className="dl-up-group">
-              <div className="dl-up-date">
-                {relativeDateLabel(date, today)}
-                <span className="dl-up-full">{new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-              </div>
-              {upcomingByDate[date].map(e => e.type === 'project'
-                ? <ProjectRow key={'p' + e.item.id} project={e.item} />
-                : <TaskRow key={'t' + e.item.id} task={e.item} assignees={resolveAssignees(e.item)} />
-              )}
-            </div>
-          ))
-        )}
-      </div>
-
       <div className="dl-legend">
-        <span><span className="dl-lg-dot" style={{ background: '#ef4444' }} />High</span>
-        <span><span className="dl-lg-dot" style={{ background: '#f59e0b' }} />Medium</span>
-        <span><span className="dl-lg-dot" style={{ background: '#94a3b8' }} />Low</span>
-        <span className="dl-lg-sep"><span className="dl-lg-flag">⚑</span> Project deadline</span>
+        <span><span className="dl-lg-flag">⚑</span> Project deadline</span>
       </div>
     </div>
   )
@@ -344,7 +352,6 @@ export function DeadlinesCalendar({ tasks, projects, members, currentUserId, sho
 function TaskRow({ task, assignees }) {
   return (
     <div className="dl-row">
-      <span className="dl-row-pdot" style={{ background: priorityColor(task.priority) }} title={`${task.priority} priority`} />
       <span className="dl-row-title">{task.title}</span>
       {task.project_id && (
         // Tint comes from the .pc-N custom properties in index.css rather than an
@@ -376,6 +383,3 @@ function relativeDateLabel(dateStr, today) {
   return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' })
 }
 
-function priorityColor(p) {
-  return p === 'high' ? '#ef4444' : p === 'low' ? '#94a3b8' : '#f59e0b'
-}

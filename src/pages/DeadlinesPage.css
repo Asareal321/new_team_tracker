@@ -11,7 +11,37 @@
   border-radius: 10px;
   padding: 0.6rem 0.85rem;
 }
+.dl-titleline { display: flex; flex-direction: column; gap: 0.55rem; }
 .dl-monthnav { display: flex; align-items: center; gap: 0.5rem; }
+
+/* One shape for all three controls. They were a bordered button next to a
+   segmented pair, which read as two separate mechanisms for what is one
+   question: what am I looking at? */
+.dl-views { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+.dl-views-gap { width: 0.35rem; }
+.dl-pill {
+  padding: 0.32rem 0.85rem;
+  min-height: 32px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-2);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 120ms, background 120ms, color 120ms;
+}
+.dl-pill:hover { border-color: var(--text-4); color: var(--text-1); }
+/* Filled, not merely outlined — at this size a border change alone is easy to
+   miss, and which view you are in is the one thing this row has to say. */
+.dl-pill.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-on);
+  font-weight: 600;
+}
+.dl-pill-action { color: var(--text-3); }
 .dl-month { font-size: 1rem; font-weight: 600; color: var(--text-1); min-width: 8.5rem; text-align: center; }
 .dl-navbtn {
   width: 28px; height: 28px;
@@ -325,12 +355,38 @@ html[data-theme="dark"] .dl-day.today .dl-daynum { background: var(--brand-lime)
 
 /* Phone: the week scrolls horizontally rather than shrinking to slivers. */
 @media (max-width: 820px) {
+  /* One day per row rather than a sideways scroller.
+     Seven columns at 42% each meant two-and-a-bit days visible and the rest
+     behind a gesture with nothing to indicate it — a whole week you had to
+     know was there. Stacked, the week is one scroll like everything else on
+     the page, and each day gets the full width for its titles instead of a
+     third of it. */
   .dl-week {
     display: flex;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
+    flex-direction: column;
+    gap: 0.35rem;
   }
-  .dl-week::-webkit-scrollbar { display: none; }
-  .dl-wcol { flex: 0 0 42%; scroll-snap-align: start; }
+  .dl-wcol {
+    display: grid;
+    grid-template-columns: 3.6rem minmax(0, 1fr);
+    align-items: start;
+    gap: 0.6rem;
+    padding: 0.5rem 0.6rem;
+  }
+  /* The date becomes a fixed gutter, so every day's tasks start on the same
+     line down the page. */
+  .dl-whead {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.35rem;
+    padding: 0;
+    border-bottom: none;
+    min-height: 0;
+  }
+  .dl-wdow { font-size: 0.68rem; }
+  .dl-wnum { font-size: 0.95rem; }
+  .dl-wbody { padding: 0; gap: 0.25rem; min-height: 0; }
+  .dl-wtask { font-size: 0.8rem; }
+  /* An empty day should cost one line, not a card. */
+  .dl-wcol:not(.today) .dl-wempty { opacity: 0.5; }
 }
