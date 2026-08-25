@@ -4,20 +4,22 @@
 .dl-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   flex-wrap: wrap;
   gap: 0.65rem;
   background: var(--bg-surface);
   border-radius: 10px;
   padding: 0.6rem 0.85rem;
 }
-.dl-titleline { display: flex; flex-direction: column; gap: 0.55rem; }
+/* Centred: the month and the three views are one masthead for the page, and
+   left-aligned against a wide toolbar they read as two unrelated groups. */
+.dl-titleline { display: flex; flex-direction: column; align-items: center; gap: 0.55rem; }
 .dl-monthnav { display: flex; align-items: center; gap: 0.5rem; }
 
 /* One shape for all three controls. They were a bordered button next to a
    segmented pair, which read as two separate mechanisms for what is one
    question: what am I looking at? */
-.dl-views { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+.dl-views { display: flex; align-items: center; justify-content: center; gap: 0.35rem; flex-wrap: wrap; }
 .dl-views-gap { width: 0.35rem; }
 .dl-pill {
   padding: 0.32rem 0.85rem;

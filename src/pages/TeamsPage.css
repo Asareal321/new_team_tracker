@@ -480,7 +480,19 @@ html[data-theme="dark"] .project-tile[class*="pc-"] .tile-progress { background:
 }
 
 @media (max-width: 720px) {
-  .teams-page { grid-template-columns: 1fr; }
+  /* minmax(0, 1fr), not 1fr. A grid item's default min-width is auto, which
+     means "as wide as my widest child insists on being" — so one long name or
+     one nowrap chip pushed the whole column past the screen and gave the page
+     a sideways scroll. This is the actual cause; overflow-x: hidden on the
+     body would only have hidden it. */
+  .teams-page { grid-template-columns: minmax(0, 1fr); }
+  .teams-list-col, .team-detail-col { min-width: 0; }
+}
+
+@media (max-width: 460px) {
+  /* 220px minimum plus the card's own padding does not fit twice, and
+     auto-fill would rather overflow than drop to one column. */
+  .project-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 640px) {

@@ -15,6 +15,7 @@ import PackOpening from '../components/PackOpening'
 import FlowerGrown from '../components/FlowerGrown'
 import PacketArt from '../components/PacketArt'
 import ListFlowerModal from '../components/ListFlowerModal'
+import FlowerMenu from '../components/FlowerMenu'
 import useDaylight from '../lib/useDaylight'
 import { useAttention } from '../components/useAttention'
 import {
@@ -81,6 +82,9 @@ export default function GardenPage() {
   const [celebrating, setCelebrating] = useState(null)
   // { flower, seed } — a bed on its way to the market, waiting for a price.
   const [listing, setListing] = useState(null)
+  // The flower whose sheet is open. Separate from `listing`, because opening
+  // the sheet is not yet a decision to sell.
+  const [openFlower, setOpenFlower] = useState(null)
   const [tick, setTick] = useState(0)
 
   // Drive the countdown once a second while a seed is in the ground.
@@ -164,13 +168,6 @@ export default function GardenPage() {
   const awards = evaluate(state, flowers.length)
   const earnedCount = awards.filter(a => a.earned).length
 
-  const counts = {
-    greenhouse: packetCount ? `${packetCount} to open` : isReady ? 'ready' : null,
-    garden: `${flowers.length}/${plotCount}`,
-    herbarium: `${foundCount}/${SEEDS.length}`,
-    awards: `${earnedCount}/${awards.length}`,
-    shop: affordablePackets ? `${affordablePackets} affordable` : null,
-  }
 
   return (
     <div className={`garden-scene tod-${phase.key}`} data-tick={tick}>
@@ -224,7 +221,6 @@ export default function GardenPage() {
                     the button's title — an icon alone tells a screen reader
                     nothing. */}
                 <span className="shelf-label">{t.label}</span>
-                {counts[t.key] && <span className="shelf-count">{counts[t.key]}</span>}
                 {signal && (
                   <span className={`shelf-news shelf-news-${signal.level}`}>
                     <span className="sr-only">{why}</span>
@@ -475,11 +471,7 @@ export default function GardenPage() {
                         index={i}
                         flower={flower}
                         seed={seed}
-                        onCompost={() => {
-                          if (!window.confirm(`Compost the ${seed.name.toLowerCase()}? It's gone for good.`)) return
-                          run(() => compostPlanted(flower.id), n => `${n} composted.`)
-                        }}
-                        onList={() => setListing({ flower, seed })}
+                        onOpen={() => setOpenFlower({ flower, seed })}
                       />
                     )
                   }
@@ -708,6 +700,20 @@ export default function GardenPage() {
       {/* The payoff for a finished grow, played when you choose to keep it —
           so it lands on a decision you made rather than interrupting you the
           moment a timer expired. The bed picker is armed on the way out. */}
+      {openFlower && (
+        <FlowerMenu
+          seed={openFlower.seed}
+          onClose={() => setOpenFlower(null)}
+          onList={() => { setListing(openFlower); setOpenFlower(null) }}
+          onCompost={() => {
+            const { flower, seed } = openFlower
+            if (!window.confirm(`Compost the ${seed.name.toLowerCase()}? It's gone for good.`)) return
+            setOpenFlower(null)
+            run(() => compostPlanted(flower.id), n => `${n} composted.`)
+          }}
+        />
+      )}
+
       {listing && (
         <ListFlowerModal
           flower={listing.flower}
@@ -747,7 +753,7 @@ export default function GardenPage() {
 
 // A planted bed: draggable so it can be rearranged, and droppable so another
 // bed can be swapped onto it.
-function FilledPlot({ index, flower, seed, onList, onCompost }) {
+function FilledPlot({ index, flower, seed, onOpen }) {
   const { attributes, listeners, setNodeRef: dragRef, isDragging } = useDraggable({ id: flower.id })
   const { setNodeRef: dropRef, isOver } = useDroppable({ id: `plot-${index}` })
 
@@ -761,31 +767,16 @@ function FilledPlot({ index, flower, seed, onList, onCompost }) {
           still work while any drag from the soil picks the bed up. */}
       <span ref={dragRef} className="plot-grab" {...listeners} {...attributes} aria-label={`Move ${seed.name}`} />
       <PlotCluster seed={seed} />
-      <span className="plot-name">{seed.name}</span>
-      {/* One bar, two matched halves. The labels drop out on a small bed —
-          the garden grows sideways and the beds shrink to about 48px at full
-          size, where two words cannot fit — so each button leads with a glyph
-          and keeps its title and aria-label either way. */}
-      <div className="plot-actions">
-        <button
-          className="plot-act plot-sell"
-          title={`Put the ${seed.name.toLowerCase()} on the market`}
-          aria-label={`Sell the ${seed.name.toLowerCase()}`}
-          onClick={onList}
-        >
-          <span aria-hidden="true">🪙</span>
-          <span className="plot-act-label">Sell</span>
-        </button>
-        <button
-          className="plot-act plot-compost"
-          title={`Compost the ${seed.name.toLowerCase()} — nothing comes back`}
-          aria-label={`Compost the ${seed.name.toLowerCase()}`}
-          onClick={onCompost}
-        >
-          <span aria-hidden="true">🗑</span>
-          <span className="plot-act-label">Compost</span>
-        </button>
-      </div>
+      {/* The bed is soil and a bloom, nothing else. The name used to appear on
+          hover — which a phone does not have — and two buttons shared the foot
+          of a tile 112px wide at best. Everything they did now lives in the
+          sheet this opens, where there is room to show the flower and to say
+          what each action costs. */}
+      <button
+        className="plot-open"
+        onClick={onOpen}
+        aria-label={`${seed.name} — sell, or compost`}
+      />
     </div>
   )
 }

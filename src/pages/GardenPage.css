@@ -634,8 +634,8 @@ html[data-theme="dark"] .plot-compost:hover { background: #a8332a; border-color:
 
 @media (max-width: 620px) {
   .garden-content { padding: 1.25rem 0.85rem 2.5rem; }
-  .garden-head { flex-direction: column; align-items: stretch; gap: 1.4rem; margin-bottom: 2rem; }
-  .coin-pouch { align-self: flex-start; }
+  .garden-head { gap: 1rem; margin-bottom: 1.5rem; }
+  .coin-pouch { align-self: center; }
   .garden-title { font-size: 1.4rem; }
   /* Same shape on a phone, just a smaller floor for each bed — the column
      count is the garden's size and shouldn't change with the window. */
@@ -1552,3 +1552,39 @@ html[data-theme="dark"] .cloud-bank {
    its label rather than staying a separate grey. */
 .shelf-icon { display: flex; align-items: center; justify-content: center; }
 .shelf-tab { position: relative; }
+
+/* --- the bed is a bed --------------------------------------------------- */
+/*
+   The hover name and the two foot buttons are gone; tapping a bed opens its
+   sheet (components/FlowerMenu.jsx). What is left is soil, a bloom, and one
+   invisible surface to press.
+
+   It sits ABOVE the drag handle rather than below it, which is the reverse of
+   what the old buttons did — a tap should open the flower, and a drag should
+   still pick the bed up, and dnd-kit only starts a drag after a few pixels of
+   movement, so a press that never moves falls through to this.               */
+.plot-open {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border: none;
+  background: none;
+  border-radius: 9px;
+  cursor: pointer;
+  /* The drag handle beneath needs the gesture; this only wants the tap. */
+  touch-action: none;
+}
+.plot-open:focus-visible { outline: 2px solid #ffe066; outline-offset: -3px; }
+.plot.filled:hover .plot-open { background: rgba(255, 255, 255, 0.08); }
+
+/* --- centred header ----------------------------------------------------- */
+/* The title and the purse were pushed to opposite ends of a wide row. Centred,
+   they read as one masthead rather than as two things that happen to share a
+   line. */
+.garden-head {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.garden-purse { justify-content: center; flex-wrap: wrap; }
+.shelf-tabs { justify-content: center; }
