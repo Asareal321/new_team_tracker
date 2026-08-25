@@ -1,6 +1,9 @@
 import SwiftUI
 import WebKit
 import SafariServices
+// ObservableObject and @Published are Combine, and SwiftUI no longer re-exports
+// it implicitly — without this the model silently fails to conform.
+import Combine
 
 enum AppConfig {
     static let siteURL = URL(string: "https://trakkitnow.ca")!
