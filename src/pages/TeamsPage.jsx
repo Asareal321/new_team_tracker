@@ -34,6 +34,11 @@ export default function TeamsPage() {
   const [members, setMembers] = useState([])
   const [copied, setCopied] = useState(false)
   const [roleError, setRoleError] = useState('')
+  // Deleting a community takes its projects and everyone's tasks in it with
+  // them, for every member — so it asks for the name rather than for a click.
+  const [pendingTeamDelete, setPendingTeamDelete] = useState(null)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   const [projects, setProjects] = useState([])
   const [projectMembers, setProjectMembers] = useState([])
@@ -213,9 +218,66 @@ export default function TeamsPage() {
 
   const currentTeam = teams.find(t => t.id === currentTeamId)
   const isOwner = members.find(m => m.id === user.id)?.role === 'owner'
+
+  async function confirmDeleteTeam() {
+    const team = pendingTeamDelete
+    if (!team || deleteConfirmText.trim() !== team.name) return
+    setDeleting(true)
+    setRoleError('')
+    try {
+      // The cascades do the rest: projects, tasks and memberships all name
+      // teams(id) on delete cascade, so this is one statement.
+      const { error } = await supabase.from('teams').delete().eq('id', team.id)
+      if (error) throw error
+      if (currentTeamId === team.id) setCurrentTeam(null)
+      await refreshTeams()
+      setPendingTeamDelete(null)
+      setDeleteConfirmText('')
+    } catch (err) {
+      setRoleError(err.message || 'Could not delete that community.')
+    } finally {
+      setDeleting(false)
+    }
+  }
   const editingProject = projects.find(p => p.id === editingProjectId) || null
   return (
     <div className="teams-page">
+      {pendingTeamDelete && (
+        <div className="modal-overlay" onClick={() => setPendingTeamDelete(null)}>
+          <div className="swap-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
+            <p className="swap-eyebrow">Delete community</p>
+            <h3 className="swap-heading">Delete &ldquo;{pendingTeamDelete.name}&rdquo;?</h3>
+            <p className="swap-body">
+              This deletes the community for <strong>everyone in it</strong>, along with
+              its projects and every task filed under them. It cannot be undone, and
+              members are not told in advance.
+            </p>
+            <p className="swap-body">
+              Type <strong>{pendingTeamDelete.name}</strong> to confirm.
+            </p>
+            <input
+              className="team-del-confirm"
+              value={deleteConfirmText}
+              onChange={e => setDeleteConfirmText(e.target.value)}
+              placeholder={pendingTeamDelete.name}
+              aria-label="Type the community name to confirm"
+              autoFocus
+            />
+            <div className="swap-foot swap-foot-split">
+              <button
+                className="bb-btn"
+                disabled={deleting}
+                onClick={() => { setPendingTeamDelete(null); setDeleteConfirmText('') }}
+              >Keep it</button>
+              <button
+                className="bb-btn danger"
+                disabled={deleting || deleteConfirmText.trim() !== pendingTeamDelete.name}
+                onClick={confirmDeleteTeam}
+              >{deleting ? 'Deleting…' : 'Delete for everyone'}</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="teams-list-col">
         <h2>Your communities</h2>
         {teams.length === 0 && <p className="empty-hint">You’re not in any communities yet.</p>}
@@ -227,6 +289,22 @@ export default function TeamsPage() {
           >
             <span>{t.name}</span>
             <span className="role-tag">{t.role}</span>
+            {/* Only an owner sees this, and the schema agrees: teams_delete_owner
+                is the policy, so a member who forged the click still fails. */}
+            {t.role === 'owner' && (
+              <span
+                role="button"
+                tabIndex={0}
+                className="team-del"
+                title={`Delete ${t.name}`}
+                aria-label={`Delete ${t.name}`}
+                onClick={e => { e.stopPropagation(); setPendingTeamDelete(t) }}
+                onKeyDown={e => {
+                  if (e.key !== 'Enter' && e.key !== ' ') return
+                  e.preventDefault(); e.stopPropagation(); setPendingTeamDelete(t)
+                }}
+              >✕</span>
+            )}
           </button>
         ))}
 

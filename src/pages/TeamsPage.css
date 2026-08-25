@@ -641,3 +641,50 @@ html[data-theme="dark"] .tile-member-overflow { background: rgba(255,255,255,0.1
   flex-shrink: 0;
 }
 .visit-garden-btn:hover { border-color: var(--accent); background: var(--bg-accent); }
+
+/* Delete, beside the owner tag. A span rather than a nested <button>, because
+   the row itself is already a button and nesting one inside another is invalid
+   and behaves unpredictably — this keeps the role and the keyboard handling
+   without the invalid markup. */
+.team-del {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-left: 0.35rem;
+  border-radius: 50%;
+  color: var(--text-4);
+  font-size: 0.72rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.team-del:hover, .team-del:focus-visible {
+  background: var(--red-bg, #fdeaea);
+  color: var(--red-text, #96281f);
+  outline: none;
+}
+
+.team-del-confirm {
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--r-sm, 8px);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-1);
+  font-family: inherit;
+  font-size: 16px;
+  margin-bottom: 0.2rem;
+}
+.team-del-confirm:focus { outline: none; border-color: var(--accent); }
+
+/* The one button in the app that destroys other people's work should look
+   like it. Filled, not merely red-texted — this is not a "danger link". */
+.bb-btn.danger {
+  background: #96281f;
+  border-color: #7a1f18;
+  color: #fff;
+}
+.bb-btn.danger:hover:not(:disabled) { background: #7a1f18; }
+.bb-btn.danger:disabled { opacity: 0.45; cursor: not-allowed; }
