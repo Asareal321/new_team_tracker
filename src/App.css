@@ -229,7 +229,9 @@ html[data-theme="dark"] .app-sidebar {
 }
 
 @media (max-width: 820px) {
-  .app-main { padding: 1rem; }
+  /* Was 1rem all round. On a phone that is 32px of ground taken off a 375px
+     screen for no gain — the cards already have their own padding. */
+  .app-main { padding: 0.55rem 0.6rem 1.25rem; }
 }
 
 .loading { color: var(--on-page-2); font-size: 0.9rem; padding: 2rem 0; }

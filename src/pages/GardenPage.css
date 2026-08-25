@@ -1461,3 +1461,94 @@ html[data-theme="dark"] .cloud-bank {
 @media (prefers-reduced-motion: reduce) {
   .cloud-bank-puff { animation: none; }
 }
+
+/* --- the garden on a phone ---------------------------------------------- */
+/*
+   Three changes, all of them buying back space for the thing the page is
+   actually about.
+
+   The rosette becomes one bloom. Six blooms in a ring is a lovely bed at
+   112px and a smudge at 78px — the ring's whole job is to make a bed read as
+   tended rather than as a sticker, and at phone size it stops doing that job
+   and only costs pixels.
+
+   The grid becomes three columns and stops shrinking the tiles to fit. The
+   garden grows downward instead of sideways, which is the direction a phone
+   already scrolls.
+
+   And the scenery gets out of the way. The sky, the sun and the drifting
+   clouds are the reason the page is nice to look at on a desktop; on a 375px
+   screen they are a green band above the work.                              */
+
+@media (max-width: 620px) {
+  /* One bloom to a bed. Hidden rather than not rendered, so the markup is the
+     same everywhere and the rosette returns when the screen does. */
+  .cluster-bloom { display: none; }
+  .cluster-bloom.is-centre {
+    display: block;
+    /* Free of the ring, the centre can fill the bed properly. */
+    font-size: 2.9rem;
+  }
+
+  /* Three across, and the tile takes what it is given rather than being
+     capped — --cols is set inline for the desktop layout, so this overrides
+     the resolved property instead of the variable. */
+  .plot-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-width: 100%;
+    gap: 0.55rem;
+  }
+
+  /* Full-bleed: the rounded card and its border cost width on every side for
+     a frame nobody needs at this size. */
+  .garden-scene {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    box-shadow: none;
+  }
+  .garden-content { padding: 1rem 0.7rem 2.5rem; }
+
+  /* The sky keeps a strip for the sun and the time of day, and gives the rest
+     back. */
+  .garden-sky {
+    background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bottom) 18%, var(--grass) 18%, var(--grass-dark) 100%);
+  }
+  .sky-cloud { display: none; }
+
+  /* Icons only. The label stays in the DOM, read aloud, and is the button's
+     title — an icon on its own tells a screen reader nothing. */
+  .shelf-tabs {
+    gap: 0.25rem;
+    padding: 0;
+    justify-content: space-between;
+  }
+  .shelf-tab {
+    flex: 1;
+    justify-content: center;
+    padding: 0.5rem 0.2rem;
+    /* A real tap target, which the text tabs never were. */
+    min-height: 44px;
+  }
+  .shelf-label {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  /* The count becomes a badge on the icon rather than a word beside it. */
+  .shelf-count {
+    position: absolute;
+    top: 2px;
+    right: 6px;
+    font-size: 0.58rem;
+    padding: 0 0.25rem;
+  }
+}
+
+/* The icon is the tab's own colour, so the selected tab's glyph darkens with
+   its label rather than staying a separate grey. */
+.shelf-icon { display: flex; align-items: center; justify-content: center; }
+.shelf-tab { position: relative; }

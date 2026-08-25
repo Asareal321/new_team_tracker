@@ -17,15 +17,18 @@ import PacketArt from '../components/PacketArt'
 import ListFlowerModal from '../components/ListFlowerModal'
 import useDaylight from '../lib/useDaylight'
 import { useAttention } from '../components/useAttention'
+import {
+  IconGreenhouse, IconBeds, IconHerbarium, IconAwards, IconShop,
+} from '../components/GardenTabIcons'
 import { attentionTitle } from '../lib/attention'
 import './GardenPage.css'
 
 const TABS = [
-  { key: 'greenhouse', label: 'Greenhouse' },
-  { key: 'garden', label: 'Garden' },
-  { key: 'herbarium', label: 'Herbarium' },
-  { key: 'awards', label: 'Awards' },
-  { key: 'shop', label: 'Shop' },
+  { key: 'greenhouse', label: 'Greenhouse', Icon: IconGreenhouse },
+  { key: 'garden', label: 'Garden', Icon: IconBeds },
+  { key: 'herbarium', label: 'Herbarium', Icon: IconHerbarium },
+  { key: 'awards', label: 'Awards', Icon: IconAwards },
+  { key: 'shop', label: 'Shop', Icon: IconShop },
 ]
 
 const RARITY_ORDER = [1, 2, 3, 4, 5]
@@ -213,10 +216,14 @@ export default function GardenPage() {
                 role="tab"
                 aria-selected={tab === t.key}
                 className={`shelf-tab${tab === t.key ? ' on' : ''}${signal ? ` has-news news-${signal.level}` : ''}`}
-                title={why || undefined}
+                title={why ? `${t.label} — ${why}` : t.label}
                 onClick={() => setTab(t.key)}
               >
-                {t.label}
+                <span className="shelf-icon" aria-hidden="true"><t.Icon /></span>
+                {/* Still in the DOM on a phone where it is hidden, and still
+                    the button's title — an icon alone tells a screen reader
+                    nothing. */}
+                <span className="shelf-label">{t.label}</span>
                 {counts[t.key] && <span className="shelf-count">{counts[t.key]}</span>}
                 {signal && (
                   <span className={`shelf-news shelf-news-${signal.level}`}>

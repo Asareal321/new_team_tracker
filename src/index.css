@@ -151,3 +151,21 @@ html[data-theme="dark"] .pc-5 { --pj-bg: #2A2744; --pj-text: #B4ADF7; }
 html[data-theme="dark"] .pc-6 { --pj-bg: #36233C; --pj-text: #D4A2E3; }
 html[data-theme="dark"] .pc-7 { --pj-bg: #3E2030; --pj-text: #EA9CC3; }
 html[data-theme="dark"] .pc-8 { --pj-bg: #2F2A25; --pj-text: #BBB7AF; }
+
+/* --- less scenery on a phone -------------------------------------------- */
+/*
+   The page ground is a strong green. On a desktop it frames the work and is
+   most of why the app looks like itself. On a 375px screen the same green is
+   a wide band around a narrow column — decoration charged by the pixel, on
+   the axis there is least of.
+
+   So on a phone it drops to a tint of itself. The green is still there, still
+   recognisably the same product, but it reads as paper rather than as lawn,
+   and the content gets the width back.
+
+   `:root` on purpose, not `html`: the dark theme sets --bg-page on
+   html[data-theme="dark"], which is the more specific selector and therefore
+   still wins. Dark mode is unchanged by this.                              */
+@media (max-width: 820px) {
+  :root { --bg-page: #E8F3DE; }
+}
