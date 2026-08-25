@@ -178,3 +178,33 @@
   .l-board { grid-template-columns: 1fr; }
   .l-cta { flex-direction: column; align-items: stretch; }
 }
+
+/* The band's count sits in its header. "4/4" is the argument the page is
+   making, so it is styled to be read rather than tucked away. */
+.l-col-n {
+  float: right;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #7a8a6b;
+  letter-spacing: 0.01em;
+}
+/* Full is not an error state, so it is not red — it is simply the number
+   doing its job. */
+.l-col-full { color: #3b6d11; }
+
+/* Done today is a running count that clears each night, so it reads as a
+   footer under Doing rather than as a column of its own. */
+.l-done-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: #eef6e4;
+  color: #3b6d11;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.l-done-strip strong { font-weight: 700; }

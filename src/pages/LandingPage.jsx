@@ -1,4 +1,10 @@
+import { MAX_DOING, MAX_UP_NEXT } from '../lib/boardLimits'
 import './LandingPage.css'
+
+// The numbers on this page are read from the board's own limits rather than
+// typed into the copy. A landing page that quietly disagrees with the product
+// is worse than one that says less — and these two numbers ARE the pitch, so
+// they are the last two that should be allowed to drift.
 
 
 function FeatureBars() {
@@ -57,11 +63,13 @@ export default function LandingPage({ onSignIn, onSignUp }) {
 
           <header className="l-hero">
             <h1 className="l-headline">
-              Deliver results<br />
-              <span className="l-underline">everyday</span>.
+              {MAX_UP_NEXT} things next.<br />
+              <span className="l-underline">{MAX_DOING} things now</span>.
             </h1>
             <p className="l-sub">
-              Priorities, daily updates, and an end-of-day archive — so your team always knows what got done. Simple task management built for small teams.
+              Most task apps let you write down everything and call it a plan. trakkit
+              holds {MAX_UP_NEXT} things in Up next and {MAX_DOING} in Doing — and says no when you try to
+              add one more. That refusal is the product.
             </p>
             <div className="l-cta">
               <button className="l-btn l-btn-primary" onClick={onSignUp}>Get started free</button>
@@ -69,21 +77,30 @@ export default function LandingPage({ onSignIn, onSignUp }) {
             </div>
           </header>
 
+          {/* The real bands, and deliberately shown full: "4/4" and "2/2" are
+              the argument, so the mock should be the moment the board says no
+              rather than a tidy half-empty one. */}
           <div className="l-board" aria-hidden="true">
             <div className="l-col">
-              <div className="l-col-h">To-do</div>
-              <div className="l-card"><span className="l-dot l-dot-high" />Draft Q3 brief</div>
-              <div className="l-card"><span className="l-dot l-dot-low" />Update docs</div>
+              <div className="l-col-h">Braindump<span className="l-col-n">no limit</span></div>
+              <div className="l-card"><span className="l-dot l-dot-low" />Rewrite the pricing page</div>
+              <div className="l-card"><span className="l-dot l-dot-low" />Ask Priya about Q3</div>
+              <div className="l-card"><span className="l-dot l-dot-low" />Fix the mobile nav</div>
             </div>
             <div className="l-col">
-              <div className="l-col-h">In progress</div>
-              <div className="l-card"><span className="l-dot l-dot-med" />Ship onboarding</div>
+              <div className="l-col-h">Up next<span className="l-col-n l-col-full">{MAX_UP_NEXT}/{MAX_UP_NEXT}</span></div>
+              <div className="l-card"><span className="l-dot l-dot-med" />Draft the Q3 brief</div>
+              <div className="l-card"><span className="l-dot l-dot-med" />Review Sam&rsquo;s PR</div>
             </div>
             <div className="l-col">
-              <div className="l-col-h">Done</div>
-              <div className="l-card l-card-done">
+              <div className="l-col-h">Doing<span className="l-col-n l-col-full">{MAX_DOING}/{MAX_DOING}</span></div>
+              <div className="l-card"><span className="l-dot l-dot-high" />Ship onboarding</div>
+              <div className="l-card"><span className="l-dot l-dot-high" />Fix the login bug</div>
+              {/* Done today is a count, not a column — the board clears it each
+                  day, and a fourth column would sell the wrong shape. */}
+              <div className="l-done-strip">
                 <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#3b6d11" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                Fix login bug
+                <strong>5</strong> done today
               </div>
             </div>
           </div>
@@ -92,27 +109,27 @@ export default function LandingPage({ onSignIn, onSignUp }) {
 
       <section className="l-features">
         <div className="l-inner">
-          <h2 className="l-feat-heading">Task tracking built for communities</h2>
+          <h2 className="l-feat-heading">A board small enough to finish</h2>
           <div className="l-feat-grid">
             <div className="l-feat">
               <div className="l-feat-icon"><FeatureBars /></div>
-              <h3>Priorities that stick</h3>
-              <p>Drag tasks into high, medium, and low zones so the work that matters rises to the top.</p>
+              <h3>A braindump that takes it all</h3>
+              <p>Capture without deciding. The pile has no limit, so a full board never stops you writing something down.</p>
             </div>
             <div className="l-feat">
               <div className="l-feat-icon"><FeatureCheck /></div>
-              <h3>Updates in one click</h3>
-              <p>Move a task and post what changed at the same time — To-do, In progress, or Done.</p>
+              <h3>Bands that push back</h3>
+              <p>Up next holds {MAX_UP_NEXT}, Doing holds {MAX_DOING}. Full means full — swap something out, and mean it.</p>
             </div>
             <div className="l-feat">
               <div className="l-feat-icon"><FeatureCalendar /></div>
-              <h3>End-of-day archive</h3>
-              <p>Finished work rolls into a calendar each day, so you can see exactly what got done.</p>
+              <h3>Finishing pays</h3>
+              <p>Completed work earns clouds, seeds and coins that grow a garden you actually keep.</p>
             </div>
             <div className="l-feat">
               <div className="l-feat-icon"><FeatureTeams /></div>
-              <h3>Built for communities</h3>
-              <p>Switch between personal and community boards — everyone works from the same source of truth.</p>
+              <h3>Streaks, not guilt</h3>
+              <p>One finished task a day keeps it alive. Miss one and you can still pick it up tomorrow.</p>
             </div>
           </div>
         </div>
