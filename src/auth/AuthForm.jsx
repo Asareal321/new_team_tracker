@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { checkDisplayName } from '../lib/displayName'
+import { isNativeApp, rememberMe, setRememberMe } from '../lib/nativeBridge'
 import { useAuth } from './AuthContext'
 import './AuthForm.css'
 
@@ -24,6 +25,9 @@ export default function AuthForm({ initialMode = 'signin', onBack }) {
   const [info, setInfo] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  // Only offered in the iOS app: in a browser this is the browser's business,
+  // and a checkbox that did nothing would be worse than no checkbox.
+  const [remember, setRemember] = useState(rememberMe)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -124,6 +128,23 @@ export default function AuthForm({ initialMode = 'signin', onBack }) {
             autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
           />
         </label>
+
+        {isNativeApp() && (
+          <label className="auth-remember">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={e => { setRemember(e.target.checked); setRememberMe(e.target.checked) }}
+            />
+            <span>
+              Keep me signed in on this device
+              <small>
+                Stored in the iPhone&rsquo;s Keychain, never sent anywhere. Turn it off
+                and you&rsquo;ll sign in each time you open the app.
+              </small>
+            </span>
+          </label>
+        )}
 
         {error && <p className="auth-error">{error}</p>}
         {info && <p className="auth-info">{info}</p>}

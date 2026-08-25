@@ -26,9 +26,22 @@ private func bridgeScript(restoring session: String?) -> String {
     let payload = session ?? "null"
     return #"""
     (function () {
+      // Tells the web build it is running inside the app, so the iOS-only
+      // "Keep me signed in" checkbox renders. In a browser this is undefined
+      // and the checkbox never appears.
+      window.__TRAKKIT_NATIVE__ = true;
+
       var KEY = /^sb-.*-auth-token$/;
+      // The user's answer, owned by the web side because that is where the
+      // checkbox is. Absent means yes: the default is the behaviour people
+      // expect from an app on their own phone.
+      function allowed() {
+        try { return localStorage.getItem('trakkit.rememberMe') !== 'off'; }
+        catch (e) { return true; }
+      }
+
       var restored = __RESTORED__;
-      if (restored) {
+      if (restored && allowed()) {
         for (var k in restored) {
           // Never overwrite a live session: the page may already hold a newer
           // one than the Keychain does.
@@ -45,7 +58,10 @@ private func bridgeScript(restoring session: String?) -> String {
       }
       var last = null;
       function sync() {
-        var now = JSON.stringify(snapshot());
+        // Not allowed means post nothing, which clears the Keychain. Unticking
+        // the box therefore takes effect at once rather than at some later
+        // sign-out.
+        var now = allowed() ? JSON.stringify(snapshot()) : '{}';
         if (now === last) return;
         last = now;
         window.webkit.messageHandlers.session.postMessage(now);

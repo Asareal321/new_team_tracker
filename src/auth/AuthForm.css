@@ -125,3 +125,31 @@
   text-align: center;
 }
 .auth-switch:hover { text-decoration: underline; }
+
+/* Only ever rendered inside the iOS app — see lib/nativeBridge.js. It sits
+   above the button rather than below it because it changes what the button
+   does, and a consent you meet after acting on it is not a consent. */
+.auth-remember {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.15rem 0;
+  font-size: 0.88rem;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.auth-remember input {
+  /* Comfortably tappable, and aligned to the first line of the label. */
+  width: 20px;
+  height: 20px;
+  margin: 1px 0 0;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+.auth-remember small {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--text-4);
+}

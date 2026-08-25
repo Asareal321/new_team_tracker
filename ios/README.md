@@ -53,8 +53,14 @@ and breaks in confusing ways, so make it in Xcode:
 
 ## Staying signed in
 
-The session is mirrored into the Keychain and put back before the page's own
-scripts run, so the app opens signed in.
+Opt-in, with the checkbox on the sign-in screen and a switch in Account. When
+it is on, the session is mirrored into the Keychain and put back before the
+page's own scripts run, so the app opens signed in.
+
+The web side owns the answer — it is written to `trakkit.rememberMe` in
+localStorage, and the injected script reads it. Turning it off makes the next
+sync post an empty snapshot, which clears the Keychain, so revoking takes
+effect at once rather than at some later sign-out.
 
 This is not belt-and-braces — WKWebView's `localStorage` cannot be relied on by
 itself. iOS reclaims it under storage pressure, tracking prevention caps

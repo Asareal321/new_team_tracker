@@ -7,9 +7,11 @@ import { useGarden } from '../context/GardenContext'
 import { useTeam } from '../context/TeamContext'
 import Onboarding from '../components/Onboarding'
 import { resetTour, requestTour } from '../lib/tourState'
+import { isNativeApp, rememberMe, setRememberMe } from '../lib/nativeBridge'
 import './AccountPage.css'
 
 export default function AccountPage() {
+  const [remember, setRemember] = useState(rememberMe)
   const { user, profile, signOut, refreshProfile } = useAuth()
   const navigate = useNavigate()
   const { isDev, openDevPanel, state: garden, setQuietMode } = useGarden()
@@ -78,6 +80,27 @@ export default function AccountPage() {
           </button>
         </div>
       </form>
+
+      {/* Only in the iOS app. A choice you can only make once, at the moment
+          you sign in, is not really a choice — this is where it is taken back. */}
+      {isNativeApp() && (
+        <div className="account-card settings-card">
+          <div>
+            <strong>Stay signed in</strong>
+            <p className="dev-card-hint">
+              {remember
+                ? 'Your sign-in is kept in this iPhone’s Keychain, so the app opens ready to use.'
+                : 'You’ll sign in each time you open the app.'}
+            </p>
+          </div>
+          <div className="settings-controls">
+            <button
+              className="btn-ghost btn-sm"
+              onClick={() => { const next = !remember; setRemember(next); setRememberMe(next) }}
+            >{remember ? 'Turn off' : 'Turn on'}</button>
+          </div>
+        </div>
+      )}
 
       <div className="account-card settings-card">
         <div>
