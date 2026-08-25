@@ -22,7 +22,10 @@
 //   • every route is one the app actually serves.
 //   • a step that changes route is reached by a click, not by a redirect.
 
-export const TOUR_ROUTES = ['/', '/deadlines', '/garden', '/community', '/account']
+// In the order the walk visits them, which is the order of the tabs in the
+// rail and along the bottom bar of the phone. Following the app's own layout
+// is the whole point: you should be able to redo the walk from memory.
+export const TOUR_ROUTES = ['/', '/deadlines', '/community', '/garden', '/account']
 
 // The most a step may say. Roughly a spoken sentence.
 export const MAX_BODY = 130
@@ -152,9 +155,35 @@ export const TOUR_STEPS = [
     body: 'Three zoom levels on the same dates. Pick whichever you think in.',
   },
 
+  // — community ————————————————————————————————————————————————
+  {
+    key: 'community-go', route: '/deadlines', mood: 'point', act: 'click',
+    anchor: [NAV.community],
+    title: 'Click Community',
+    body: 'Friends, a market, and the reason to bring people with you.',
+  },
+  {
+    key: 'referrals', route: '/community', mood: 'happy',
+    anchor: ['.rf-card'],
+    title: 'Bring three friends',
+    body: 'Your link is here. Every three people who join hands you an heirloom packet.',
+  },
+  {
+    key: 'people', route: '/community', mood: 'think',
+    anchor: ['.cp-tabs', '.cp-card'],
+    title: 'Finding people',
+    body: 'Browse the public list or search a name. Nobody sees your garden until you let them.',
+  },
+  {
+    key: 'market', route: '/community', mood: 'happy',
+    anchor: ['.mk-card'],
+    title: 'The marketplace',
+    body: 'Pick something you hold, name your price, put it up. Take it back any time.',
+  },
+
   // — the garden, room by room ————————————————————————————————
   {
-    key: 'garden-go', route: '/deadlines', mood: 'happy', act: 'click',
+    key: 'garden-go', route: '/community', mood: 'happy', act: 'click',
     anchor: [NAV.garden],
     title: 'Click Garden',
     body: 'This is the part that pays you for finishing things.',
@@ -196,35 +225,9 @@ export const TOUR_STEPS = [
     body: 'Last icon. Coins buy packets, and a packet is a roll with printed odds.',
   },
 
-  // — community ————————————————————————————————————————————————
-  {
-    key: 'community-go', route: '/garden', mood: 'point', act: 'click',
-    anchor: [NAV.community],
-    title: 'Click Community',
-    body: 'Friends, a market, and the reason to bring people with you.',
-  },
-  {
-    key: 'referrals', route: '/community', mood: 'happy',
-    anchor: ['.rf-card'],
-    title: 'Bring three friends',
-    body: 'Your link is here. Every three people who join hands you an heirloom packet.',
-  },
-  {
-    key: 'people', route: '/community', mood: 'think',
-    anchor: ['.cp-tabs', '.cp-card'],
-    title: 'Finding people',
-    body: 'Browse the public list or search a name. Nobody sees your garden until you let them.',
-  },
-  {
-    key: 'market', route: '/community', mood: 'happy',
-    anchor: ['.mk-card'],
-    title: 'The marketplace',
-    body: 'Pick something you hold, name your price, put it up. Take it back any time.',
-  },
-
   // — account ————————————————————————————————————————————————
   {
-    key: 'account-go', route: '/community', mood: 'point', act: 'click',
+    key: 'account-go', route: '/garden', mood: 'point', act: 'click',
     anchor: [NAV.account],
     title: 'Last one — click Account',
     body: 'Everything you can change about how this works is on one page.',

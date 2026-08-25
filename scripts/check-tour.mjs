@@ -113,5 +113,54 @@ ok('only the closing step is unanchored',
   anchorless.length === 1 && anchorless[0] === TOUR_STEPS[TOUR_STEPS.length - 1],
   anchorless.map(s => s.key).join(', '))
 
+// — the walk follows the app's own layout —
+//
+// The tabs are in one order in the rail and along the bottom bar of a phone,
+// and the tour visits them in that same order so that redoing it from memory
+// works. Read out of Layout rather than restated here, because a restated copy
+// would be the thing that goes stale.
+
+const layout = readFileSync('src/components/Layout.jsx', 'utf8')
+const navBlock = layout.slice(layout.indexOf('const NAV = ['), layout.indexOf(']', layout.indexOf('const NAV = [')))
+const navOrder = [...navBlock.matchAll(/\{\s*to:\s*'([^']+)'[^}]*\}/g)]
+  // The dashboard is admin-only, so most people never see that tab and the
+  // walk has nothing to say about it.
+  .filter(m => !/admin:\s*true/.test(m[0]))
+  .map(m => m[1])
+
+ok('every tab the walk visits is a real destination in the rail',
+  TOUR_ROUTES.every(r => navOrder.includes(r)),
+  TOUR_ROUTES.filter(r => !navOrder.includes(r)).join(', '))
+
+const walkOrder = navOrder.filter(r => TOUR_ROUTES.includes(r))
+ok('and it visits them in the order they appear there',
+  walkOrder.join(' → ') === TOUR_ROUTES.join(' → '),
+  `rail: ${walkOrder.join(' → ')}  |  tour: ${TOUR_ROUTES.join(' → ')}`)
+
+// The steps themselves have to run in that order too, not just be declared in
+// it — `order` was collected further up.
+ok('the steps run in the same order as the tabs',
+  order.join(' → ') === TOUR_ROUTES.join(' → '), order.join(' → '))
+
+// — replaying gives you nothing —
+//
+// The walk and the setup screens are both replayable from Account, and neither
+// may hand out a second starter or a second public-profile packet. Setup is
+// guarded twice over (BoardPage only mounts it when the account is unonboarded,
+// and completeOnboarding returns early once onboarded); this checks the third
+// guard, which is that replay never reaches the granting screens at all.
+
+const onb = readFileSync('src/components/Onboarding.jsx', 'utf8')
+const replay = onb.match(/const REPLAY_STEPS\s*=\s*\[([^\]]*)\]/)?.[1] ?? ''
+const replaySteps = [...replay.matchAll(/'([^']+)'/g)].map(m => m[1])
+
+ok('replay has steps at all', replaySteps.length > 0, replay)
+for (const granting of ['packet', 'planted', 'profile', 'task']) {
+  ok(`replaying does not reach "${granting}", so nothing is granted twice`,
+    !replaySteps.includes(granting), replaySteps.join(', '))
+}
+ok('and replay bails out before onFinish is ever called',
+  /if \(mode === 'replay'\) return onClose\?\.\(\)/.test(onb))
+
 console.log(`\n${pass}/${pass + fail} passed`)
 process.exit(fail ? 1 : 0)
