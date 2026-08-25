@@ -51,6 +51,27 @@ and breaks in confusing ways, so make it in Xcode:
 4. Drag `brand/appicon/*.png` into `Assets.xcassets → AppIcon`:
    Any Appearance, Dark, Tinted
 
+## Staying signed in
+
+The session is mirrored into the Keychain and put back before the page's own
+scripts run, so the app opens signed in.
+
+This is not belt-and-braces — WKWebView's `localStorage` cannot be relied on by
+itself. iOS reclaims it under storage pressure, tracking prevention caps
+script-written storage, and every reinstall from Xcode replaces the app
+container. Any of those signs you out, and from the user's side all three look
+identical: opened the app, had to sign in again.
+
+`SessionStore.swift` is the Keychain half (`AfterFirstUnlockThisDeviceOnly` —
+readable on a background launch, never carried to another device by a backup).
+`bridgeScript` in `WebView.swift` is the JavaScript half. Signing out inside the
+app posts an empty snapshot, which clears the Keychain — without that, signing
+out would be undone by the next launch.
+
+Note that reinstalling from Xcode no longer signs you out, because Keychain
+items outlive the app container. If you *want* a signed-out state for testing,
+sign out in the app rather than deleting it.
+
 ## Known limitation: Sign in with Google
 
 Google rejects OAuth inside an embedded web view (`403: disallowed_useragent`),
