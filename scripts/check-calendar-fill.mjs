@@ -270,28 +270,66 @@ const oneWaiting = [
   { id: 'bcg1', status: BRAINDUMP, project_id: 'p2', due_date: null },
 ]
 const one = planFill({ block: { title: 'BCG' }, projects: PROJECTS, tasks: oneWaiting, today: TODAY, rand: fixedRand })
-ok('one waiting task evicts exactly one', one.moves.filter(m => m.status === BRAINDUMP).length === 1)
-ok('and seats it', one.moves.filter(m => m.status !== BRAINDUMP).length === 1)
-// The band you sit down in should hold the hour's work, so Doing is the first
-// thing swapped, not the last.
-ok('Doing is the first band handed over',
-  one.moves.find(m => m.status === BRAINDUMP)?.id.startsWith('D'),
-  JSON.stringify(one.moves))
+// The band you sit down in holds the hour's work, full stop. Being in Doing
+// already is not a claim on Doing — that incumbency was the bug.
 ok('and the single task lands in Doing',
-  one.moves.find(m => m.status !== BRAINDUMP)?.status === DOING)
+  one.moves.find(m => m.reason === 'filled')?.status === DOING)
+ok('the task it pushed out drops to Up next, not to the pile',
+  one.moves.some(m => m.reason === 'demoted' && m.status === UP_NEXT && m.id.startsWith('D')),
+  JSON.stringify(one.moves))
+ok('and the spill comes off the bottom of Up next',
+  one.moves.filter(m => m.status === BRAINDUMP).map(m => m.id).join() === 'U3')
+ok('one waiting task costs the board exactly one seat',
+  one.moves.filter(m => m.status === BRAINDUMP).length === 1)
 ok('the board never shrinks', one.moves.filter(m => m.status === BRAINDUMP).length
   <= one.moves.filter(m => m.status !== BRAINDUMP).length)
+ok('nothing is moved twice', new Set(one.moves.map(m => m.id)).size === one.moves.length)
 
 const threeWaiting = [
   ...fullOfProduct,
   ...Array.from({ length: 3 }, (_, i) => ({ id: `b${i}`, status: BRAINDUMP, project_id: 'p2', due_date: null })),
 ]
 const three = planFill({ block: { title: 'BCG' }, projects: PROJECTS, tasks: threeWaiting, today: TODAY, rand: fixedRand })
-ok('three waiting evict exactly three', three.moves.filter(m => m.status === BRAINDUMP).length === 3)
+ok('three waiting cost the board exactly three seats',
+  three.moves.filter(m => m.status === BRAINDUMP).length === 3)
 ok('Doing is filled before Up next',
-  three.moves.filter(m => m.status === DOING).length === MAX_DOING)
+  three.moves.filter(m => m.reason === 'filled' && m.status === DOING).length === MAX_DOING)
 ok('and the third goes to Up next',
-  three.moves.filter(m => m.status === UP_NEXT).length === 1)
+  three.moves.filter(m => m.reason === 'filled' && m.status === UP_NEXT).length === 1)
+ok('both former Doing tasks land in Up next rather than the pile',
+  three.moves.filter(m => m.reason === 'demoted' && m.id.startsWith('D')).length === MAX_DOING)
+
+// — the cascade, on the board that showed the problem —
+//
+// Doing full of last hour's work, Up next empty, one task waiting for the hour
+// you just sat down for. The old rule seated it in Up next, because Doing was
+// "already busy" — which is precisely the incumbency being removed.
+
+const doingBusy = [
+  { id: 'old1', status: DOING, project_id: 'p1' },
+  { id: 'old2', status: DOING, project_id: 'p1' },
+  { id: 'bcgA', status: BRAINDUMP, project_id: 'p2', due_date: null },
+]
+const cascade = planFill({ block: { title: 'BCG' }, projects: PROJECTS, tasks: doingBusy, today: TODAY, rand: fixedRand })
+ok('the calendar task takes a Doing seat even though Doing was full',
+  cascade.moves.find(m => m.id === 'bcgA')?.status === DOING)
+ok('exactly one incumbent is pushed down', 
+  cascade.moves.filter(m => m.reason === 'demoted').length === 1)
+ok('and it lands in Up next, since Up next had room',
+  cascade.moves.find(m => m.reason === 'demoted')?.status === UP_NEXT)
+ok('nothing reaches the pile while Up next has room',
+  !cascade.moves.some(m => m.status === BRAINDUMP), JSON.stringify(cascade.moves))
+ok('the other incumbent keeps its Doing seat',
+  !cascade.moves.some(m => m.id === 'old1' && m.id === 'old2'))
+
+// The block's tasks go in first, and they sort above what shares their band.
+const positioned = planFill({ block: { title: 'Product' }, projects: PROJECTS, tasks: dump(6), today: TODAY, rand: fixedRand })
+const filled = positioned.moves.filter(m => m.reason === 'filled')
+ok('every seated task carries a position', filled.every(m => typeof m.position === 'number'))
+ok('and they sort above the app\'s own positions, which are positive',
+  filled.every(m => m.position < 0))
+ok('the first pick sorts highest',
+  filled[0].position < filled[filled.length - 1].position, filled.map(m => m.position).join())
 
 // — a thin pile —
 

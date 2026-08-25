@@ -324,8 +324,12 @@ export default function BoardPage() {
   // visible change, and a half-applied plan would be worse than none.
   const applyCalendarPlan = useCallback(async (moves) => {
     if (!moves.length) return
+    // The plan carries a position for the tasks it seats, so the hour's work
+    // sorts above what was already in the band rather than under it.
     await Promise.all(moves.map(m =>
-      supabase.from('tasks').update({ status: m.status }).eq('id', m.id)))
+      supabase.from('tasks')
+        .update(m.position === undefined ? { status: m.status } : { status: m.status, position: m.position })
+        .eq('id', m.id)))
     await fetchTasks()
   }, [fetchTasks])
 

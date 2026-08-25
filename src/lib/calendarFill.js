@@ -16,9 +16,13 @@
 //     as whole words, anywhere in the title. Real calendar entries are
 //     sentences ("Case with Jake from BCG"), not labels, so requiring the
 //     title to *equal* the project name meant almost nothing ever matched.
+//   • The block owns Doing. Its tasks take the Doing seats first — being on
+//     the board already is not a claim to the band you sit down in. What was
+//     in Doing drops to Up next, and what Up next can no longer hold goes back
+//     to the pile. Nothing is deleted; the board only ever reshuffles.
 //   • Work you put on the board yourself outranks the calendar, but only if it
-//     belongs to the block. Tasks from other projects go back to the pile;
-//     tasks from this one stay and count toward the six.
+//     belongs to the block. Tasks from this project stay where they are and
+//     count toward the six.
 //   • Picks come due-date-first, then random. Random alone is what was asked
 //     for, but it can leave something due today sitting in the braindump.
 //   • When the block ends, nothing happens. Work half-done does not get tidied
@@ -200,8 +204,8 @@ export function planFill({ block, projects = [], tasks = [], today, rand = Math.
   const onBoard = tasks.filter(t => t.status === UP_NEXT || t.status === DOING)
 
   // Work from this project stays exactly where it is and counts toward the
-  // capacity. Everything else on the board is a candidate for displacement —
-  // but only a candidate, see below.
+  // capacity. Everything else on the board keeps a seat only if the block
+  // doesn't want it.
   const kept = { [UP_NEXT]: [], [DOING]: [] }
   const others = { [UP_NEXT]: [], [DOING]: [] }
   for (const t of onBoard) {
@@ -209,51 +213,55 @@ export function planFill({ block, projects = [], tasks = [], today, rand = Math.
     else others[t.status].push(t)
   }
 
-  const keptTotal = kept[UP_NEXT].length + kept[DOING].length
-  const othersTotal = others[UP_NEXT].length + others[DOING].length
-  const TOTAL = MAX_DOING + MAX_UP_NEXT
-
   const pool = tasks.filter(t => t.project_id === project.id && t.status === BRAINDUMP)
   const ordered = pickOrder(pool, { today, rand })
 
-  // How many we can actually seat, which is the crux: displacement is bounded
-  // by what there is to put in the freed seats.
-  //
-  // Clearing the board and then discovering the pile has nothing of this
-  // project in it would leave you staring at an empty board — strictly worse
-  // than the mismatched one you had. So work out the fills first and evict
-  // only enough to seat them. No tasks to bring in, nothing is moved at all.
-  const placeCount = Math.min(ordered.length, TOTAL - keptTotal)
-  const freeNow = TOTAL - keptTotal - othersTotal
-  let toEvict = Math.max(0, placeCount - freeNow)
+  // Seats for the hour's work, Doing first and to the exclusion of whatever is
+  // sitting there. Doing is the band you actually work out of, so a task that
+  // was already in it has no claim on it against the block you just sat down
+  // for — that priority-by-incumbency is the thing this rule removes.
+  const doingSeats = Math.max(0, MAX_DOING - kept[DOING].length)
+  const upNextSeats = Math.max(0, MAX_UP_NEXT - kept[UP_NEXT].length)
+  const placeDoing = Math.min(ordered.length, doingSeats)
+  const placeUpNext = Math.min(ordered.length - placeDoing, upNextSeats)
 
   const moves = []
-  // Evicted in the same order the seats get filled — Doing first.
-  //
-  // The gentler-looking alternative, emptying Up next and leaving Doing alone,
-  // produced a board whose Doing band was still last hour's project. Sitting
-  // down in a BCG hour to find Product in front of you is the exact thing this
-  // feature exists to stop, and nothing is lost either way: an evicted task
-  // goes back to the pile, not away.
-  for (const band of [DOING, UP_NEXT]) {
-    for (const t of others[band]) {
-      if (toEvict <= 0) break
-      moves.push({ id: t.id, status: BRAINDUMP, reason: 'displaced' })
-      others[band] = others[band].filter(x => x !== t)
-      toEvict--
-    }
-  }
 
-  // Doing is filled first: it is the band you work out of, and a block that
-  // only half-fills should still leave you something to start on.
+  // Nothing waiting means nothing moves. Clearing the board and then finding
+  // the pile empty would leave you staring at nothing, which is strictly worse
+  // than the mismatched board you had.
+  if (placeDoing + placeUpNext === 0) return { project, moves }
+
+  // The cascade: what the block pushed out of Doing drops to Up next, and Up
+  // next spills to the pile from the bottom. Demoted Doing tasks are seated
+  // before the ones already in Up next — they were the things being worked on
+  // a minute ago, so they are the ones worth keeping in sight.
+  let doingRoom = doingSeats - placeDoing
+  let upRoom = upNextSeats - placeUpNext
+
+  const reseat = (task, from) => {
+    if (from === DOING && doingRoom > 0) { doingRoom--; return }
+    if (upRoom > 0) {
+      upRoom--
+      if (from !== UP_NEXT) moves.push({ id: task.id, status: UP_NEXT, reason: 'demoted' })
+      return
+    }
+    moves.push({ id: task.id, status: BRAINDUMP, reason: 'displaced' })
+  }
+  for (const t of others[DOING]) reseat(t, DOING)
+  for (const t of others[UP_NEXT]) reseat(t, UP_NEXT)
+
+  // Negative and descending, so the block's tasks sort above whatever shares
+  // their priority band — positions the app writes itself are positive. The
+  // first pick is the top of Doing, which is where the hour starts.
   let n = 0
-  for (const band of [DOING, UP_NEXT]) {
-    const limit = band === DOING ? MAX_DOING : MAX_UP_NEXT
-    const room = limit - kept[band].length - others[band].length
-    for (let i = 0; i < room && n < placeCount; i++, n++) {
-      moves.push({ id: ordered[n].id, status: band, reason: 'filled' })
+  const seat = (band, count) => {
+    for (let i = 0; i < count; i++, n++) {
+      moves.push({ id: ordered[n].id, status: band, position: -(ordered.length - n), reason: 'filled' })
     }
   }
+  seat(DOING, placeDoing)
+  seat(UP_NEXT, placeUpNext)
 
   return { project, moves }
 }
