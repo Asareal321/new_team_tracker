@@ -21,6 +21,12 @@ import { localDay } from './garden.js'
 
 // Counters the day's bucket keeps for quests, on top of the three that the
 // caps use. All are "how many times today".
+//
+// 'clears' is still written by recordDoingCleared and still listed here, but
+// no quest reads it any more. Emptying Doing stopped being something to chase:
+// it pays nothing, and asking for it turned a WIP limit into a target — the
+// quickest way to empty Doing is to put less in it, which is the opposite of
+// the point.
 export const QUEST_COUNTERS = ['done', 'added', 'clears', 'popped', 'packets', 'grown', 'planted']
 
 export const QUEST_TIERS = {
@@ -37,7 +43,7 @@ export const QUEST_POOL = [
   { key: 'e-done-2',   tier: 'easy', counter: 'done',    goal: 2, icon: '✅', name: 'Two down',        blurb: 'Finish 2 tasks' },
   { key: 'e-added-3',  tier: 'easy', counter: 'added',   goal: 3, icon: '📝', name: 'Write it down',   blurb: 'Add 3 tasks' },
   { key: 'e-pop-2',    tier: 'easy', counter: 'popped',  goal: 2, icon: '☁️', name: 'Light rain',      blurb: 'Burst 2 clouds' },
-  { key: 'e-clear-1',  tier: 'easy', counter: 'clears',  goal: 1, icon: '🧹', name: 'Clear the decks', blurb: 'Empty the Doing band once' },
+  { key: 'e-plant-1',  tier: 'easy', counter: 'planted', goal: 1, icon: '🌱', name: 'In the ground',   blurb: 'Plant a seed' },
 
   // — a day's work —
   { key: 's-done-5',   tier: 'standard', counter: 'done',    goal: 5, icon: '✅', name: 'A solid five',   blurb: 'Finish 5 tasks' },
@@ -48,7 +54,7 @@ export const QUEST_POOL = [
   // — tall order —
   { key: 'h-done-10',  tier: 'hard', counter: 'done',   goal: 10, icon: '🏅', name: 'Ten before dark', blurb: 'Finish 10 tasks' },
   { key: 'h-pop-10',   tier: 'hard', counter: 'popped', goal: 10, icon: '⚡', name: 'Downpour',        blurb: 'Burst 10 clouds' },
-  { key: 'h-clear-3',  tier: 'hard', counter: 'clears', goal: 3,  icon: '✨', name: 'Nothing in flight', blurb: 'Empty the Doing band 3 times' },
+  { key: 'h-added-8',  tier: 'hard', counter: 'added',  goal: 8,  icon: '🗂️', name: 'Brain on paper',  blurb: 'Add 8 tasks' },
   { key: 'h-grown-1',  tier: 'hard', counter: 'grown',  goal: 1,  icon: '🌸', name: 'Full bloom',      blurb: 'Grow a flower all the way' },
 ]
 

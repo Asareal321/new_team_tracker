@@ -591,9 +591,14 @@ export function GardenProvider({ children }) {
   // now comes from the two ends of a task's life — writing it down, finishing
   // it — and both are the same every time.
   //
-  // The count stays because things still ask for it: the "Clear the decks" and
-  // "Nothing in flight" quests, and the three Clean slate awards. Dropping the
-  // counter would have quietly made those unreachable.
+  // Nothing rewards it any more either — the two quests and three awards that
+  // did are gone. The reason is the same one that took away the coins: the
+  // quickest way to empty Doing is to put less in it, so paying for the empty
+  // band turns a WIP limit into a target and rewards the opposite of what the
+  // limit is for.
+  //
+  // The count itself stays. It costs nothing, the board reads it, and a
+  // counter is much easier to keep writing than to reinstate later.
   const recordDoingCleared = useCallback(async () => {
     const cur = stateRef.current
     if (!cur) return null

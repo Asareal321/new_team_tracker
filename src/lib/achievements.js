@@ -20,14 +20,12 @@ export const ACHIEVEMENTS = [
   { key: 'done-10',   group: 'Work',   icon: '✅', name: 'Getting going',    goal: 10,   value: s => s.stats.tasksDone,   blurb: 'Finish 10 tasks' },
   { key: 'done-50',   group: 'Work',   icon: '🏅', name: 'Reliable',         goal: 50,   value: s => s.stats.tasksDone,   blurb: 'Finish 50 tasks' },
   { key: 'done-250',  group: 'Work',   icon: '🏆', name: 'Machine',          goal: 250,  value: s => s.stats.tasksDone,   blurb: 'Finish 250 tasks' },
+  { key: 'done-500',  group: 'Work',   icon: '🎖️', name: 'Five hundred',     goal: 500,  value: s => s.stats.tasksDone,   blurb: 'Finish 500 tasks' },
   { key: 'done-1000', group: 'Work',   icon: '👑', name: 'Thousand-yard',    goal: 1000, value: s => s.stats.tasksDone,   blurb: 'Finish 1,000 tasks' },
 
+  { key: 'added-1',   group: 'Work',   icon: '📝', name: 'Something to do',  goal: 1,    value: s => s.stats.tasksAdded,  blurb: 'Add your first task' },
   { key: 'added-25',  group: 'Work',   icon: '📝', name: 'Written down',     goal: 25,   value: s => s.stats.tasksAdded,  blurb: 'Add 25 tasks' },
   { key: 'added-200', group: 'Work',   icon: '🗂️', name: 'Full ledger',      goal: 200,  value: s => s.stats.tasksAdded,  blurb: 'Add 200 tasks' },
-
-  { key: 'clear-1',   group: 'Work',   icon: '🧹', name: 'Clean slate',      goal: 1,    value: s => s.stats.doingClears, blurb: 'Empty the Doing column' },
-  { key: 'clear-10',  group: 'Work',   icon: '🧹', name: 'Housekeeper',      goal: 10,   value: s => s.stats.doingClears, blurb: 'Empty Doing 10 times' },
-  { key: 'clear-50',  group: 'Work',   icon: '✨', name: 'Nothing pending',  goal: 50,   value: s => s.stats.doingClears, blurb: 'Empty Doing 50 times' },
 
   // — showing up —
   { key: 'streak-3',   group: 'Streak', icon: '🔥', name: 'Three in a row',  goal: 3,   value: s => s.streak.best, blurb: 'A 3-day streak' },
@@ -42,6 +40,7 @@ export const ACHIEVEMENTS = [
   { key: 'cloud-legend', group: 'Clouds', icon: '🌩️', name: 'Once in a while', goal: 5, value: s => s.stats.bestCloudTier, blurb: 'Grow a cloud to Legendary' },
 
   { key: 'quest-1',   group: 'Work',   icon: '🐇', name: 'Trak’s errand',   goal: 1,   value: s => s.stats.questsDone, blurb: 'Finish a quest for Trak' },
+  { key: 'quest-10',  group: 'Work',   icon: '🐇', name: 'Errand runner',   goal: 10,  value: s => s.stats.questsDone, blurb: 'Finish 10 quests' },
   { key: 'quest-25',  group: 'Work',   icon: '🥕', name: 'On good terms',   goal: 25,  value: s => s.stats.questsDone, blurb: 'Finish 25 quests' },
   { key: 'quest-100', group: 'Work',   icon: '🐰', name: 'Trak’s favourite', goal: 100, value: s => s.stats.questsDone, blurb: 'Finish 100 quests' },
 

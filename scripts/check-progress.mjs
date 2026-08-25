@@ -8,6 +8,7 @@ import {
   localDay, previousDay, todayBucket, advanceStreak, liveStreak,
 } from '../src/lib/garden.js'
 import { ACHIEVEMENTS, evaluate, newlyUnlocked } from '../src/lib/achievements.js'
+import { QUEST_POOL } from '../src/lib/quests.js'
 
 const checks = []
 const check = (name, ok, detail = '') => checks.push({ name, ok, detail })
@@ -59,11 +60,24 @@ for (let i = 0; i < 20; i++) {
 check('the seed cap stops seeds', paidSeed === DAILY_CAPS.seeds, `${paidSeed} adds paid a seed`)
 check('the seed cap does not stop coins', paidCoin > paidSeed, `${paidCoin} adds paid coins`)
 
-// Emptying Doing is still counted even though it no longer pays — the quests
-// and the Clean slate awards read it, and a counter nothing increments would
-// make them unreachable.
-check('clearing Doing is still counted, just not paid',
-  ACHIEVEMENTS.some(a => String(a.value).includes('doingClears')))
+// Nothing chases emptying Doing any more.
+//
+// It stopped paying coins, then stopped being a quest and an award. The reason
+// is the same each time: the quickest way to empty Doing is to put less in it,
+// so rewarding the empty band turns a WIP limit into a target and pays for the
+// opposite of the behaviour it exists to encourage. The counter is still
+// written — it costs nothing and the board reads it — but nothing rewards it.
+check('no award chases an empty Doing band',
+  !ACHIEVEMENTS.some(a => String(a.value).includes('doingClears')))
+check('no quest chases one either',
+  !QUEST_POOL.some(q => q.counter === 'clears'),
+  QUEST_POOL.filter(q => q.counter === 'clears').map(q => q.key).join(', '))
+
+// Replacing three awards must not quietly shrink the set.
+check('every award has a distinct key',
+  new Set(ACHIEVEMENTS.map(a => a.key)).size === ACHIEVEMENTS.length)
+check('every award reads something real',
+  ACHIEVEMENTS.every(a => typeof a.value === 'function' && a.goal > 0))
 
 // --- streaks --------------------------------------------------------------
 check('a first task starts the streak at 1',
