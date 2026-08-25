@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { TOUR_STEPS } from '../lib/tourSteps'
+import { stepsFor, PHONE_QUERY } from '../lib/tourSteps'
+import { useIsNarrow } from './useSwipeReveal'
 import Trak from './Trak'
 import './Tour.css'
 
@@ -20,8 +21,15 @@ import './Tour.css'
 // waits for you to click the thing it is pointing at — that is how you get to
 // the archive, the garden rooms and the other tabs. The masks are four panels
 // around the hole rather than one sheet with a cut-out, so the highlighted
-// control is genuinely clickable. The Next button stays on those steps too:
-// waiting is the intent, trapping never is.
+// control is genuinely clickable. There is no per-step skip on those: not
+// wanting to do it is a reason to leave the tour, not to be walked past the
+// one part that is not a paragraph. The button comes back only if the control
+// cannot be found at all, which is the single case that would trap you.
+//
+// And the walk itself differs by screen. A phone has no chevrons on a row and
+// no braindump tray; a desktop has no swipe. Steps carry `only: 'phone' |
+// 'desktop'` and the list is filtered on the same breakpoint the board uses,
+// so the tour can never teach a gesture this screen does not have.
 
 const FIND_TIMEOUT = 1600
 const PAD = 8
@@ -35,7 +43,12 @@ function firstMatch(selectors) {
 }
 
 export default function Tour({ onDone }) {
-  const steps = TOUR_STEPS
+  // Same hook the rows use, so the tour and the board can't disagree about
+  // which app you are looking at. Rotating a tablet mid-walk re-filters the
+  // list; the index is clamped below rather than reset, because throwing you
+  // back to step one for turning your phone would be its own bug.
+  const phone = useIsNarrow(PHONE_QUERY)
+  const steps = useMemo(() => stepsFor({ phone }), [phone])
   const [i, setI] = useState(0)
   const [rect, setRect] = useState(null)
   const [searching, setSearching] = useState(true)
@@ -43,8 +56,11 @@ export default function Tour({ onDone }) {
   const location = useLocation()
   const elRef = useRef(null)
 
-  const step = steps[i]
-  const atEnd = i === steps.length - 1
+  // Clamped rather than reset: the list can get shorter under you if the
+  // screen changes width mid-walk.
+  const at = Math.min(i, steps.length - 1)
+  const step = steps[at]
+  const atEnd = at >= steps.length - 1
 
   const end = useCallback(() => onDone?.(), [onDone])
   const next = useCallback(() => (atEnd ? end() : setI(n => n + 1)), [atEnd, end])
@@ -122,12 +138,14 @@ export default function Tour({ onDone }) {
   useEffect(() => {
     const onKey = e => {
       if (e.key === 'Escape') end()
-      else if (e.key === 'ArrowRight' || e.key === 'Enter') next()
+      // A waiting step is waiting on the real control, so the arrow key does
+      // not stand in for it. Escape still leaves — that is the way out.
+      else if ((e.key === 'ArrowRight' || e.key === 'Enter') && step.act !== 'click') next()
       else if (e.key === 'ArrowLeft') back()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [next, back, end])
+  }, [next, back, end, step.act])
 
   const hole = rect && {
     top: Math.max(0, rect.top - PAD),
@@ -156,12 +174,16 @@ export default function Tour({ onDone }) {
         step={step}
         hole={hole}
         searching={searching}
-        n={i + 1}
+        n={at + 1}
         total={steps.length}
         atEnd={atEnd}
         waiting={step.act === 'click'}
+        // The hunt has finished and found nothing, so there is no control for
+        // "your turn" to refer to. That is the only time a click step offers a
+        // way past itself.
+        lost={step.act === 'click' && !searching && rect === null}
         onNext={next}
-        onBack={i > 0 ? back : null}
+        onBack={at > 0 ? back : null}
         onEnd={end}
       />
     </div>
@@ -170,7 +192,7 @@ export default function Tour({ onDone }) {
 
 // Placed under the hole when there is room, above it when there isn't, and in
 // the middle of the screen when there is no hole at all.
-function TourCard({ step, hole, searching, n, total, atEnd, waiting, onNext, onBack, onEnd }) {
+function TourCard({ step, hole, searching, n, total, atEnd, waiting, lost, onNext, onBack, onEnd }) {
   const [size, setSize] = useState({ w: 320, h: 200 })
   const ref = useRef(null)
 
@@ -204,20 +226,21 @@ function TourCard({ step, hole, searching, n, total, atEnd, waiting, onNext, onB
       </div>
       <p className="tour-body">{step.body}</p>
       {searching && step.anchor && <p className="tour-hunting">Looking for it…</p>}
-      {waiting && !searching && <p className="tour-waiting">Your turn — click it.</p>}
+      {waiting && !searching && !lost && <p className="tour-waiting">Your turn — click it.</p>}
+      {lost && <p className="tour-hunting">I can&rsquo;t find that one on this screen.</p>}
 
       <div className="tour-actions">
         <button className="tour-skip" onClick={onEnd}>Skip the tour</button>
         <span className="tour-spacer" />
         {onBack && <button className="btn-ghost tour-btn" onClick={onBack}>Back</button>}
-        {/* Present even while waiting for the click, so a control that has
-            gone missing can never strand you mid-walk. */}
-        <button
-          className={`tour-btn ${waiting ? 'btn-ghost' : 'btn-primary'}`}
-          onClick={onNext}
-        >
-          {atEnd ? 'Done' : waiting ? 'Skip this' : 'Next'}
-        </button>
+        {/* A waiting step has no Next: the click is the step. The exception is
+            a control that isn't there to be clicked — then the way on is the
+            only thing standing between you and the rest of the walk. */}
+        {(!waiting || lost) && (
+          <button className="btn-primary tour-btn" onClick={onNext}>
+            {atEnd ? 'Done' : 'Next'}
+          </button>
+        )}
       </div>
     </div>
   )

@@ -5,7 +5,7 @@
 // real elements — so the two things worth protecting are the step count and
 // the length of each body. Both drift back silently if nothing checks them.
 
-import { TOUR_STEPS, TOUR_ROUTES, MAX_BODY } from '../src/lib/tourSteps.js'
+import { TOUR_STEPS, TOUR_ROUTES, MAX_BODY, stepsFor } from '../src/lib/tourSteps.js'
 import { readFileSync } from 'fs'
 
 let pass = 0, fail = 0
@@ -85,14 +85,22 @@ for (const s of TOUR_STEPS) {
 // tabs. So any step that lands on a route different from the one before it has
 // to have been reached by a click you performed on the step before.
 
-let prevRoute = null
-for (const s of TOUR_STEPS) {
-  if (prevRoute && s.route !== prevRoute) {
-    const opener = TOUR_STEPS[TOUR_STEPS.indexOf(s) - 1]
-    ok(`"${s.key}" is reached by clicking, not by a redirect`, opener?.act === 'click',
-      `${prevRoute} → ${s.route} with no click step`)
+for (const phone of [false, true]) {
+  const walk = stepsFor({ phone })
+  const where = phone ? 'phone' : 'desktop'
+  let prevRoute = null
+  for (const [n, s] of walk.entries()) {
+    if (prevRoute && s.route !== prevRoute) {
+      ok(`(${where}) "${s.key}" is reached by clicking, not by a redirect`,
+        walk[n - 1]?.act === 'click', `${prevRoute} → ${s.route} with no click step`)
+    }
+    prevRoute = s.route
   }
-  prevRoute = s.route
+  const seen = []
+  for (const s of walk) if (seen[seen.length - 1] !== s.route) seen.push(s.route)
+  ok(`(${where}) the walk visits each tab once, in the rail's order`,
+    seen.join(' → ') === TOUR_ROUTES.join(' → '), seen.join(' → '))
+  ok(`(${where}) the walk is still many short steps`, walk.length >= 15, `${walk.length}`)
 }
 
 // A click step that pointed at nothing would leave you staring at a card that
@@ -161,6 +169,48 @@ for (const granting of ['packet', 'planted', 'profile', 'task']) {
 }
 ok('and replay bails out before onFinish is ever called',
   /if \(mode === 'replay'\) return onClose\?\.\(\)/.test(onb))
+
+// — the two screens are different apps, and both get taught —
+//
+// A phone has no chevrons, no braindump tray and no number keys; a desktop has
+// no swipe. Dropping a step for one platform without giving it a replacement
+// would leave that platform with no way of knowing how to move a task at all,
+// and it would be invisible from the other one.
+
+for (const s of TOUR_STEPS) {
+  if (s.only) ok(`"${s.key}" is marked for a real screen`, s.only === 'phone' || s.only === 'desktop', s.only)
+}
+
+const onlySteps = TOUR_STEPS.filter(s => s.only)
+ok('the platforms differ enough to be worth splitting', onlySteps.length >= 4)
+ok('and neither platform is the one carrying all the exceptions',
+  onlySteps.filter(s => s.only === 'phone').length > 0
+  && onlySteps.filter(s => s.only === 'desktop').length > 0)
+
+// Every platform-specific step sits between the same two shared steps as its
+// opposite number — that is what "it has a partner" means in practice, and it
+// catches a step deleted from one walk but not the other.
+function neighbours(step) {
+  const n = TOUR_STEPS.indexOf(step)
+  let before = null, after = null
+  for (let i = n - 1; i >= 0; i--) if (!TOUR_STEPS[i].only) { before = TOUR_STEPS[i].key; break }
+  for (let i = n + 1; i < TOUR_STEPS.length; i++) if (!TOUR_STEPS[i].only) { after = TOUR_STEPS[i].key; break }
+  return `${before} … ${after}`
+}
+for (const s of onlySteps) {
+  const partner = onlySteps.find(o => o !== s && o.only !== s.only && neighbours(o) === neighbours(s))
+  ok(`"${s.key}" has an opposite number for the other screen`, !!partner, neighbours(s))
+}
+
+// The gestures that only exist on one screen have to be named on that screen.
+const phoneBodies = stepsFor({ phone: true }).map(s => `${s.title} ${s.body}`).join(' ').toLowerCase()
+const deskBodies = stepsFor({ phone: false }).map(s => `${s.title} ${s.body}`).join(' ').toLowerCase()
+
+ok('the phone walk teaches the swipe', /swipe|flick/.test(phoneBodies))
+ok('and does not tell you to use chevrons that are not there', !/chevron/.test(phoneBodies))
+ok('the desktop walk teaches the chevrons', /chevron/.test(deskBodies))
+ok('and does not tell you to swipe', !/\bswipe\b/.test(deskBodies))
+ok('the desktop walk mentions dragging, which a phone row cannot do', /drag/.test(deskBodies))
 
 console.log(`\n${pass}/${pass + fail} passed`)
 process.exit(fail ? 1 : 0)

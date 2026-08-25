@@ -12,8 +12,13 @@
 //   route   — where the step is shown. The tour only navigates here itself
 //             when the step has no `act` to get you there.
 //   anchor  — selectors tried in order; the first that matches gets the hole.
-//   act     — 'click' waits for a click on the anchor before advancing.
-//             Every waiting step still has a Next button, so it can't trap you.
+//   act     — 'click' waits for a click on the anchor before advancing. There
+//             is no per-step skip: if you don't want to do it, you skip the
+//             whole tour. The button only comes back if the control genuinely
+//             cannot be found, which is the one case that would trap you.
+//   only    — 'phone' or 'desktop'. The two are not the same app: a phone has
+//             no chevrons and no number keys, a desktop has no swipe. A step
+//             that taught the wrong gesture would be worse than no step.
 //   mood    — which Trak.
 //
 // Three rules, all checked by scripts/check-tour.mjs:
@@ -21,6 +26,8 @@
 //     one says one thing; a long body here is the old tour growing back.
 //   • every route is one the app actually serves.
 //   • a step that changes route is reached by a click, not by a redirect.
+//   • every gesture that differs between phone and desktop is taught on both,
+//     which means `only` steps come in pairs.
 
 // In the order the walk visits them, which is the order of the tabs in the
 // rail and along the bottom bar of the phone. Following the app's own layout
@@ -29,6 +36,18 @@ export const TOUR_ROUTES = ['/', '/deadlines', '/community', '/garden', '/accoun
 
 // The most a step may say. Roughly a spoken sentence.
 export const MAX_BODY = 130
+
+// The breakpoint the board itself switches on — see components/useSwipeReveal.
+// Below it the chevrons and the braindump tray are gone and swiping replaces
+// them, so the tour has to switch on exactly the same line.
+export const PHONE_QUERY = '(max-width: 820px)'
+
+// The walk for one kind of screen. Nothing is dropped without a replacement:
+// a step marked for the other platform always has a partner marked for this
+// one, which is what scripts/check-tour.mjs enforces.
+export function stepsFor({ phone = false } = {}) {
+  return TOUR_STEPS.filter(s => !s.only || s.only === (phone ? 'phone' : 'desktop'))
+}
 
 const NAV = {
   taskboard: '[data-tour="nav-taskboard"]',
@@ -41,10 +60,16 @@ const NAV = {
 export const TOUR_STEPS = [
   // — the board ————————————————————————————————————————————————
   {
-    key: 'rail', route: '/', mood: 'point',
+    key: 'rail', route: '/', mood: 'point', only: 'desktop',
     anchor: ['.sidebar-nav'],
     title: 'These are your tabs',
-    body: 'You are going to click through them yourself. I will only point.',
+    body: 'Down the left. You are going to click through them yourself — I will only point.',
+  },
+  {
+    key: 'rail-phone', route: '/', mood: 'point', only: 'phone',
+    anchor: ['.sidebar-nav'],
+    title: 'These are your tabs',
+    body: 'Along the bottom, icons only. You will tap through them yourself — I only point.',
   },
   {
     key: 'strip', route: '/', mood: 'happy',
@@ -71,10 +96,28 @@ export const TOUR_STEPS = [
     body: 'Four at most. Everything else waits in the braindump.',
   },
   {
-    key: 'chevrons', route: '/', mood: 'point',
+    key: 'chevrons', route: '/', mood: 'point', only: 'desktop',
     anchor: ['.row-advance', '.paper-row'],
     title: 'Moving work',
-    body: 'The chevrons send a task forward or back. Tap the task itself to edit it.',
+    body: 'The chevrons send a task forward or back. Click the task itself to edit it.',
+  },
+  {
+    key: 'swipe', route: '/', mood: 'point', only: 'phone',
+    anchor: ['.paper-row'],
+    title: 'Swipe a task left',
+    body: 'Nothing on the row moves it. Drag one sideways and two buttons appear behind it.',
+  },
+  {
+    key: 'swipe-what', route: '/', mood: 'think', only: 'phone',
+    anchor: ['.paper-row'],
+    title: 'Forward, or back',
+    body: 'The top one moves it on, the bottom one sends it back. Tap the row itself to open it.',
+  },
+  {
+    key: 'drag', route: '/', mood: 'idle', only: 'desktop',
+    anchor: ['.row-stripe', '.paper-row'],
+    title: 'Or drag it',
+    body: 'The coloured stripe is the handle. Drag a task into any band, or onto the braindump.',
   },
 
   // — the braindump, and a project ————————————————————————————
@@ -95,6 +138,18 @@ export const TOUR_STEPS = [
     anchor: ['.dump-pills'],
     title: 'The pills are the button',
     body: 'You do not press Add. You press the project it belongs to, and that files it.',
+  },
+  {
+    key: 'tray', route: '/', mood: 'think', only: 'desktop',
+    anchor: ['.dump-tray', '.dump-list'],
+    title: 'Getting things out again',
+    body: 'Click an item, then hit a tray slot — or just press its number. 4 deletes.',
+  },
+  {
+    key: 'dump-swipe', route: '/', mood: 'think', only: 'phone',
+    anchor: ['.dump-hint', '.dump-list'],
+    title: 'Getting things out again',
+    body: 'Same sideways flick as the board: swipe an item to send it to Up next, or to bin it.',
   },
   {
     key: 'newproject', route: '/', mood: 'happy', act: 'click',
@@ -197,8 +252,8 @@ export const TOUR_STEPS = [
   {
     key: 'greenhouse-go', route: '/garden', mood: 'point', act: 'click',
     anchor: ['[data-tour="room-greenhouse"]'],
-    title: 'Click the greenhouse',
-    body: 'Second icon along. It is where a seed becomes a flower.',
+    title: 'Open the greenhouse',
+    body: 'Second along the row of rooms. It is where a seed becomes a flower.',
   },
   {
     key: 'greenhouse', route: '/garden', mood: 'idle',
