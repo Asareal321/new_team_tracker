@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { planFill, activeBlock } from '../lib/calendarFill'
+import { planFill, chooseBlock } from '../lib/calendarFill'
 import {
   fetchTodaysEvents, fetchViaServer, hasStoredConnection, isConnected,
   clearToken, CalendarAuthError,
@@ -36,6 +36,9 @@ export default function useCalendarFill({ tasks, projects, onApply }) {
   // is a block" and "the block means something to the board" are different
   // facts, and the strip used to show the first while implying the second.
   const [matched, setMatched] = useState(null)
+  // How many events cover this minute, so the strip can admit when it had to
+  // choose between them rather than pretending there was only one.
+  const [overlapping, setOverlapping] = useState(0)
   const [error, setError] = useState('')
   const [lastFilled, setLastFilled] = useState(null)
 
@@ -60,8 +63,12 @@ export default function useCalendarFill({ tasks, projects, onApply }) {
       }
       setError('')
       const now = new Date()
-      const current = activeBlock(events, now.getTime())
+      // Which of the overlapping events to follow, decided by chooseBlock:
+      // marked first, then the more specific one. See lib/calendarFill.js.
+      const choice = chooseBlock({ events, projects: latest.current.projects, now: now.getTime() })
+      const current = choice.block
       setBlock(current)
+      setOverlapping(choice.overlapping)
       if (!current) { setMatched(null); return }
 
       // One fill per block per day. Ending a block does nothing by design, so
@@ -114,8 +121,8 @@ export default function useCalendarFill({ tasks, projects, onApply }) {
   const toggle = useCallback(on => {
     setCalendarFillEnabled(on)
     setEnabled(on)
-    if (!on) { setBlock(null); setMatched(null); setLastFilled(null) }
+    if (!on) { setBlock(null); setMatched(null); setOverlapping(0); setLastFilled(null) }
   }, [])
 
-  return { enabled, connected, block, matched, error, lastFilled, toggle, refresh: poll }
+  return { enabled, connected, block, matched, overlapping, error, lastFilled, toggle, refresh: poll }
 }

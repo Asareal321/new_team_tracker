@@ -6,7 +6,8 @@
 // do, and never touching work that belongs where it is.
 
 import {
-  normaliseTitle, matchProject, activeBlock, pickOrder, planFill,
+  normaliseTitle, matchProject, activeBlock, blocksAt, chooseBlock,
+  hasMarker, stripMarker, MARKER, pickOrder, planFill,
   BRAINDUMP, UP_NEXT, DOING,
 } from '../src/lib/calendarFill.js'
 import { MAX_DOING, MAX_UP_NEXT } from '../src/lib/boardLimits.js'
@@ -87,6 +88,75 @@ ok('an all-day event never holds the board',
 ok('a malformed event is skipped',
   activeBlock([{ title: 'Product', start: 'nonsense', end: 'nonsense' }], noon) === null)
 ok('no events, no block', activeBlock([], noon) === null)
+
+// — overlapping events —
+//
+// A real calendar double-books. The old rule was "the first event covering
+// now", and the API returns them ordered by start time, so a standup that
+// began at 1:00 beat a Product block that began at 1:30 — and because the
+// project was matched only after an event was chosen, one unrelated meeting
+// was enough to hide a block that would have worked.
+
+const T = t => new Date(`2026-08-24T${t}:00Z`).getTime()
+const ev = (id, title, from, to) => ({
+  id, title, start: `2026-08-24T${from}:00Z`, end: `2026-08-24T${to}:00Z`,
+})
+
+const standup = ev('a', 'Team standup', '13:00', '14:00')
+const product = ev('b', 'Work on Product', '13:30', '14:30')
+const bcgShort = ev('c', 'Case with Jake from BCG', '13:40', '13:50')
+
+ok('both events are seen as live', blocksAt([standup, product], T('13:45')).length === 2)
+
+const overlap = chooseBlock({ events: [standup, product], projects: PROJECTS, now: T('13:45') })
+ok('an unrelated meeting no longer hides a real block', overlap.block?.id === 'b')
+ok('and the project comes back with it', overlap.project?.id === 'p1')
+ok('the overlap count is reported', overlap.overlapping === 2)
+
+// Two that both match: the shorter one is the more specific statement about
+// this minute.
+const two = chooseBlock({ events: [standup, product, bcgShort], projects: PROJECTS, now: T('13:45') })
+ok('the shorter of two matching blocks wins', two.block?.id === 'c')
+ok('and it brings its own project', two.project?.id === 'p2')
+
+// Same length: the one you just moved into.
+const early = ev('d', 'Product', '13:00', '14:00')
+const late = ev('e', 'BCG', '13:30', '14:30')
+ok('of two equal blocks the later start wins',
+  chooseBlock({ events: [early, late], projects: PROJECTS, now: T('13:45') }).block?.id === 'e')
+
+// — the marker, which is the user's override —
+
+ok('the marker is recognised', hasMarker('[trakkit] Product'))
+ok('the short form works too', hasMarker('[trak] Product'))
+ok('case and spacing do not matter', hasMarker('[ TrakKit ] Product'))
+ok('an unmarked title has none', !hasMarker('Product'))
+ok('the marker is stripped before matching',
+  matchProject('[trakkit] Case with Jake from BCG', PROJECTS)?.id === 'p2')
+ok('stripping leaves the rest intact', normaliseTitle(stripMarker('[trakkit] Product')) === 'product')
+ok('MARKER is the form shown to people', hasMarker(MARKER))
+
+// A mark beats every heuristic — that is the point of having one. Here the
+// marked block is both longer and earlier, and still wins.
+const markedLong = ev('f', '[trakkit] Product', '13:00', '17:00')
+const marked = chooseBlock({ events: [markedLong, bcgShort], projects: PROJECTS, now: T('13:45') })
+ok('a marked block beats a shorter unmarked one', marked.block?.id === 'f')
+ok('and beats a later one too',
+  chooseBlock({ events: [markedLong, late], projects: PROJECTS, now: T('13:45') }).block?.id === 'f')
+
+// Marking something that names no project does not fall back to an unmarked
+// block: an explicit instruction that cannot be honoured should do nothing,
+// not something else.
+const markedJunk = ev('g', '[trakkit] Dentist', '13:00', '14:00')
+const junk = chooseBlock({ events: [markedJunk, product], projects: PROJECTS, now: T('13:45') })
+ok('a marked block naming no project does nothing', junk.project === null)
+
+// — nothing live —
+
+ok('no events, no choice',
+  chooseBlock({ events: [], projects: PROJECTS, now: T('13:45') }).block === null)
+ok('nothing matching reports the overlap anyway',
+  chooseBlock({ events: [standup], projects: PROJECTS, now: T('13:45') }).overlapping === 1)
 
 // — choosing what to pull in —
 

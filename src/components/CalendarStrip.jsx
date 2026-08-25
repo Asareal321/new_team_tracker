@@ -1,4 +1,5 @@
 import { useAuth } from '../auth/AuthContext'
+import { MARKER } from '../lib/calendarFill'
 import './CalendarStrip.css'
 
 // The calendar's say over the board, and the switch that grants it.
@@ -7,7 +8,7 @@ import './CalendarStrip.css'
 // one reason: it moves your work without being asked. Anything that does that
 // has to say so where the moving happens, and be switchable off in one click
 // from the same place.
-export default function CalendarStrip({ enabled, connected, block, matched, error, lastFilled, onToggle, onRefresh }) {
+export default function CalendarStrip({ enabled, connected, block, matched, overlapping, error, lastFilled, onToggle, onRefresh }) {
   const { connectCalendar } = useAuth()
 
   if (!enabled) {
@@ -42,7 +43,16 @@ export default function CalendarStrip({ enabled, connected, block, matched, erro
       <span className="cal-icon" aria-hidden="true">📅</span>
       <span className="cal-say">
         {error ? <span className="cal-error">{error}</span>
-          : block && matched ? <><strong>{block.title}</strong> — filling from <b>{matched.name}</b>.</>
+          : block && matched ? (
+            <>
+              <strong>{block.title}</strong> — filling from <b>{matched.name}</b>.
+              {overlapping > 1 && (
+                <span className="cal-note">
+                  {' '}{overlapping} events overlap; add <code>{MARKER}</code> to a title to pick one.
+                </span>
+              )}
+            </>
+          )
           // A block that names no project you have is the common case, and
           // saying "following your calendar" here was a plain untruth: it had
           // matched nothing and moved nothing.

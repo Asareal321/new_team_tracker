@@ -457,6 +457,7 @@ export default function BoardPage() {
             connected={calendar.connected}
             block={calendar.block}
             matched={calendar.matched}
+            overlapping={calendar.overlapping}
             error={calendar.error}
             lastFilled={calendar.lastFilled}
             onToggle={calendar.toggle}

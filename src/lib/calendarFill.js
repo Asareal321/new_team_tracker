@@ -65,7 +65,7 @@ function containsRun(hay, needle) {
 // more specific than "McKinsey". When two equally specific names both appear,
 // there is no way to tell which the hour is for, so nothing happens.
 export function matchProject(title, projects = []) {
-  const tokens = normaliseTitle(title).split(' ').filter(Boolean)
+  const tokens = normaliseTitle(stripMarker(title)).split(' ').filter(Boolean)
   if (!tokens.length) return null
 
   const hits = []
@@ -79,17 +79,94 @@ export function matchProject(title, projects = []) {
   return hits[0].project
 }
 
-// The event covering `now`, if any. All-day events are ignored: a day-long
-// "Product" would hold the board hostage from midnight to midnight.
-export function activeBlock(events = [], now = Date.now()) {
+// An explicit "this one is for the board" mark, written anywhere in an event's
+// title: [trakkit] or [trak]. It is the override, and it exists because no
+// ranking rule can know that today's 1pm is really about Product when three
+// things are booked over it. If any live event carries the mark, only marked
+// events are considered at all.
+//
+// The mark is stripped before the title is read for a project name, so
+// "[trakkit] Case with Jake from BCG" still matches BCG.
+const MARKER_RE = /\[\s*trak(?:kit)?\s*\]/i
+
+export const MARKER = '[trakkit]'
+
+export function hasMarker(title) {
+  return MARKER_RE.test(String(title || ''))
+}
+
+export function stripMarker(title) {
+  return String(title || '').replace(MARKER_RE, ' ')
+}
+
+// Every event covering `now`. All-day events are ignored: a day-long "Product"
+// would hold the board hostage from midnight to midnight.
+export function blocksAt(events = [], now = Date.now()) {
   const at = now instanceof Date ? now.getTime() : now
-  return events.find(e => {
+  return events.filter(e => {
     if (e.allDay) return false
     const start = new Date(e.start).getTime()
     const end = new Date(e.end).getTime()
     if (!Number.isFinite(start) || !Number.isFinite(end)) return false
     return start <= at && at < end
-  }) || null
+  })
+}
+
+const spanOf = e => new Date(e.end).getTime() - new Date(e.start).getTime()
+
+// Which of the overlapping events the board should follow.
+//
+// This used to be "the first event covering now", and the calendar hands them
+// back ordered by start time — so a standup that began at 1:00 beat the
+// Product block that began at 1:30, and the board did nothing for the hour.
+// Worse, the project was matched only AFTER an event had been chosen, so one
+// unrelated meeting was enough to hide a block that would have worked.
+//
+// So: matching comes first, and only events that name a project are
+// candidates. Among those, in order:
+//
+//   1. Marked events win outright. An explicit answer beats any heuristic.
+//   2. The shorter event wins. A 1-hour block inside a 4-hour "Deep work" is
+//      the more specific statement about this minute.
+//   3. The later start wins. Of two equal blocks, the one you just moved into
+//      is the one you meant.
+//   4. The more specific project name wins, so a tie is still deterministic
+//      rather than depending on the order the calendar happened to return.
+export function chooseBlock({ events = [], projects = [], now = Date.now() } = {}) {
+  const live = blocksAt(events, now)
+  const marked = live.filter(e => hasMarker(e.title))
+  const pool = marked.length ? marked : live
+
+  const candidates = pool
+    .map(e => ({ block: e, project: matchProject(e.title, projects) }))
+    .filter(c => c.project)
+
+  if (!candidates.length) {
+    return { block: live[0] || null, project: null, candidates: [], overlapping: live.length }
+  }
+
+  candidates.sort((a, b) => {
+    const mark = Number(hasMarker(b.block.title)) - Number(hasMarker(a.block.title))
+    if (mark) return mark
+    const span = spanOf(a.block) - spanOf(b.block)
+    if (span) return span
+    const start = new Date(b.block.start).getTime() - new Date(a.block.start).getTime()
+    if (start) return start
+    return normaliseTitle(b.project.name).length - normaliseTitle(a.project.name).length
+  })
+
+  return {
+    block: candidates[0].block,
+    project: candidates[0].project,
+    candidates,
+    overlapping: live.length,
+  }
+}
+
+// Kept for the single-event case and for tests: the first event covering now,
+// with no opinion about which of several is right.
+export function activeBlock(events = [], now = Date.now()) {
+  return blocksAt(events, now)[0] || null
 }
 
 // Due on or before today comes first, oldest due date leading. Everything else
