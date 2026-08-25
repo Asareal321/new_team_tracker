@@ -5,10 +5,38 @@ app — `@main struct TrakkitApp: App` — not a rewrite. The board, garden,
 quests, marketplace and calendar fill already work as React; rebuilding them
 natively would take months and leave two implementations to keep in step.
 
-## Creating the Xcode project
+## Where things live
 
-There is no `.xcodeproj` here on purpose — a hand-written one goes stale and
-breaks in confusing ways. Make it in Xcode, then add these files:
+`Trakkit.xcodeproj` is here, in the same repo as the web app, on purpose. The
+Swift files used to exist twice — once here and once in a separate project on
+the Desktop — and two copies of three files is two copies that drift. One repo,
+one commit, one history.
+
+Open it with:
+
+    open ios/Trakkit.xcodeproj
+
+**Never put the web app inside `ios/Trakkit/`.** Xcode 16 uses synchronised
+folder groups: anything sitting in the target's folder is automatically part of
+the target. A copy of the repo landed there once and Xcode tried to build
+`node_modules` — 928 errors, and it had even added
+`node_modules/@rollup/rollup-darwin-x64` to the library search paths.
+
+## What needs rebuilding, and what does not
+
+The shell loads `https://trakkitnow.ca` live. So:
+
+* **A web feature** — push to GitHub, Vercel deploys, the app shows it on next
+  launch or pull-to-refresh. No Xcode, no new build, no App Review.
+* **A shell change** (`ios/Trakkit/*.swift`, the icon, Info.plist) — needs an
+  archive and a new TestFlight build.
+
+Almost everything is the first kind. That is the point of the architecture.
+
+## Creating the Xcode project from scratch
+
+Only needed if this one is ever lost. A hand-written `.xcodeproj` goes stale
+and breaks in confusing ways, so make it in Xcode:
 
 1. **File → New → Project → iOS → App**
    - Product Name: `Trakkit`
