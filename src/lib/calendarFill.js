@@ -80,16 +80,19 @@ export function matchProject(title, projects = []) {
 }
 
 // An explicit "this one is for the board" mark, written anywhere in an event's
-// title: [trakkit] or [trak]. It is the override, and it exists because no
-// ranking rule can know that today's 1pm is really about Product when three
-// things are booked over it. If any live event carries the mark, only marked
-// events are considered at all.
+// title: TRK, or [TRK] if you prefer it to read as a tag. It is the override,
+// and it exists because no ranking rule can know that today's 1pm is really
+// about Product when three things are booked over it. If any live event
+// carries the mark, only marked events are considered at all.
 //
-// The mark is stripped before the title is read for a project name, so
-// "[trakkit] Case with Jake from BCG" still matches BCG.
-const MARKER_RE = /\[\s*trak(?:kit)?\s*\]/i
+// Matched on a word boundary, not as a substring, so it cannot fire on a
+// project or a name that merely contains those letters. It is stripped before
+// the title is read for a project, so "TRK Case with Jake from BCG" still
+// matches BCG — which does mean a project actually called TRK cannot be named
+// this way. Three letters is a short marker and that is the trade.
+const MARKER_RE = /(?:\[\s*trk\s*\]|\btrk\b)/i
 
-export const MARKER = '[trakkit]'
+export const MARKER = 'TRK'
 
 export function hasMarker(title) {
   return MARKER_RE.test(String(title || ''))

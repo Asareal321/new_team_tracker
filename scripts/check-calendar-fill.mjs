@@ -127,18 +127,28 @@ ok('of two equal blocks the later start wins',
 
 // — the marker, which is the user's override —
 
-ok('the marker is recognised', hasMarker('[trakkit] Product'))
-ok('the short form works too', hasMarker('[trak] Product'))
-ok('case and spacing do not matter', hasMarker('[ TrakKit ] Product'))
+ok('a bare TRK is recognised', hasMarker('TRK Product'))
+ok('at the end too', hasMarker('Product TRK'))
+ok('bracketed reads as a tag and works', hasMarker('[TRK] Product'))
+ok('case does not matter', hasMarker('trk Product'))
+ok('spacing inside brackets does not matter', hasMarker('[ TRK ] Product'))
 ok('an unmarked title has none', !hasMarker('Product'))
+
+// A three-letter marker has to match on a word boundary or it fires on
+// ordinary words — this is the whole reason it is not a substring search.
+ok('it does not fire mid-word', !hasMarker('Portrko meeting'))
+ok('nor inside a longer token', !hasMarker('TRKKIT sync'))
+ok('nor on a hyphenated lookalike', !hasMarker('BTRK review'))
+
 ok('the marker is stripped before matching',
-  matchProject('[trakkit] Case with Jake from BCG', PROJECTS)?.id === 'p2')
-ok('stripping leaves the rest intact', normaliseTitle(stripMarker('[trakkit] Product')) === 'product')
+  matchProject('TRK Case with Jake from BCG', PROJECTS)?.id === 'p2')
+ok('bracketed strips too', matchProject('[TRK] Work on Product', PROJECTS)?.id === 'p1')
+ok('stripping leaves the rest intact', normaliseTitle(stripMarker('TRK Product')) === 'product')
 ok('MARKER is the form shown to people', hasMarker(MARKER))
 
 // A mark beats every heuristic — that is the point of having one. Here the
 // marked block is both longer and earlier, and still wins.
-const markedLong = ev('f', '[trakkit] Product', '13:00', '17:00')
+const markedLong = ev('f', 'TRK Product', '13:00', '17:00')
 const marked = chooseBlock({ events: [markedLong, bcgShort], projects: PROJECTS, now: T('13:45') })
 ok('a marked block beats a shorter unmarked one', marked.block?.id === 'f')
 ok('and beats a later one too',
@@ -147,7 +157,7 @@ ok('and beats a later one too',
 // Marking something that names no project does not fall back to an unmarked
 // block: an explicit instruction that cannot be honoured should do nothing,
 // not something else.
-const markedJunk = ev('g', '[trakkit] Dentist', '13:00', '14:00')
+const markedJunk = ev('g', 'TRK Dentist', '13:00', '14:00')
 const junk = chooseBlock({ events: [markedJunk, product], projects: PROJECTS, now: T('13:45') })
 ok('a marked block naming no project does nothing', junk.project === null)
 
