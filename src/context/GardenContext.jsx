@@ -4,7 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import {
   SEEDS, seedByKey, cloudShaveSeconds, remainingSeconds,
   nextExpansion, STARTING_PLOTS, packetByKey, rollPacket,
-  ADD_TASK_REWARD, DAILY_CAPS, CLOUD_EXPECTED_COINS,
+  ADD_TASK_REWARD, DAILY_CAPS, CLOUD_EXPECTED_COINS, FOCUS_BONUS_COINS,
   localDay, todayBucket, advanceStreak,
 } from '../lib/garden'
 import { newlyUnlocked } from '../lib/achievements'
@@ -12,7 +12,7 @@ import { questView } from '../lib/quests'
 import { streakReward } from '../lib/streak'
 import { isDevUser } from '../lib/devMode'
 import CloudLayer from '../components/CloudLayer'
-import { cloudOutcome, cloudStatsPatch, cloudNotice, pendingClouds, cloudPayout } from '../lib/clouds'
+import { cloudOutcome, cloudStatsPatch, cloudNotice, pendingClouds, pendingTiers, cloudPayout } from '../lib/clouds'
 import { activeWindow, addTaskReward, spendBonus } from '../lib/planningHours'
 import DevPanel from '../components/DevPanel'
 import RewardToasts from '../components/RewardToasts'
@@ -90,6 +90,9 @@ const DEFAULT_STATE = {
   // `stats` is handed to anyone with a share code. See
   // migration-planning-hours.sql.
   prefs: {},
+  // Which calendar block owns the board, and what was parked to give it room.
+  // Empty when nothing does. See migration-planning-hours.sql.
+  focus: {},
   streak: { current: 0, best: 0, lastDay: null },
   stats: {},
   achievements: {},
@@ -398,13 +401,16 @@ export function GardenProvider({ children }) {
   const releaseBankedClouds = useCallback(async () => {
     const waiting = pendingClouds(stateRef.current)
     if (waiting < 1) return 0
+    // Each comes back at the tier it was earned at, so a cloud banked during a
+    // focus hour is still the better cloud when you get round to popping it.
+    const tiers = pendingTiers(stateRef.current)
     setClouds(prev => [
       ...prev,
-      ...Array.from({ length: waiting }, () => ({
-        id: crypto.randomUUID(), startTier: 1, preview: false,
-      })),
+      ...tiers.map(startTier => ({ id: crypto.randomUUID(), startTier, preview: false })),
     ])
-    await commit({ stats: { ...(stateRef.current?.stats || {}), pendingClouds: 0 } })
+    await commit({
+      stats: { ...(stateRef.current?.stats || {}), pendingClouds: 0, pendingTiers: [] },
+    })
     return waiting
   }, [commit])
 
@@ -450,6 +456,16 @@ export function GardenProvider({ children }) {
   )
 
   const setQuietMode = useCallback(on => save({ quiet_mode: !!on }), [save])
+
+  // A calendar block has taken the board. What was parked is written down with
+  // the band each task came from, because that record is the only thing that
+  // makes putting the board back possible.
+  const beginFocus = useCallback(
+    focus => save({ focus: focus || {} }),
+    [save],
+  )
+
+  const endFocus = useCallback(() => save({ focus: {} }), [save])
 
   // Your hours, taking effect tomorrow.
   //
@@ -658,7 +674,11 @@ export function GardenProvider({ children }) {
   // six — clearing a backlog turned into six interruptions. So finishing puts
   // one aside, the greenhouse says how many are waiting, and you let them in
   // when you are ready for them.
-  const rewardTaskDone = useCallback(async () => {
+  // `boosted` is set when the task belonged to the calendar block that owns
+  // the board. Finishing inside your own focus hour is the behaviour the whole
+  // feature is trying to buy, so it pays more — see FOCUS_BONUS_COINS and the
+  // tier bump below.
+  const rewardTaskDone = useCallback(async ({ boosted = false } = {}) => {
     const cur = stateRef.current
     if (!cur) return null
     const daily = todayBucket(cur.daily)
@@ -670,7 +690,13 @@ export function GardenProvider({ children }) {
     // Quiet mode trades the interruption for its cash value — it used to just
     // drop the cloud, which now would mean finishing a task paid nothing.
     const quiet = !!cur.quiet_mode
-    const paidQuiet = underCap && quiet ? CLOUD_EXPECTED_COINS : 0
+    // Quiet mode's payout doubles too — otherwise turning the animation off
+    // would quietly opt you out of the focus bonus as well.
+    const paidQuiet = underCap && quiet ? CLOUD_EXPECTED_COINS * (boosted ? 2 : 1) : 0
+    // Finishing outside a block pays no coins at all: a cloud pays in time.
+    // This is the focus hour's own reward, and it is flat rather than a
+    // multiplier of nothing.
+    const focusCoins = boosted && !quiet ? FOCUS_BONUS_COINS : 0
 
     const nextStreak = advanceStreak(cur.streak, day)
     // Paid outside the daily cap, like a quest: once a day, amount fixed by the
@@ -684,14 +710,19 @@ export function GardenProvider({ children }) {
     // silent until you notice the nav never lights.
     const outcome = cloudOutcome({ daily, quiet })
     const banks = outcome.banks > 0
+    // The cloud starts a tier up rather than arriving twice. Doubling the
+    // COUNT would burn the daily cloud cap twice as fast, so a focus hour
+    // would leave you worse off by evening — the exact opposite of a bonus.
+    // A better tier costs nothing against the cap and is worth more.
+    const startTier = boosted ? 2 : 1
 
     // pendingClouds is not a statistic. It lives in the stats bag because that
     // bag is jsonb and already saved — a column of its own would mean another
     // migration standing between this and working.
-    const nextStats = bumpStats({ tasksDone: 1, ...cloudStatsPatch(outcome) })
+    const nextStats = bumpStats({ tasksDone: 1, ...cloudStatsPatch(outcome, { startTier }) })
 
     await commit({
-      coins: (cur.coins || 0) + paidQuiet + (reward?.coins || 0),
+      coins: (cur.coins || 0) + paidQuiet + focusCoins + (reward?.coins || 0),
       ...(reward?.packetKey ? { packet_inventory: packets } : {}),
       daily: { ...daily, clouds: daily.clouds + (underCap ? 1 : 0), done: (daily.done || 0) + 1 },
       streak: nextStreak,
@@ -937,7 +968,7 @@ export function GardenProvider({ children }) {
     // deletes the bed server-side, and nothing here would otherwise know.
     reload: load,
     devResetOnboarding, devResetQuests, devCompleteQuests, devShowStreak,
-    spawnCloud, releaseBankedClouds, rewardTaskAdded, rewardTaskDone, recordDoingCleared, notify, setQuietMode, setPlanningHours, completeOnboarding, buyPacket, openPacket, plantSeed, placeFlower, moveFlower, compostGrown, compostPlanted, unlockSeed, expandGarden,
+    spawnCloud, releaseBankedClouds, rewardTaskAdded, rewardTaskDone, recordDoingCleared, notify, setQuietMode, setPlanningHours, beginFocus, endFocus, completeOnboarding, buyPacket, openPacket, plantSeed, placeFlower, moveFlower, compostGrown, compostPlanted, unlockSeed, expandGarden,
     isDev, devOpen, openDevPanel: () => setDevOpen(true),
   }
 

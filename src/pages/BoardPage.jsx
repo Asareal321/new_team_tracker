@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../auth/AuthContext'
 import { useTeam } from '../context/TeamContext'
@@ -13,6 +13,8 @@ import { PUBLIC_PROFILE_PACKET } from '../lib/rewards'
 import { sampleTasks, seededClouds } from '../lib/sampleTasks'
 import { requestTour } from '../lib/tourState'
 import useCalendarFill from '../components/useCalendarFill'
+import { planRestore } from '../lib/calendarFill'
+import FocusCleared from '../components/FocusCleared'
 import CalendarStrip from '../components/CalendarStrip'
 
 function DoneTaskModal({ task, tasks = [], projects, onAdd, onUpdateProject, onPromote, onDismiss }) {
@@ -117,7 +119,7 @@ export default function BoardPage() {
   const { user } = useAuth()
   const { currentTeamId } = useTeam()
   const {
-    rewardTaskAdded, rewardTaskDone, recordDoingCleared,
+    rewardTaskAdded, rewardTaskDone, recordDoingCleared, beginFocus, endFocus,
     state: garden, ready: gardenReady, completeOnboarding,
   } = useGarden()
   const [tasks, setTasks] = useState([])
@@ -311,19 +313,35 @@ export default function BoardPage() {
   // belongs to the account, so work done on a team board counts the same.
   async function dismissDoneTask() {
     const cleared = doneTask?.fromDoing
+    // Finished inside the hour the board was handed to, and belonging to it.
+    // Both halves matter: a stray task from another project finished during a
+    // BCG block is not the behaviour being rewarded.
+    const boosted = !!focus?.projectId && doneTask?.task?.project_id === focus.projectId
     setDoneTask(null)
     // Sequenced, not fired together: both rebuild the same stats object, so
     // overlapping them means whichever lands second wins and the other's
     // work is lost.
-    await rewardTaskDone()
+    await rewardTaskDone({ boosted })
     if (cleared) await recordDoingCleared()
   }
 
   // Apply a calendar plan as one batch. Written straight to the database and
   // then re-read, rather than optimistically: six rows moving at once is one
   // visible change, and a half-applied plan would be worse than none.
-  const applyCalendarPlan = useCallback(async (moves) => {
+  const applyCalendarPlan = useCallback(async (moves, { project, block, parked } = {}) => {
     if (!moves.length) return
+    // Written before the moves, not after: a reload between the two would
+    // otherwise leave the board emptied with no record of what was parked,
+    // which is the one state this feature must never be able to reach.
+    if (project && block) {
+      await beginFocus({
+        blockId: block.id,
+        projectId: project.id,
+        projectName: project.name,
+        endsAt: block.end || null,
+        parked: parked || [],
+      })
+    }
     // The plan carries a position for the tasks it seats, so the hour's work
     // sorts above what was already in the band rather than under it.
     await Promise.all(moves.map(m =>
@@ -334,6 +352,53 @@ export default function BoardPage() {
   }, [fetchTasks])
 
   const calendar = useCalendarFill({ tasks, projects, onApply: applyCalendarPlan })
+
+  // — the focus hour ————————————————————————————————————————————————
+  //
+  // The board belongs to a calendar block until that block is over. Two things
+  // end it: the clock, and clearing the work. They are deliberately different.
+  const focus = garden?.focus?.projectId ? garden.focus : null
+
+  const putBackParked = useCallback(async () => {
+    const moves = planRestore({ parked: focus?.parked || [], tasks })
+    if (moves.length) {
+      await Promise.all(moves.map(m =>
+        supabase.from('tasks').update({ status: m.status }).eq('id', m.id)))
+      await fetchTasks()
+    }
+    await endFocus()
+    return moves.length
+  }, [focus, tasks, fetchTasks, endFocus])
+
+  // The clock. Quietly, with no ceremony: the hour ran out, which is not an
+  // achievement, and leaving the board crippled afterwards would be.
+  useEffect(() => {
+    if (!focus?.endsAt) return undefined
+    const check = () => {
+      if (Date.now() >= new Date(focus.endsAt).getTime()) putBackParked()
+    }
+    check()
+    const id = setInterval(check, 30_000)
+    return () => clearInterval(id)
+  }, [focus?.endsAt, putBackParked])
+
+  // Clearing the work, which IS an achievement, and gets a panel rather than a
+  // silent restore. Only fires once there was something to clear — a block
+  // that never had any of its tasks on the board has not been cleared by you.
+  const focusTasksLeft = focus
+    ? tasks.filter(t => t.project_id === focus.projectId && (t.status === 'todo' || t.status === 'in_progress')).length
+    : 0
+  const [focusCleared, setFocusCleared] = useState(null)
+  const [jumpToTab, setJumpToTab] = useState(null)
+  const hadFocusWork = useRef(false)
+  useEffect(() => {
+    if (!focus) { hadFocusWork.current = false; return }
+    if (focusTasksLeft > 0) { hadFocusWork.current = true; return }
+    if (hadFocusWork.current) {
+      hadFocusWork.current = false
+      setFocusCleared({ ...focus })
+    }
+  }, [focus, focusTasksLeft])
 
   async function updateTask(id, updates) {
     await supabase.from('tasks').update(updates).eq('id', id)
@@ -459,6 +524,7 @@ export default function BoardPage() {
           setDoneTask({ task, fromDoing: clearedDoing })
           respawnRecurring(task)
         }}
+        jumpToTab={jumpToTab}
         calendarSlot={!currentTeamId ? (
           <CalendarStrip
             enabled={calendar.enabled}
@@ -530,6 +596,23 @@ export default function BoardPage() {
             // Layout's to run, not this page's.
             requestTour()
           }}
+        />
+      )}
+
+      {focusCleared && (
+        <FocusCleared
+          projectName={focusCleared.projectName}
+          parkedCount={(focusCleared.parked || []).length}
+          onRestore={async () => { setFocusCleared(null); await putBackParked() }}
+          onBraindump={async () => {
+            setFocusCleared(null)
+            // The parked work stays parked — it is in the braindump, which is
+            // where you are being sent to choose from. Ending the focus is what
+            // stops the clock putting it back behind you.
+            await endFocus()
+            setJumpToTab(j => ({ tab: 'braindump', n: (j?.n || 0) + 1 }))
+          }}
+          onLeave={async () => { setFocusCleared(null); await endFocus() }}
         />
       )}
 

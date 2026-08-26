@@ -7,7 +7,7 @@
 
 import {
   normaliseTitle, matchProject, activeBlock, blocksAt, chooseBlock,
-  hasMarker, stripMarker, MARKER, pickOrder, planFill,
+  hasMarker, stripMarker, MARKER, pickOrder, planFill, planRestore,
   BRAINDUMP, UP_NEXT, DOING,
 } from '../src/lib/calendarFill.js'
 import { MAX_DOING, MAX_UP_NEXT } from '../src/lib/boardLimits.js'
@@ -252,75 +252,136 @@ ok('a displaced task is not immediately re-filled',
 ok('no task is moved twice in one plan',
   new Set(sd.moves.map(m => m.id)).size === sd.moves.length)
 
-// — displacement is bounded by what there is to replace with —
+// — the board becomes the block, and only the block —
 //
-// The board full of one project, a block naming another, and nothing of that
-// other project waiting. Clearing the board would leave it empty, which is
-// strictly worse than the mismatched board it started with.
+// The rule this replaced kept whatever it could not immediately displace, so a
+// focus hour still had last hour's work sitting in it. Now everything not from
+// the block is parked, and a half-empty board is the correct answer.
 
 const fullOfProduct = [
   ...Array.from({ length: MAX_DOING }, (_, i) => ({ id: `D${i}`, status: DOING, project_id: 'p1' })),
   ...Array.from({ length: MAX_UP_NEXT }, (_, i) => ({ id: `U${i}`, status: UP_NEXT, project_id: 'p1' })),
 ]
-ok('an empty pile never empties the board',
-  planFill({ block: { title: 'Case with Jake from BCG' }, projects: PROJECTS, tasks: fullOfProduct, today: TODAY, rand: fixedRand }).moves.length === 0)
+
+// The one refusal: nothing of this project anywhere. Clearing the board and
+// putting nothing back is a wipe, not a focus hour.
+const nothingWaiting = planFill({ block: { title: 'Case with Jake from BCG' }, projects: PROJECTS, tasks: fullOfProduct, today: TODAY, rand: fixedRand })
+ok('a project with nothing anywhere leaves the board alone', nothingWaiting.moves.length === 0)
+ok('and parks nothing', (nothingWaiting.parked || []).length === 0)
 
 const oneWaiting = [
   ...fullOfProduct,
   { id: 'bcg1', status: BRAINDUMP, project_id: 'p2', due_date: null },
 ]
 const one = planFill({ block: { title: 'BCG' }, projects: PROJECTS, tasks: oneWaiting, today: TODAY, rand: fixedRand })
-// The band you sit down in holds the hour's work, full stop. Being in Doing
-// already is not a claim on Doing — that incumbency was the bug.
-ok('and the single task lands in Doing',
+ok('the single task lands in Doing',
   one.moves.find(m => m.reason === 'filled')?.status === DOING)
-ok('the task it pushed out drops to Up next, not to the pile',
-  one.moves.some(m => m.reason === 'demoted' && m.status === UP_NEXT && m.id.startsWith('D')),
+ok('and it is the only thing on the board',
+  one.moves.filter(m => m.reason === 'filled').length === 1)
+ok('every incumbent is parked, however many seats that empties',
+  one.moves.filter(m => m.reason === 'parked').length === MAX_DOING + MAX_UP_NEXT,
   JSON.stringify(one.moves))
-ok('and the spill comes off the bottom of Up next',
-  one.moves.filter(m => m.status === BRAINDUMP).map(m => m.id).join() === 'U3')
-ok('one waiting task costs the board exactly one seat',
-  one.moves.filter(m => m.status === BRAINDUMP).length === 1)
-ok('the board never shrinks', one.moves.filter(m => m.status === BRAINDUMP).length
-  <= one.moves.filter(m => m.status !== BRAINDUMP).length)
+ok('a five-seat hole is the correct outcome, not a failure to fill one',
+  one.moves.filter(m => m.status === BRAINDUMP).length === 6)
 ok('nothing is moved twice', new Set(one.moves.map(m => m.id)).size === one.moves.length)
+
+// The park has to remember where everything was, or nothing can come back.
+ok('each parked task records the band it came from',
+  one.parked.length === 6 && one.parked.every(p => p.status === DOING || p.status === UP_NEXT))
+ok('and the Doing pair is recorded as Doing',
+  one.parked.filter(p => p.status === DOING).map(p => p.id).sort().join() === 'D0,D1')
+
+// — putting it back —
+
+const parked = one.parked
+const afterHour = [
+  { id: 'bcg1', status: 'done', project_id: 'p2' },
+  ...parked.map(p => ({ id: p.id, status: BRAINDUMP, project_id: 'p1' })),
+]
+const back = planRestore({ parked, tasks: afterHour })
+ok('everything parked comes back', back.length === 6)
+ok('and to the band it came from',
+  back.filter(m => m.status === DOING).map(m => m.id).sort().join() === 'D0,D1')
+ok('a restore never overfills Doing',
+  back.filter(m => m.status === DOING).length <= MAX_DOING)
+ok('nor Up next', back.filter(m => m.status === UP_NEXT).length <= MAX_UP_NEXT)
+
+// The board moved on during the hour, which it is allowed to do.
+const dealtWith = afterHour.map(t => (t.id === 'D0' ? { ...t, status: 'done' } : t))
+ok('a task finished during the hour is not resurrected',
+  !planRestore({ parked, tasks: dealtWith }).some(m => m.id === 'D0'))
+ok('a task deleted during the hour is skipped',
+  !planRestore({ parked, tasks: afterHour.filter(t => t.id !== 'D1') }).some(m => m.id === 'D1'))
+
+// You filled Doing yourself during the hour. The parked pair cannot both have
+// their old seats back, and dropping them would lose them.
+const doingTaken = [
+  { id: 'mine1', status: DOING, project_id: 'p2' },
+  { id: 'mine2', status: DOING, project_id: 'p2' },
+  ...parked.map(p => ({ id: p.id, status: BRAINDUMP, project_id: 'p1' })),
+]
+const squeezed = planRestore({ parked, tasks: doingTaken })
+ok('a taken Doing seat sends the task to Up next rather than nowhere',
+  squeezed.filter(m => m.id.startsWith('D')).every(m => m.status === UP_NEXT),
+  JSON.stringify(squeezed))
+ok('and Doing is not overfilled doing it',
+  squeezed.filter(m => m.status === DOING).length === 0)
+ok('nothing comes back twice', new Set(squeezed.map(m => m.id)).size === squeezed.length)
+ok('an empty park restores nothing', planRestore({ parked: [], tasks: afterHour }).length === 0)
+ok('no arguments is not a crash', planRestore().length === 0)
 
 const threeWaiting = [
   ...fullOfProduct,
   ...Array.from({ length: 3 }, (_, i) => ({ id: `b${i}`, status: BRAINDUMP, project_id: 'p2', due_date: null })),
 ]
 const three = planFill({ block: { title: 'BCG' }, projects: PROJECTS, tasks: threeWaiting, today: TODAY, rand: fixedRand })
-ok('three waiting cost the board exactly three seats',
-  three.moves.filter(m => m.status === BRAINDUMP).length === 3)
 ok('Doing is filled before Up next',
   three.moves.filter(m => m.reason === 'filled' && m.status === DOING).length === MAX_DOING)
 ok('and the third goes to Up next',
   three.moves.filter(m => m.reason === 'filled' && m.status === UP_NEXT).length === 1)
-ok('both former Doing tasks land in Up next rather than the pile',
-  three.moves.filter(m => m.reason === 'demoted' && m.id.startsWith('D')).length === MAX_DOING)
+ok('the rest of Up next is left empty on purpose',
+  three.moves.filter(m => m.reason === 'filled').length === 3)
 
-// — the cascade, on the board that showed the problem —
+// — the board that showed the original problem —
 //
 // Doing full of last hour's work, Up next empty, one task waiting for the hour
-// you just sat down for. The old rule seated it in Up next, because Doing was
-// "already busy" — which is precisely the incumbency being removed.
+// you just sat down for.
 
 const doingBusy = [
   { id: 'old1', status: DOING, project_id: 'p1' },
   { id: 'old2', status: DOING, project_id: 'p1' },
   { id: 'bcgA', status: BRAINDUMP, project_id: 'p2', due_date: null },
 ]
-const cascade = planFill({ block: { title: 'BCG' }, projects: PROJECTS, tasks: doingBusy, today: TODAY, rand: fixedRand })
+const focused = planFill({ block: { title: 'BCG' }, projects: PROJECTS, tasks: doingBusy, today: TODAY, rand: fixedRand })
 ok('the calendar task takes a Doing seat even though Doing was full',
-  cascade.moves.find(m => m.id === 'bcgA')?.status === DOING)
-ok('exactly one incumbent is pushed down', 
-  cascade.moves.filter(m => m.reason === 'demoted').length === 1)
-ok('and it lands in Up next, since Up next had room',
-  cascade.moves.find(m => m.reason === 'demoted')?.status === UP_NEXT)
-ok('nothing reaches the pile while Up next has room',
-  !cascade.moves.some(m => m.status === BRAINDUMP), JSON.stringify(cascade.moves))
-ok('the other incumbent keeps its Doing seat',
-  !cascade.moves.some(m => m.id === 'old1' && m.id === 'old2'))
+  focused.moves.find(m => m.id === 'bcgA')?.status === DOING)
+ok('and both incumbents are parked, not demoted',
+  focused.moves.filter(m => m.reason === 'parked').length === 2)
+ok('so the hour is that one task and nothing else',
+  focused.moves.filter(m => m.reason === 'filled').length === 1)
+
+// Tasks from the block already on the board are the exception: they stay.
+const someMine = [
+  { id: 'mineDoing', status: DOING, project_id: 'p2' },
+  { id: 'theirs', status: UP_NEXT, project_id: 'p1' },
+  { id: 'poolA', status: BRAINDUMP, project_id: 'p2', due_date: null },
+]
+const mixedBoard = planFill({ block: { title: 'BCG' }, projects: PROJECTS, tasks: someMine, today: TODAY, rand: fixedRand })
+ok('the block\'s own task keeps its seat',
+  !mixedBoard.moves.some(m => m.id === 'mineDoing'))
+ok('the other project\'s is parked', mixedBoard.parked.map(p => p.id).join() === 'theirs')
+ok('and it counts toward the six',
+  mixedBoard.moves.filter(m => m.reason === 'filled' && m.status === DOING).length === 1)
+
+// A project with tasks only on the board still triggers the park — the hour is
+// already correct, and the rest of the board still should not be there.
+const onlyOnBoard = [
+  { id: 'mine', status: DOING, project_id: 'p2' },
+  { id: 'theirs', status: UP_NEXT, project_id: 'p1' },
+]
+ok('a project already on the board still clears the rest',
+  planFill({ block: { title: 'BCG' }, projects: PROJECTS, tasks: onlyOnBoard, today: TODAY, rand: fixedRand })
+    .parked.map(p => p.id).join() === 'theirs')
 
 // The block's tasks go in first, and they sort above what shares their band.
 const positioned = planFill({ block: { title: 'Product' }, projects: PROJECTS, tasks: dump(6), today: TODAY, rand: fixedRand })

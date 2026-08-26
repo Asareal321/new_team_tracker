@@ -429,3 +429,25 @@
   /* Without the sweep animation the glint layer would freeze mid-cloud. */
   .puff, .cloud-base { background-image: var(--puff-fill); }
 }
+
+/* What the cloud is worth, said in hours rather than in minutes. The number is
+   the reward; the label is only there so the minus sign has a subject. */
+.cloud-reward {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  line-height: 1.15;
+}
+.cloud-reward-time {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.cloud-reward-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+}

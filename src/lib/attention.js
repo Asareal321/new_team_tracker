@@ -103,6 +103,17 @@ function raw({ state, flowers, quests, community, now = new Date() }) {
         : 'Planning hour — tasks pay double until bedtime')
   }
 
+  // — the board: a calendar block owns it —
+  //
+  // Signed by the block, so each hour lights once. Worth saying from anywhere
+  // in the app: the board has been rearranged on your behalf, and finding that
+  // out by wandering back to it is the version of this feature people would
+  // reasonably call creepy.
+  if (state?.focus?.projectId) {
+    add(ROUTE_BOARD, 'ready', `focus:${state.focus.blockId || state.focus.projectId}`,
+      `Focus hour — the board is ${state.focus.projectName || 'this block'} and nothing else`)
+  }
+
   // — the board: quests are claimed on the greenhouse strip, not in the garden —
   const claimable = (quests || []).filter(q => q.claimable).length
   if (claimable > 0) {

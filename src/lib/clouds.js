@@ -27,12 +27,30 @@ export function cloudOutcome({ daily, quiet = false, cap = DAILY_CAPS.clouds } =
 
 // The stats patch for a completion. Separate from the outcome so the caller
 // can merge it with everything else one completion writes.
-export function cloudStatsPatch(outcome) {
-  return outcome.banks > 0 ? { pendingClouds: outcome.banks } : {}
+// `startTier` is where the banked cloud should appear when it is let in. A
+// cloud earned during a focus hour starts higher, and banking used to be a
+// bare count, which threw that away between earning it and popping it.
+export function cloudStatsPatch(outcome, { startTier = 1 } = {}) {
+  if (outcome.banks <= 0) return {}
+  return {
+    pendingClouds: outcome.banks,
+    pendingTiers: Array.from({ length: outcome.banks }, () => startTier),
+  }
 }
 
 export function pendingClouds(state) {
   return Math.max(0, state?.stats?.pendingClouds || 0)
+}
+
+// The tier each waiting cloud should start at. Older accounts banked a count
+// and no tiers, so a short list is padded with ordinary Commons rather than
+// treated as a bug — nobody should lose a banked cloud to this changing.
+export function pendingTiers(state) {
+  const n = pendingClouds(state)
+  const recorded = state?.stats?.pendingTiers
+  const list = Array.isArray(recorded) ? recorded.slice(0, n) : []
+  while (list.length < n) list.push(1)
+  return list.map(t => (Number.isFinite(t) && t >= 1 ? t : 1))
 }
 
 // What to say once it has happened. The bank is silent by nature — nothing

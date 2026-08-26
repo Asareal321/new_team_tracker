@@ -152,9 +152,16 @@ export default function TaskBoard({
   currentUserId, currentTeamId,
   onAdd, onUpdate, onDelete, onAddUpdate, onDeleteUpdate, onUpdateAssignees,
   onRespondToAssignment, onResolveChangeRequest, onTaskDone, onManageProjects, onAddProject,
-  calendarSlot,
+  calendarSlot, jumpToTab,
 }) {
   const [activeTab, setActiveTab] = useState('board')
+
+  // A tab the page asked for, rather than one you clicked. Carries a nonce so
+  // that asking for the tab you are already on still moves you — clearing a
+  // focus block twice should send you to the braindump twice.
+  useEffect(() => {
+    if (jumpToTab?.tab) setActiveTab(jumpToTab.tab)
+  }, [jumpToTab?.tab, jumpToTab?.n])
 
   // People filter: which teammates' tasks to show. Default = only me (tasks
   // I'm assigned to). "Everyone" shows the whole team board.

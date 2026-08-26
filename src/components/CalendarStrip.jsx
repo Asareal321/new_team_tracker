@@ -1,4 +1,5 @@
 import { useAuth } from '../auth/AuthContext'
+import { isNativeApp } from '../lib/nativeBridge'
 import { MARKER } from '../lib/calendarFill'
 import './CalendarStrip.css'
 
@@ -10,6 +11,13 @@ import './CalendarStrip.css'
 // from the same place.
 export default function CalendarStrip({ enabled, connected, block, matched, overlapping, error, lastFilled, onToggle, onRefresh }) {
   const { connectCalendar } = useAuth()
+
+  // Not offered inside the iOS app. Connecting means a Google sign-in, and
+  // Google refuses OAuth in an embedded web view — so the strip would be an
+  // invitation to a dead end, on the one platform where a dead end looks like
+  // a broken app rather than a broken browser. Anyone who connects on the web
+  // still gets their board filled here; only the pitch is withheld.
+  if (isNativeApp() && !connected) return null
 
   if (!enabled) {
     return (

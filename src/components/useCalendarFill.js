@@ -13,8 +13,9 @@ import { localDay } from '../lib/garden'
 //
 //   • it only acts when the block CHANGES, not on every poll — otherwise a
 //     task you moved by hand would be dragged back thirty seconds later;
-//   • it does nothing at all when the block ends. Half-finished work is not
-//     tidied away from under you;
+//   • when the block ends it puts back only what it parked — see the focus
+//     record in BoardPage. Half-finished work is not tidied away from under
+//     you, and what you did during the hour stays exactly as you left it;
 //   • one fill per block per day, so re-entering a block you already worked
 //     from does not wipe what you did in it.
 const POLL_MS = 60_000
@@ -77,7 +78,7 @@ export default function useCalendarFill({ tasks, projects, onApply }) {
       if (actedOn.current.has(stamp)) return
 
       const { tasks: t, projects: p, onApply: apply } = latest.current
-      const { project, moves } = planFill({
+      const { project, moves, parked } = planFill({
         block: current, projects: p, tasks: t, today: localDay(now),
       })
       setMatched(project)
@@ -85,7 +86,9 @@ export default function useCalendarFill({ tasks, projects, onApply }) {
       actedOn.current.add(stamp)
       if (moves.length === 0) return
 
-      await apply(moves, { project, block: current })
+      // `parked` goes with it: the page writes it down before it moves
+      // anything, so a reload mid-apply can still rebuild the board.
+      await apply(moves, { project, block: current, parked })
       setLastFilled({ project: project.name, count: moves.filter(m => m.status !== 'braindump').length })
     } catch (err) {
       // Only a real authorisation failure ends the connection. Everything

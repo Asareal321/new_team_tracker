@@ -129,6 +129,13 @@ export const DAILY_CAPS = {
 // cloud over the finishing curve (see scripts/check-cloud-odds.mjs), rounded.
 export const CLOUD_EXPECTED_COINS = 90
 
+// Finishing a task inside a calendar block that owns the board. Ordinary
+// completions pay no coins at all — a cloud pays in time — so this is the
+// focus hour's own reward rather than a multiplier applied to zero. Set at
+// twice what writing a task down pays, which is the comparison people will
+// actually make.
+export const FOCUS_BONUS_COINS = ADD_TASK_REWARD.coins * 2
+
 // Local-timezone YYYY-MM-DD. Everything day-shaped in the garden — caps,
 // streaks — uses this, so a day turns over at the user's midnight.
 export function localDay(ts) {

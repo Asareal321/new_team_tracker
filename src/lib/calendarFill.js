@@ -16,17 +16,21 @@
 //     as whole words, anywhere in the title. Real calendar entries are
 //     sentences ("Case with Jake from BCG"), not labels, so requiring the
 //     title to *equal* the project name meant almost nothing ever matched.
-//   • The block owns Doing. Its tasks take the Doing seats first — being on
-//     the board already is not a claim to the band you sit down in. What was
-//     in Doing drops to Up next, and what Up next can no longer hold goes back
-//     to the pile. Nothing is deleted; the board only ever reshuffles.
+//   • The board becomes the block, and only the block. Everything not from
+//     this project is PARKED — sent to the pile with the band it was in
+//     recorded, so the board can be rebuilt afterwards. Being on the board
+//     already is not a claim to the hour you just sat down for.
+//   • A half-empty board is the correct outcome, not a failure to fill one.
+//     Three tasks in the project means three tasks and three empty seats, and
+//     that emptiness is the whole point of the hour.
 //   • Work you put on the board yourself outranks the calendar, but only if it
 //     belongs to the block. Tasks from this project stay where they are and
 //     count toward the six.
 //   • Picks come due-date-first, then random. Random alone is what was asked
 //     for, but it can leave something due today sitting in the braindump.
-//   • When the block ends, nothing happens. Work half-done does not get tidied
-//     away from under you.
+//   • When the block ends, the parked work comes back — see planRestore. Only
+//     the parking is undone: what you did during the hour stays exactly as you
+//     left it, and anything finished in the meantime is not resurrected.
 
 import { MAX_DOING, MAX_UP_NEXT } from './boardLimits.js'
 
@@ -215,41 +219,31 @@ export function planFill({ block, projects = [], tasks = [], today, rand = Math.
 
   const pool = tasks.filter(t => t.project_id === project.id && t.status === BRAINDUMP)
   const ordered = pickOrder(pool, { today, rand })
+  const keptTotal = kept[DOING].length + kept[UP_NEXT].length
 
-  // Seats for the hour's work, Doing first and to the exclusion of whatever is
-  // sitting there. Doing is the band you actually work out of, so a task that
-  // was already in it has no claim on it against the block you just sat down
-  // for — that priority-by-incumbency is the thing this rule removes.
-  const doingSeats = Math.max(0, MAX_DOING - kept[DOING].length)
-  const upNextSeats = Math.max(0, MAX_UP_NEXT - kept[UP_NEXT].length)
-  const placeDoing = Math.min(ordered.length, doingSeats)
-  const placeUpNext = Math.min(ordered.length - placeDoing, upNextSeats)
+  // The one refusal. A project with nothing anywhere — none on the board, none
+  // in the pile — would clear the board and put nothing back. That is not a
+  // focus hour, it is a wipe, and it is strictly worse than the mismatched
+  // board you had. Everything else proceeds, gaps and all.
+  if (keptTotal === 0 && ordered.length === 0) return { project, moves: [], parked: [] }
 
   const moves = []
 
-  // Nothing waiting means nothing moves. Clearing the board and then finding
-  // the pile empty would leave you staring at nothing, which is strictly worse
-  // than the mismatched board you had.
-  if (placeDoing + placeUpNext === 0) return { project, moves }
-
-  // The cascade: what the block pushed out of Doing drops to Up next, and Up
-  // next spills to the pile from the bottom. Demoted Doing tasks are seated
-  // before the ones already in Up next — they were the things being worked on
-  // a minute ago, so they are the ones worth keeping in sight.
-  let doingRoom = doingSeats - placeDoing
-  let upRoom = upNextSeats - placeUpNext
-
-  const reseat = (task, from) => {
-    if (from === DOING && doingRoom > 0) { doingRoom--; return }
-    if (upRoom > 0) {
-      upRoom--
-      if (from !== UP_NEXT) moves.push({ id: task.id, status: UP_NEXT, reason: 'demoted' })
-      return
+  // Parked, not discarded. Each one carries the band it was in, and that
+  // record is the only reason "put them back" can exist — without it this is
+  // a shove into the pile and the board you had is gone for good.
+  const parked = []
+  for (const band of [DOING, UP_NEXT]) {
+    for (const t of others[band]) {
+      moves.push({ id: t.id, status: BRAINDUMP, reason: 'parked' })
+      parked.push({ id: t.id, status: band })
     }
-    moves.push({ id: task.id, status: BRAINDUMP, reason: 'displaced' })
   }
-  for (const t of others[DOING]) reseat(t, DOING)
-  for (const t of others[UP_NEXT]) reseat(t, UP_NEXT)
+
+  // Seats for the hour's work, Doing first. Nothing is stretched to fill what
+  // is left: an empty Up next during a focus hour is the point being made.
+  const placeDoing = Math.min(ordered.length, Math.max(0, MAX_DOING - kept[DOING].length))
+  const placeUpNext = Math.min(ordered.length - placeDoing, Math.max(0, MAX_UP_NEXT - kept[UP_NEXT].length))
 
   // Negative and descending, so the block's tasks sort above whatever shares
   // their priority band — positions the app writes itself are positive. The
@@ -263,5 +257,35 @@ export function planFill({ block, projects = [], tasks = [], today, rand = Math.
   seat(DOING, placeDoing)
   seat(UP_NEXT, placeUpNext)
 
-  return { project, moves }
+  return { project, moves, parked }
+}
+
+// Putting the board back when the hour is over.
+//
+// `parked` is what planFill recorded. Anything that has been finished,
+// archived or deleted since is skipped: an hour is long enough for the board
+// to have moved on, and resurrecting a task you completed during the block
+// would be worse than not restoring at all.
+export function planRestore({ parked = [], tasks = [] } = {}) {
+  const byId = new Map(tasks.map(t => [t.id, t]))
+  const room = { [DOING]: MAX_DOING, [UP_NEXT]: MAX_UP_NEXT }
+  for (const t of tasks) {
+    if (t.status === DOING || t.status === UP_NEXT) room[t.status] -= 1
+  }
+  const moves = []
+  for (const p of parked) {
+    const task = byId.get(p.id)
+    // Gone, or dealt with while it was parked.
+    if (!task || task.status !== BRAINDUMP) continue
+    if (room[p.status] > 0) {
+      moves.push({ id: p.id, status: p.status, reason: 'restored' })
+      room[p.status] -= 1
+    } else if (p.status === DOING && room[UP_NEXT] > 0) {
+      // Its old seat was taken during the hour. Up next is the honest second
+      // choice — leaving it in the pile would quietly lose it.
+      moves.push({ id: p.id, status: UP_NEXT, reason: 'restored' })
+      room[UP_NEXT] -= 1
+    }
+  }
+  return moves
 }

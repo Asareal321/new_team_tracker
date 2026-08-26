@@ -13,6 +13,21 @@
 alter table garden_state
   add column if not exists prefs jsonb not null default '{}'::jsonb;
 
+-- The focus record, for the same reasons and in the same trip.
+--
+-- When a calendar block takes over the board, everything not from that project
+-- is parked — moved to the braindump with the band it was in written down here
+-- so the board can be rebuilt when the hour ends. Without this the park is
+-- indistinguishable from a shove into the pile.
+--
+-- Shape: { "blockId": "...", "projectId": "...", "projectName": "BCG",
+--          "endsAt": "2026-08-26T15:00:00Z",
+--          "parked": [{ "id": "...", "status": "in_progress" }] }
+--        or {} when no block owns the board.
+
+alter table garden_state
+  add column if not exists focus jsonb not null default '{}'::jsonb;
+
 -- Nothing else changes: RLS on garden_state already restricts every row to its
--- owner, and this column is covered by the same policies. It is left out of
--- every sharing function on purpose — see garden_share_payload.
+-- owner, and both columns are covered by the same policies. They are left out
+-- of every sharing function on purpose — see garden_share_payload.

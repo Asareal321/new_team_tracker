@@ -20,7 +20,9 @@ export default function CloudLayer({ clouds, onPop, devSignal = null, onRoll = n
     const toast = {
       id: crypto.randomUUID(),
       // With an empty greenhouse the whole cloud is banked, so the headline is
-      // the banking rather than a shave of nothing.
+      // the banking rather than a shave of nothing. Both are said in hours and
+      // minutes rather than raw minutes — five hours is a different-sounding
+      // reward from three hundred minutes, and it is the same reward.
       text: reward.amount > 0
         ? `−${formatDuration(reward.amount)} grow time`
         : `${formatDuration(reward.overflow)} banked`,
@@ -167,7 +169,14 @@ function Cloud({ onPop, startTier = 1, devSignal = null, onRoll = null, onTierCh
 
       <div className="cloud-meta">
         <span className="cloud-rarity">{info.name}</span>
-        <span className="cloud-reward">−{info.shaveMinutes} min grow time</span>
+        {/* What this cloud is worth, in the units the reward is actually felt
+            in. "300 min" is five hours and reads like neither; the hours are
+            the thing you are buying, so they get the big type, and the coins
+            were previously not shown at all until the toast had gone. */}
+        <span className="cloud-reward">
+          <strong className="cloud-reward-time">−{formatDuration(info.shaveMinutes * 60)}</strong>
+          <span className="cloud-reward-label">off the wait</span>
+        </span>
         <div className="cloud-taps">
           {Array.from({ length: CLOUD_MAX_TAPS }, (_, i) => (
             <span key={i} className={`tap-pip${i < taps ? ' used' : ''}`} />
