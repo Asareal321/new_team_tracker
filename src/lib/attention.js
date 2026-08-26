@@ -26,7 +26,8 @@
 // means "this appeared since you last looked", and on a first run there is no
 // last look — a brand new account should not open onto a lit-up rail.
 
-import { remainingSeconds, PACKETS, seedByKey, SEEDS } from './garden.js'
+import { remainingSeconds, PACKETS, seedByKey, SEEDS, localDay } from './garden.js'
+import { activeWindow } from './planningHours.js'
 
 export const ROUTE_BOARD = '/'
 export const ROUTE_COMMUNITY = '/community'
@@ -78,7 +79,7 @@ const speciesFound = state => Object.keys(state?.discovered || {}).length
 
 // Every raw signal, before anything is silenced. Each is a scope, a level, a
 // signature, and the sentence that explains it.
-function raw({ state, flowers, quests, community }) {
+function raw({ state, flowers, quests, community, now = new Date() }) {
   const out = {}
   const add = (scope, level, signature, reason, count = 0) => {
     const prev = out[scope]
@@ -87,6 +88,19 @@ function raw({ state, flowers, quests, community }) {
     prev.signature += `|${signature}`
     prev.count = Math.max(prev.count, count)
     if (level === 'ready') prev.level = 'ready'
+  }
+
+  // — the board: a planning hour is open —
+  //
+  // Signed by the day and the window, so it lights once each morning and once
+  // each evening rather than once ever. Nobody discovers a bonus hour they were
+  // never told about, and a bonus nobody notices changes nobody's habits.
+  const planning = activeWindow(state?.prefs, now)
+  if (planning) {
+    add(ROUTE_BOARD, 'ready', `planning:${planning}:${localDay(now)}`,
+      planning === 'morning'
+        ? 'Planning hour — tasks pay double until an hour after you got up'
+        : 'Planning hour — tasks pay double until bedtime')
   }
 
   // — the board: quests are claimed on the greenhouse strip, not in the garden —
@@ -202,8 +216,8 @@ function shown(scope, signal, seen) {
   return true
 }
 
-export function attentionFor({ state, flowers, quests, community, seen = {} } = {}) {
-  const all = raw({ state, flowers, quests, community })
+export function attentionFor({ state, flowers, quests, community, seen = {}, now } = {}) {
+  const all = raw({ state, flowers, quests, community, now })
   const out = {}
   for (const [scope, signal] of Object.entries(all)) {
     if (shown(scope, signal, seen)) out[scope] = signal

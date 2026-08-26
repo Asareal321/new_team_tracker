@@ -308,6 +308,17 @@ html[data-theme="dark"] .app-sidebar {
 /* The active tab already carries an inset bar; don't fight it. */
 .nav-btn.active.news-ready { animation: none; }
 
+/* The quiet level used to be a dot and nothing else, which meant a 15px mark
+   in the corner of an icon was the whole signal — easy to miss, and on a phone
+   the label isn't even there to draw the eye. The tab itself now carries a
+   steady ring. Steady, not pulsing: `ready` has to stay the louder of the two
+   or the levels collapse into one. */
+.nav-btn.news-new {
+  box-shadow: 0 0 0 1.5px rgba(195, 247, 58, 0.4);
+  border-radius: 10px;
+}
+.nav-btn.active.news-new { box-shadow: none; }
+
 .nav-news {
   position: absolute;
   top: 4px;

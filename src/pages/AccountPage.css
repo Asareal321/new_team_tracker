@@ -126,3 +126,28 @@
   font-size: 0.82rem;
   color: var(--red-text);
 }
+
+/* ── Planning hours ── */
+/* The card is a form and stacks its own fields, so it opts out of the
+   settings-card row layout rather than fighting it. */
+.acct-hours { align-items: flex-start; }
+.hours-fields { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
+.hours-field { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; }
+.hours-field span { color: var(--muted, #6b7a6d); }
+.hours-field input {
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--line, #dfe4da);
+  border-radius: 8px;
+  background: var(--panel, #fff);
+  color: inherit;
+}
+.hours-preview {
+  margin: 10px 0 0;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  color: var(--muted, #6b7a6d);
+}
+.hours-note { margin: 6px 0 0; font-size: 0.8rem; color: var(--muted, #8a978c); }
+.hours-live { color: #4a8f5b; font-weight: 600; }

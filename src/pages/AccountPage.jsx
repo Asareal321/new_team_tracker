@@ -8,13 +8,14 @@ import { useTeam } from '../context/TeamContext'
 import Onboarding from '../components/Onboarding'
 import { resetTour, requestTour } from '../lib/tourState'
 import { isNativeApp, rememberMe, setRememberMe } from '../lib/nativeBridge'
+import { formatTime, parseTime, isActive, WINDOW_MINUTES } from '../lib/planningHours'
 import './AccountPage.css'
 
 export default function AccountPage() {
   const [remember, setRemember] = useState(rememberMe)
   const { user, profile, signOut, refreshProfile } = useAuth()
   const navigate = useNavigate()
-  const { isDev, openDevPanel, state: garden, setQuietMode } = useGarden()
+  const { isDev, openDevPanel, state: garden, setQuietMode, setPlanningHours } = useGarden()
   const { teams, currentTeamId, setCurrentTeam } = useTeam()
   const [theme, setTheme] = useState(() => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'))
 
@@ -31,6 +32,23 @@ export default function AccountPage() {
   const [saved, setSaved] = useState(false)
   const [nameError, setNameError] = useState('')
   const [tour, setTour] = useState(false)
+
+  // Planning hours. Held locally while you edit so the "takes effect tomorrow"
+  // line can appear the moment you change something rather than after a save.
+  const prefs = garden?.prefs || {}
+  const [wake, setWake] = useState(prefs.wake || '')
+  const [bed, setBed] = useState(prefs.bed || '')
+  const [hoursSaved, setHoursSaved] = useState(false)
+  const hoursDirty = (wake || '') !== (prefs.wake || '') || (bed || '') !== (prefs.bed || '')
+  const hoursLive = isActive(prefs)
+  const hoursPending = !!prefs.effectiveFrom && !hoursLive
+
+  async function saveHours(e) {
+    e.preventDefault()
+    await setPlanningHours({ wake: wake || null, bed: bed || null })
+    setHoursSaved(true)
+    setTimeout(() => setHoursSaved(false), 2200)
+  }
 
   async function handleSave(e) {
     e.preventDefault()
@@ -140,6 +158,49 @@ export default function AccountPage() {
           <span className="switch-track"><span className="switch-knob" /></span>
         </label>
       </div>
+
+      {/* Off until you set it. A bonus hour that fired at 7am for a night owl
+          would teach the wrong habit to the person who most needs the right
+          one, so the app does not guess. */}
+      <form className="account-card settings-card acct-hours" data-tour="acct-hours" onSubmit={saveHours}>
+        <div>
+          <strong>Planning hours</strong>
+          <p className="dev-card-hint">
+            Writing tasks down pays double for the hour after you get up and the
+            hour before bed. The doubled half ignores your daily cap, so
+            planning tomorrow night is worth something even on a day you
+            already maxed out.
+          </p>
+          <div className="hours-fields">
+            <label className="hours-field">
+              <span>I get up at</span>
+              <input type="time" value={wake} onChange={e => setWake(e.target.value)} />
+            </label>
+            <label className="hours-field">
+              <span>I go to bed at</span>
+              <input type="time" value={bed} onChange={e => setBed(e.target.value)} />
+            </label>
+          </div>
+          {(wake || bed) && (
+            <p className="hours-preview">
+              {[
+                wake && `${formatTime(parseTime(wake))}–${formatTime(parseTime(wake) + WINDOW_MINUTES)}`,
+                bed && `${formatTime(parseTime(bed) - WINDOW_MINUTES)}–${formatTime(parseTime(bed))}`,
+              ].filter(Boolean).join('  ·  ')}
+            </p>
+          )}
+          {/* Said plainly rather than discovered. The delay is deliberate — it
+              is what stops "bedtime is in five minutes" being the best move in
+              the game — so it should never look like a bug. */}
+          {hoursDirty && <p className="hours-note">Saved changes start counting tomorrow.</p>}
+          {!hoursDirty && hoursPending && <p className="hours-note">Your hours start counting tomorrow.</p>}
+          {!hoursDirty && hoursLive && <p className="hours-note hours-live">These hours are live.</p>}
+        </div>
+        <div className="settings-controls">
+          {hoursSaved && <span className="saved-hint">Saved</span>}
+          <button className="btn-ghost btn-sm" type="submit" disabled={!hoursDirty}>Save</button>
+        </div>
+      </form>
 
       {/* Two different things, deliberately. The rules are worth re-reading;
           where everything lives is worth being shown again, on the real

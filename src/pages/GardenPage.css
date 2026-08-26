@@ -1400,6 +1400,14 @@ html[data-theme="dark"] .award-card { background: rgba(255, 255, 255, 0.04); }
 }
 .shelf-tab.on.news-ready { animation: none; }
 
+/* As in the rail: the quiet level rings the room as well as dotting it. With
+   the labels hidden on a phone these tabs are bare icons, and a dot on the
+   corner of an icon is not a signal anyone catches in passing. */
+.shelf-tab.news-new {
+  box-shadow: 0 0 0 1.5px rgba(79, 157, 74, 0.45);
+}
+.shelf-tab.on.news-new { box-shadow: none; }
+
 .shelf-news {
   position: absolute;
   top: 3px;
@@ -1414,6 +1422,9 @@ html[data-theme="dark"] .award-card { background: rgba(255, 255, 255, 0.04); }
 
 @media (prefers-reduced-motion: reduce) {
   .shelf-tab.news-ready { animation: none; box-shadow: 0 0 0 2px rgba(224, 85, 63, 0.55); }
+  /* Already steady, so nothing to reduce — restated so a future edit to the
+     rule above doesn't silently drop it here. */
+  .shelf-tab.news-new { box-shadow: 0 0 0 1.5px rgba(79, 157, 74, 0.45); }
 }
 
 /* --- banked clouds ------------------------------------------------------ */

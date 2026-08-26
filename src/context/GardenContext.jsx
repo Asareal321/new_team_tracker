@@ -13,6 +13,7 @@ import { streakReward } from '../lib/streak'
 import { isDevUser } from '../lib/devMode'
 import CloudLayer from '../components/CloudLayer'
 import { cloudOutcome, cloudStatsPatch, cloudNotice, pendingClouds, cloudPayout } from '../lib/clouds'
+import { activeWindow, addTaskReward, spendBonus } from '../lib/planningHours'
 import DevPanel from '../components/DevPanel'
 import RewardToasts from '../components/RewardToasts'
 import StreakPanel from '../components/StreakPanel'
@@ -84,6 +85,11 @@ const DEFAULT_STATE = {
   overflow_seconds: 0,
   // Progress records — see migration-garden-progress.sql.
   daily: { day: null, seeds: 0, coins: 0, clouds: 0 },
+  // Private settings — when you get up and go to bed, and the day those hours
+  // start counting. Its own column rather than a corner of `stats`, because
+  // `stats` is handed to anyone with a share code. See
+  // migration-planning-hours.sql.
+  prefs: {},
   streak: { current: 0, best: 0, lastDay: null },
   stats: {},
   achievements: {},
@@ -445,6 +451,30 @@ export function GardenProvider({ children }) {
 
   const setQuietMode = useCallback(on => save({ quiet_mode: !!on }), [save])
 
+  // Your hours, taking effect tomorrow.
+  //
+  // The delay is the whole anti-gaming design: without it, "set bedtime to five
+  // minutes from now, write twelve tasks, set it back" is strictly the most
+  // efficient way to play, and the habit the feature exists to build is the
+  // first casualty. A day's wait costs an honest user nothing — these are
+  // supposed to be when you actually get up and go to bed.
+  //
+  // Clearing both turns the windows off, and that takes effect at once: there
+  // is nothing to farm by switching a bonus off.
+  const setPlanningHours = useCallback(async ({ wake, bed }) => {
+    const cleared = !wake && !bed
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    await save({
+      prefs: {
+        ...(stateRef.current?.prefs || {}),
+        wake: wake || null,
+        bed: bed || null,
+        effectiveFrom: cleared ? null : localDay(tomorrow),
+      },
+    })
+  }, [save])
+
   // Onboarding plants the chosen seed directly — it deliberately bypasses the
   // seed-tray cost, because the whole point is that you own a plant before you
   // have finished (or even written) a single task.
@@ -562,23 +592,33 @@ export function GardenProvider({ children }) {
     const daily = todayBucket(cur.daily)
     // Two currencies, two caps, metered independently — they run out at
     // different rates, and hitting the seed cap shouldn't quietly stop the
-    // coins as well.
-    const seedGain = Math.min(ADD_TASK_REWARD.seeds, Math.max(0, DAILY_CAPS.seeds - daily.seeds))
-    const coinGain = Math.min(ADD_TASK_REWARD.coins, Math.max(0, DAILY_CAPS.coins - daily.coins))
+    // coins as well. Inside a planning hour each is paid twice, and the second
+    // half ignores the daily cap: a day you were productive enough to cap out
+    // on is exactly the day the evening plan is worth most. See
+    // lib/planningHours.js.
+    const window = activeWindow(cur.prefs)
+    const r = addTaskReward({ base: ADD_TASK_REWARD, daily, caps: DAILY_CAPS, window })
+    const seedGain = r.seeds + r.bonusSeeds
+    const coinGain = r.coins + r.bonusCoins
     await commit({
       ...(seedGain > 0 ? { seeds: (cur.seeds || 0) + seedGain } : {}),
       ...(coinGain > 0 ? { coins: (cur.coins || 0) + coinGain } : {}),
       daily: {
         ...daily,
-        seeds: daily.seeds + seedGain,
-        coins: daily.coins + coinGain,
+        // Only the base half is recorded against the cap. Recording the bonus
+        // here would cap it by the back door.
+        seeds: daily.seeds + r.seeds,
+        coins: daily.coins + r.coins,
+        bonus: spendBonus(daily, r),
         added: (daily.added || 0) + 1,
       },
       stats: bumpStats({ tasksAdded: 1 }),
     })
-    // One line for both, so writing a task down doesn't stack two toasts.
+    // One line for all of it, so writing a task down doesn't stack three
+    // toasts. The doubling says so out loud — a bonus you don't notice is a
+    // bonus that changes nobody's habits.
     const parts = [seedGain > 0 && `+${seedGain} 🌱`, coinGain > 0 && `+${coinGain} 🪙`].filter(Boolean)
-    if (parts.length) notify(parts.join(' '))
+    if (parts.length) notify(`${parts.join(' ')}${r.bonusSeeds || r.bonusCoins ? ' · planning hour, doubled' : ''}`)
     return { gain: seedGain, coins: coinGain, capped: seedGain === 0 && coinGain === 0 }
   }, [commit, bumpStats, notify])
 
@@ -897,7 +937,7 @@ export function GardenProvider({ children }) {
     // deletes the bed server-side, and nothing here would otherwise know.
     reload: load,
     devResetOnboarding, devResetQuests, devCompleteQuests, devShowStreak,
-    spawnCloud, releaseBankedClouds, rewardTaskAdded, rewardTaskDone, recordDoingCleared, notify, setQuietMode, completeOnboarding, buyPacket, openPacket, plantSeed, placeFlower, moveFlower, compostGrown, compostPlanted, unlockSeed, expandGarden,
+    spawnCloud, releaseBankedClouds, rewardTaskAdded, rewardTaskDone, recordDoingCleared, notify, setQuietMode, setPlanningHours, completeOnboarding, buyPacket, openPacket, plantSeed, placeFlower, moveFlower, compostGrown, compostPlanted, unlockSeed, expandGarden,
     isDev, devOpen, openDevPanel: () => setDevOpen(true),
   }
 
