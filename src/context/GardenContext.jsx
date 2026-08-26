@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { supabase } from '../supabase'
 import { useAuth } from '../auth/AuthContext'
 import {
-  SEEDS, seedByKey, cloudShaveSeconds, cloudIdleCoins, remainingSeconds,
+  SEEDS, seedByKey, cloudShaveSeconds, remainingSeconds,
   nextExpansion, STARTING_PLOTS, packetByKey, rollPacket,
   ADD_TASK_REWARD, DAILY_CAPS, CLOUD_EXPECTED_COINS,
   localDay, todayBucket, advanceStreak,
@@ -12,7 +12,7 @@ import { questView } from '../lib/quests'
 import { streakReward } from '../lib/streak'
 import { isDevUser } from '../lib/devMode'
 import CloudLayer from '../components/CloudLayer'
-import { cloudOutcome, cloudStatsPatch, cloudNotice, pendingClouds } from '../lib/clouds'
+import { cloudOutcome, cloudStatsPatch, cloudNotice, pendingClouds, cloudPayout } from '../lib/clouds'
 import DevPanel from '../components/DevPanel'
 import RewardToasts from '../components/RewardToasts'
 import StreakPanel from '../components/StreakPanel'
@@ -403,43 +403,31 @@ export function GardenProvider({ children }) {
   }, [commit])
 
   // A popped cloud shaves time off whatever is growing, scaled by the rarity
-  // tier it reached. With nothing planted the effort still counts — it
-  // converts to coins instead.
+  // tier it reached. Whatever it can't spend — because the flower finished
+  // first, or because there is no flower at all — is banked for the next seed.
+  // Nothing a cloud is worth is ever thrown away. See lib/clouds.js: an empty
+  // greenhouse used to pay coins and discard the time, which cost an Epic's
+  // five hours for twenty coins.
   const popCloud = useCallback(async (id, tier) => {
     const cloud = clouds.find(c => c.id === id)
     dismissCloud(id)
     const current = stateRef.current
     if (!current) return null
-    const shave = cloudShaveSeconds(tier)
+    const growing = !!current.growing_seed
+    const { applied, banked } = cloudPayout({
+      shave: cloudShaveSeconds(tier),
+      growing,
+      left: growing ? (remainingSeconds(current) ?? 0) : 0,
+    })
     // Preview clouds report what they *would* have paid, but write nothing.
-    if (cloud?.preview) {
-      if (!current.growing_seed) return { type: 'coins', amount: cloudIdleCoins(tier), preview: true }
-      const left = remainingSeconds(current) ?? 0
-      return { type: 'shave', amount: Math.min(shave, left), overflow: Math.max(0, shave - left), preview: true }
-    }
-    if (current.growing_seed) {
-      // The good tiers now shave more than some species take to grow, so a
-      // cloud can finish the flower outright. The excess isn't discarded and
-      // isn't silently rolled into the next plant either — it's banked, and the
-      // user chooses which seed receives it when they plant next.
-      const left = remainingSeconds(current) ?? 0
-      const applied = Math.min(shave, left)
-      const over = shave - applied
-      await commit({
-        shaved_seconds: (current.shaved_seconds || 0) + applied,
-        overflow_seconds: (current.overflow_seconds || 0) + over,
-        stats: cloudStats(current, tier),
-        daily: bumpDaily({ popped: 1 }),
-      })
-      return { type: 'shave', amount: applied, overflow: over }
-    }
-    const coins = cloudIdleCoins(tier)
+    if (cloud?.preview) return { type: 'shave', amount: applied, overflow: banked, preview: true }
     await commit({
-      coins: (current.coins || 0) + coins,
+      shaved_seconds: (current.shaved_seconds || 0) + applied,
+      overflow_seconds: (current.overflow_seconds || 0) + banked,
       stats: cloudStats(current, tier),
       daily: bumpDaily({ popped: 1 }),
     })
-    return { type: 'coins', amount: coins }
+    return { type: 'shave', amount: applied, overflow: banked }
   }, [commit, dismissCloud, clouds, bumpDaily])
 
   // --- developer tools ----------------------------------------------------

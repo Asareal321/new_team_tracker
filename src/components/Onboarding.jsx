@@ -192,21 +192,21 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
             </p>
             <table className="onb-table">
               <thead>
-                <tr><th>Cloud</th><th>Cuts</th><th>Pays</th></tr>
+                <tr><th>Cloud</th><th>Cuts</th></tr>
               </thead>
               <tbody>
                 {CLOUD_TIERS.map(t => (
                   <tr key={t.tier}>
                     <td><span className="onb-dot" style={{ background: RARITY_COLORS[t.tier] }} />{t.name}</td>
                     <td>{formatDuration(t.shaveMinutes * 60)}</td>
-                    <td>{t.coins} coins</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <p className="onb-body onb-fine">
               Up to {CLOUD_MAX_TAPS} taps each, and a tap can promote a cloud a tier — so a
-              Common can climb.
+              Common can climb. Nothing planted? The whole cut is banked for
+              whatever you sow next — a cloud is never wasted.
             </p>
           </Scene>
         )}
@@ -218,7 +218,7 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
             </p>
             <ul className="onb-list">
               <li><strong>Seeds</strong> — {ADD_TASK_REWARD.seeds} for every task you add. Seeds are what you plant.</li>
-              <li><strong>Coins</strong> — {ADD_TASK_REWARD.coins} for every task you add too, plus whatever your clouds pay.</li>
+              <li><strong>Coins</strong> — {ADD_TASK_REWARD.coins} for every task you add, and more from quests and streaks.</li>
               <li><strong>Clouds</strong> — one for every task you finish.</li>
             </ul>
             <p className="onb-body onb-fine">

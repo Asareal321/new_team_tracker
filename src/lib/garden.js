@@ -184,12 +184,13 @@ export function seedByKey(key) {
 //
 // The payouts were originally token: a Legendary shaved an hour off a grow time
 // measured in days, so the best possible cloud barely moved the bar and the
-// interaction felt decorative. The shave times below are set outright; the coin
-// payouts (what a cloud is worth when nothing is planted) track them so the two
-// routes stay comparable.
+// interaction felt decorative. The shave times below are set outright.
 //
 // A Legendary now out-runs several of the shorter flowers on its own, which is
 // why a cloud's shave can overflow — see `overflow_seconds` in GardenContext.
+// A cloud pays in time and only in time: `coins` here is what the tier is
+// notionally worth, used to price the quiet-mode payout, not something a
+// popped cloud ever hands you.
 export const CLOUD_TIERS = [
   { tier: 1, name: 'Common',    color: '#b9c6cf', glow: 'rgba(185,198,207,0.5)', shaveMinutes: 30,  coins: 20,  growChance: 0.44 },
   { tier: 2, name: 'Uncommon',  color: '#5aa9d6', glow: 'rgba(90,169,214,0.55)', shaveMinutes: 60,  coins: 40,  growChance: 0.30 },
@@ -220,10 +221,6 @@ export function rollCloudGrowth(tier) {
 
 export function cloudShaveSeconds(tier) {
   return cloudTier(tier).shaveMinutes * 60
-}
-
-export function cloudIdleCoins(tier) {
-  return cloudTier(tier).coins
 }
 
 // The garden is three rows deep and grows sideways: 12 plots is 4 columns of

@@ -49,3 +49,21 @@ export function cloudNotice(outcome, waiting) {
     tone: undefined,
   }
 }
+
+// What a popped cloud is worth.
+//
+// This exists because the two cases were written separately and drifted. A
+// cloud that overshot a nearly-finished flower banked the excess as
+// `overflow_seconds`, to be spent on whatever you planted next. A cloud popped
+// with an empty greenhouse paid a few coins and threw the time away — and an
+// Epic is five hours, so "a few coins" was a bad trade nobody agreed to.
+//
+// They are the same situation: an empty greenhouse is a flower with no time
+// left on it. One formula, so they cannot disagree again. Nothing a cloud is
+// worth is ever discarded; the only question is whether it lands on the flower
+// in front of you or waits for the next one.
+export function cloudPayout({ shave = 0, growing = false, left = 0 } = {}) {
+  const room = growing ? Math.max(0, left) : 0
+  const applied = Math.min(Math.max(0, shave), room)
+  return { applied, banked: Math.max(0, shave) - applied }
+}

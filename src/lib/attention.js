@@ -102,8 +102,11 @@ function raw({ state, flowers, quests, community }) {
     add(GARDEN_GREENHOUSE, 'ready', `ready:${state.growing_seed}`,
       `Your ${seed ? seed.name.toLowerCase() : 'flower'} is ready`)
   }
-  if ((state?.overflow_seconds ?? 0) > 0) {
-    add(GARDEN_GREENHOUSE, 'ready', 'overflow', 'Banked time is waiting for a seed')
+  // Signed by the amount, so banking more time lights it again. A constant
+  // signature meant the first visit cleared the signal for every future bank.
+  const overflow = state?.overflow_seconds ?? 0
+  if (overflow > 0) {
+    add(GARDEN_GREENHOUSE, 'ready', `overflow:${overflow}`, 'Banked time is waiting for a seed')
   }
   // Clouds your finished tasks earned, waiting to be let in.
   const pending = state?.stats?.pendingClouds || 0

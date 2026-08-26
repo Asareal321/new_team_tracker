@@ -19,14 +19,16 @@ export default function CloudLayer({ clouds, onPop, devSignal = null, onRoll = n
     if (!reward) return
     const toast = {
       id: crypto.randomUUID(),
-      text: reward.type === 'shave'
+      // With an empty greenhouse the whole cloud is banked, so the headline is
+      // the banking rather than a shave of nothing.
+      text: reward.amount > 0
         ? `−${formatDuration(reward.amount)} grow time`
-        : `+${reward.amount} coins`,
+        : `${formatDuration(reward.overflow)} banked`,
       // A cloud big enough to finish the flower outright says where the rest
       // went, or the missing time reads as a bug.
-      extra: reward.overflow > 0
+      extra: reward.overflow > 0 && reward.amount > 0
         ? `${formatDuration(reward.overflow)} saved for your next flower`
-        : null,
+        : reward.amount > 0 ? null : 'Waiting for whatever you plant next',
       preview: !!reward.preview,
     }
     setToasts(prev => [...prev, toast])

@@ -5,7 +5,7 @@
 // there is no symptom until you notice the nav never lights. These cases exist
 // so that failure is loud here instead.
 
-import { cloudOutcome, cloudStatsPatch, pendingClouds, cloudNotice } from '../src/lib/clouds.js'
+import { cloudOutcome, cloudStatsPatch, pendingClouds, cloudNotice, cloudPayout } from '../src/lib/clouds.js'
 import { DAILY_CAPS, CLOUD_EXPECTED_COINS } from '../src/lib/garden.js'
 import { attentionFor, GARDEN_GREENHOUSE, ROUTE_GARDEN } from '../src/lib/attention.js'
 
@@ -113,6 +113,64 @@ ok('and the first writer keeps its own work too', fixed.tasksDone === 1)
 ok('one waiting cloud is announced in the singular', /A cloud is waiting/.test(cloudNotice(normal, 1).text))
 ok('several are counted', /3 clouds waiting/.test(cloudNotice(normal, 3).text))
 ok('the notice names where they are', /greenhouse/.test(cloudNotice(normal, 1).text))
+
+// — what a popped cloud is worth —
+//
+// The bug this exists for: an Epic popped into an empty greenhouse paid twenty
+// coins and threw five hours away, while the same Epic popped into a flower
+// with a minute left banked four hours fifty-nine. Both are "the cloud has
+// more time than the flower can take". They are now one formula.
+
+import { cloudShaveSeconds } from '../src/lib/garden.js'
+
+const EPIC = cloudShaveSeconds(4)
+
+const empty = cloudPayout({ shave: EPIC, growing: false })
+ok('an empty greenhouse banks the whole cloud', empty.banked === EPIC, JSON.stringify(empty))
+ok('and shaves nothing, because there is nothing to shave', empty.applied === 0)
+
+const roomy = cloudPayout({ shave: EPIC, growing: true, left: EPIC * 2 })
+ok('a flower with room takes all of it', roomy.applied === EPIC && roomy.banked === 0)
+
+const nearlyDone = cloudPayout({ shave: EPIC, growing: true, left: 60 })
+ok('a flower with a minute left takes the minute', nearlyDone.applied === 60)
+ok('and banks the rest', nearlyDone.banked === EPIC - 60)
+
+// The invariant the bug broke, stated once: a cloud is conserved.
+for (const [name, args] of [
+  ['nothing planted', { shave: EPIC, growing: false }],
+  ['nothing planted, stale left value', { shave: EPIC, growing: false, left: 9999 }],
+  ['plenty of time', { shave: EPIC, growing: true, left: EPIC * 3 }],
+  ['exactly enough', { shave: EPIC, growing: true, left: EPIC }],
+  ['almost none', { shave: EPIC, growing: true, left: 1 }],
+  ['finished flower', { shave: EPIC, growing: true, left: 0 }],
+  ['a Common', { shave: cloudShaveSeconds(1), growing: false }],
+]) {
+  const out = cloudPayout(args)
+  ok(`nothing is lost — ${name}`, out.applied + out.banked === args.shave,
+    `${out.applied} + ${out.banked} ≠ ${args.shave}`)
+  ok(`nothing is invented — ${name}`, out.applied >= 0 && out.banked >= 0)
+}
+
+ok('a finished flower banks the lot, exactly as an empty one does',
+  cloudPayout({ shave: EPIC, growing: true, left: 0 }).banked
+  === cloudPayout({ shave: EPIC, growing: false }).banked)
+
+ok('a negative remaining time cannot invent a shave',
+  cloudPayout({ shave: EPIC, growing: true, left: -600 }).applied === 0)
+
+ok('no arguments is not a crash', cloudPayout().applied === 0)
+
+// — and the banked time has to be visible —
+//
+// Signed by the amount: banking more after you have already looked at the
+// greenhouse has to light it again.
+const bankedState = { overflow_seconds: 3600 }
+const more = { overflow_seconds: 7200 }
+const sig = state => attentionFor({ state })[GARDEN_GREENHOUSE]?.signature
+ok('banked time lights the greenhouse', !!sig(bankedState))
+ok('and banking more lights it again', sig(bankedState) !== sig(more))
+ok('while the same bank stays quiet once seen', sig(bankedState) === sig({ overflow_seconds: 3600 }))
 
 console.log(`\n${pass}/${pass + fail} passed`)
 process.exit(fail ? 1 : 0)
