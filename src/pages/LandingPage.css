@@ -172,6 +172,16 @@
 .l-foot-inner { display: flex; align-items: center; justify-content: space-between; }
 .l-brand-sm .l-wordmark { font-size: 1.05rem; }
 .l-foot-note { font-size: 0.85rem; color: #8a978c; }
+/* Sits between the wordmark and the copyright — space-between would otherwise
+   push it against one of them. */
+.l-foot-link {
+  font-size: 0.85rem;
+  color: #5b6b5e;
+  text-decoration: none;
+  margin-left: auto;
+  margin-right: 1.25rem;
+}
+.l-foot-link:hover { color: #4a8f5b; text-decoration: underline; }
 
 @media (max-width: 640px) {
   .l-headline { font-size: 2.25rem; }

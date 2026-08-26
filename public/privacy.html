@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Privacy Policy — Trakkit</title>
+<meta name="description" content="What Trakkit collects, why, who can see it, and how to get rid of it." />
+<link rel="icon" href="/favicon.svg" />
+<style>
+  :root {
+    --ink: #23301f; --soft: #5d6b58; --line: #dfe4da;
+    --bg: #fbfaf6; --panel: #ffffff; --accent: #4a8f5b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e6ece2; --soft: #a3b09c; --line: #2c352a;
+      --bg: #151a13; --panel: #1c231a; --accent: #86c48f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.65 ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 40px 22px 80px; }
+  header { border-bottom: 1px solid var(--line); padding-bottom: 22px; margin-bottom: 34px; }
+  .brand { font-weight: 700; letter-spacing: -0.02em; font-size: 19px; color: var(--accent); text-decoration: none; }
+  h1 { font-size: 30px; line-height: 1.2; letter-spacing: -0.02em; margin: 18px 0 8px; text-wrap: balance; }
+  h2 { font-size: 19px; letter-spacing: -0.01em; margin: 38px 0 10px; }
+  h3 { font-size: 15px; margin: 24px 0 6px; }
+  p, li { color: var(--ink); }
+  .meta { color: var(--soft); font-size: 14px; margin: 0; }
+  .lede { font-size: 17px; color: var(--soft); }
+  ul { padding-left: 20px; }
+  li { margin: 6px 0; }
+  a { color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 15px; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  th { font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--soft); font-weight: 600; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin: 20px 0; }
+  .panel p:first-child { margin-top: 0; }
+  .panel p:last-child { margin-bottom: 0; }
+  .scroll { overflow-x: auto; }
+  footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--soft); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <a class="brand" href="/">trakkit</a>
+  <h1>Privacy Policy</h1>
+  <p class="meta">Last updated 26 August 2026</p>
+</header>
+
+<p class="lede">
+  Trakkit is a task board and garden made by one person. It is not funded by
+  advertising, and there is nothing to be gained here by knowing more about you
+  than the app needs to work. This page says exactly what is stored, why, who
+  else can see it, and how to get rid of it.
+</p>
+
+<h2>The short version</h2>
+<ul>
+  <li>Your account is an email address and a display name.</li>
+  <li>Your tasks, projects, deadlines and garden are stored so they are there on your next device.</li>
+  <li>Nothing is sold, and nothing is shared with advertisers or data brokers.</li>
+  <li>Your board is private by default. Other people see only what you deliberately share — a community you join, a profile you set to public, an item you list on the marketplace.</li>
+  <li>Connecting Google Calendar is optional, read-only, and can be disconnected at any time.</li>
+  <li>Deleting your account deletes your data.</li>
+</ul>
+
+<h2>What is collected, and why</h2>
+
+<div class="scroll">
+<table>
+  <thead>
+    <tr><th>What</th><th>Why</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Email address</strong></td>
+      <td>It is how you sign in and how your account is recovered. Also used to send you account email, such as a confirmation or a password reset.</td>
+    </tr>
+    <tr>
+      <td><strong>Display name</strong></td>
+      <td>The name shown to people in a community you share a board with, and on a public profile if you choose to have one.</td>
+    </tr>
+    <tr>
+      <td><strong>Your content</strong> — tasks, notes, projects, due dates, task updates, and the archive of what you have finished</td>
+      <td>This is the app. It is stored so that your board is the same on every device you sign in from.</td>
+    </tr>
+    <tr>
+      <td><strong>Your garden</strong> — coins, seeds, packets, flowers, streaks, quests and marketplace listings</td>
+      <td>The reward layer. Stored for the same reason as your board.</td>
+    </tr>
+    <tr>
+      <td><strong>Communities</strong> — which communities you belong to and your role in them</td>
+      <td>So that a shared board can decide what you may see and change.</td>
+    </tr>
+    <tr>
+      <td><strong>Google Calendar refresh token</strong>, only if you connect it</td>
+      <td>So the app can keep reading your calendar after you close it. See below.</td>
+    </tr>
+    <tr>
+      <td><strong>Basic usage measurement</strong> — page views, referring page, coarse country, browser and device type</td>
+      <td>To know whether the app is being used and whether something is broken. Collected by Vercel Analytics, which does not use cookies and does not build a profile of you or follow you to other sites.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  There is no advertising SDK in Trakkit, no third-party tracker, no session
+  recording, and no fingerprinting. Trakkit does not ask for your contacts,
+  photos, microphone, camera, or location, and the iOS app requests no such
+  permission.
+</p>
+
+<h2>Google Calendar</h2>
+
+<p>
+  Connecting your calendar is entirely optional and the app is fully usable
+  without it. If you connect it:
+</p>
+
+<ul>
+  <li>Trakkit requests one scope, <code>calendar.readonly</code>. It can read. It cannot create, change or delete anything in your calendar.</li>
+  <li>It reads the <strong>title and the start and end time</strong> of today's events, in order to notice when an event names one of your projects and move that project's tasks onto your board for the hour.</li>
+  <li><strong>Your events are not stored.</strong> They are read while the app is open, used to decide what to put on the board, and discarded. Nothing from your calendar is written to the database, and no event text is kept after the app closes.</li>
+  <li>The only thing stored is the refresh token that lets the app keep reading. It is held server-side in a table that is closed to every client — the app's own users, including you, cannot read it — and is used solely to obtain a fresh read-only access token.</li>
+  <li>Disconnecting in the app deletes that token. You can also revoke Trakkit's access at any time from your <a href="https://myaccount.google.com/permissions" rel="noopener">Google account permissions</a>.</li>
+</ul>
+
+<p>
+  Trakkit's use of information received from Google APIs adheres to the
+  <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener">Google API Services User Data Policy</a>,
+  including the Limited Use requirements. Calendar data is never used for
+  advertising, never sold, and never used to train any model.
+</p>
+
+<h2>Who else can see your things</h2>
+
+<p>Your board is private to your account unless you take one of these steps:</p>
+
+<ul>
+  <li><strong>Joining or creating a community.</strong> Members of that community can see the boards, projects and tasks shared with it, and who is assigned to what. Leaving it ends that access.</li>
+  <li><strong>Making your profile public.</strong> This lists your display name and lets other people find you and visit your garden. It is off by default, it is a choice you make deliberately, and you can turn it off again in Account at any time. Your tasks are never part of a public profile — the garden is.</li>
+  <li><strong>Listing something on the marketplace.</strong> A listing shows the item, its price and your display name, to anyone who can see the market.</li>
+  <li><strong>Sending someone a referral link or a garden link.</strong> Anyone holding that link can use what it points to.</li>
+</ul>
+
+<p>
+  Access is enforced in the database itself with row-level security, not only in
+  the app, so a bug in the interface cannot hand your board to someone who is
+  not entitled to it.
+</p>
+
+<h2>Where it is stored, and who processes it</h2>
+
+<p>Trakkit uses a small number of service providers, each doing one job:</p>
+
+<ul>
+  <li><strong>Supabase</strong> — the database and the sign-in system. Your account and all of your content live here.</li>
+  <li><strong>Vercel</strong> — hosting for the website and the app's backend, plus the usage measurement described above.</li>
+  <li><strong>Google</strong> — only if you connect your calendar.</li>
+  <li><strong>Apple</strong> — if you install the iOS app through TestFlight or the App Store, Apple provides Trakkit with aggregate crash and installation figures. Apple's handling of that is covered by Apple's own privacy policy.</li>
+</ul>
+
+<p>
+  These providers process data on Trakkit's behalf under their own agreements.
+  Data may be stored on servers outside your country, including in the United
+  States. Nobody else is given access to your content, and it is never sold,
+  rented, or handed to a data broker.
+</p>
+
+<h2>On your device</h2>
+
+<p>
+  Trakkit stores a few small things locally: your sign-in session, your light or
+  dark preference, which community you were last looking at, unsent drafts, and
+  whether you have already seen the guided tour. In the iOS app, if you choose
+  “stay signed in”, your session is kept in the iPhone's Keychain so the app
+  opens ready to use. Turning that off in Account removes it and you sign in
+  each time instead. Signing out clears the session either way.
+</p>
+
+<h2>How long it is kept</h2>
+
+<p>
+  Your content is kept for as long as your account exists, because the point of
+  it is to still be there when you come back. Delete your account and it goes:
+  tasks, projects, garden, community memberships and any stored calendar token
+  are removed. Backups roll off within 30 days. Anonymous usage counts, which
+  are not tied to your account, may remain in aggregate.
+</p>
+
+<h2>Your choices</h2>
+
+<ul>
+  <li><strong>See or change your details</strong> — Account, in the app.</li>
+  <li><strong>Turn your public profile off</strong> — Account, or the Community tab.</li>
+  <li><strong>Disconnect Google Calendar</strong> — the calendar strip on the board, or Google's permissions page.</li>
+  <li><strong>Get a copy of your data, or have it deleted</strong> — email the address below and it will be done. If you are in the UK, EU, or a place with comparable law, this is your right of access, correction, portability, erasure and objection, and Trakkit will honour it regardless of where you live.</li>
+</ul>
+
+<h2>Children</h2>
+
+<p>
+  Trakkit is not directed at children under 13, and accounts are not knowingly
+  created for them. If you believe a child has an account here, write to the
+  address below and it will be removed.
+</p>
+
+<h2>Security, honestly stated</h2>
+
+<p>
+  Connections are encrypted in transit. Passwords are hashed by Supabase's
+  authentication service and are never visible to Trakkit. Access to your rows
+  is enforced by the database rather than by the interface alone. That said, no
+  service can promise perfect security, and Trakkit is a young project — if
+  something goes wrong that affects your data, you will be told promptly and
+  plainly rather than quietly.
+</p>
+
+<h2>Changes to this policy</h2>
+
+<p>
+  If this policy changes in a way that matters — a new kind of data, a new
+  recipient, a new purpose — the date at the top changes and you will be told in
+  the app before it takes effect. Cosmetic edits will just update the date.
+</p>
+
+<h2>Contact</h2>
+
+<div class="panel">
+  <p>
+    Questions, requests, or a copy of your data:
+    <a href="mailto:asanichols07@gmail.com">asanichols07@gmail.com</a>
+  </p>
+  <p class="meta">Trakkit is operated from Ontario, Canada.</p>
+</div>
+
+<footer>
+  <a href="/">Back to Trakkit</a>
+</footer>
+</div>
+</body>
+</html>

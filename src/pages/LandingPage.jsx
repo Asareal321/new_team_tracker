@@ -140,6 +140,11 @@ export default function LandingPage({ onSignIn, onSignUp }) {
           <div className="l-brand l-brand-sm">
             <span className="l-wordmark">trakkit</span>
           </div>
+          {/* A plain anchor, not a Link: the policy is a static page served
+              outside the app so that it is readable without an account — which
+              is the entire point of a privacy policy, and what App Review
+              checks. */}
+          <a className="l-foot-link" href="/privacy">Privacy</a>
           <span className="l-foot-note">© {new Date().getFullYear()} trakkit</span>
         </div>
       </footer>
