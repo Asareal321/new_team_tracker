@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   RARITY_COLORS, RARITY_NAMES, PACKETS,
   CLOUD_TIERS, CLOUD_MAX_TAPS, GROWTH_STAGES, DAILY_CAPS,
@@ -6,7 +6,12 @@ import {
 } from '../lib/garden'
 import { MAX_DOING, MAX_UP_NEXT } from './TaskBoard'
 import PacketArt from './PacketArt'
+import PackOpening from './PackOpening'
 import Trak from './Trak'
+
+// How long the reveal card holds before setup moves on by itself. Long enough
+// to read the name and the grow time, short enough that it doesn't feel stuck.
+const REVEAL_HOLD = 5000
 import './Onboarding.css'
 
 // The tour, narrated by Trak.
@@ -44,6 +49,8 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
   const [pick, setPick] = useState(null)
   // The seed the first packet gave up, once it has been torn open.
   const [opened, setOpened] = useState(null)
+  // The seed the cinematic is currently revealing, before it has landed.
+  const [rolling, setRolling] = useState(null)
   const [tearing, setTearing] = useState(false)
   const [projectName, setProjectName] = useState('')
   const [firstTask, setFirstTask] = useState('')
@@ -54,18 +61,35 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
   const [error, setError] = useState('')
 
   // The roll is real: the same odds table the shop uses, so a lucky first
-  // pull is genuinely lucky rather than staged. The pause is only so the
-  // packet reads as being opened rather than as a value appearing.
+  // pull is genuinely lucky rather than staged.
+  //
+  // And it plays the real cinematic, not a 620ms stand-in. This is the first
+  // packet anybody opens, so it is the one that has to sell what opening a
+  // packet is — a shorter version here taught people the animation was
+  // skippable filler before they had ever seen it.
   function tearOpen() {
     if (tearing || opened) return
     setTearing(true)
-    const seed = seedByKey(rollPacket(STARTER_PACKET.key))
-    setTimeout(() => {
-      setOpened(seed)
-      setPick(seed.key)
-      setTearing(false)
-    }, 620)
+    setRolling(seedByKey(rollPacket(STARTER_PACKET.key)))
   }
+
+  // The cinematic ends with everything faded out, so holding *it* for five
+  // seconds would be five seconds of empty screen. What holds instead is the
+  // card underneath, with the flower on it — then setup moves itself on.
+  function packDone() {
+    const seed = rolling
+    setRolling(null)
+    setTearing(false)
+    if (!seed) return
+    setOpened(seed)
+    setPick(seed.key)
+  }
+
+  useEffect(() => {
+    if (!opened || mode === 'replay') return undefined
+    const t = setTimeout(() => setI(n => Math.min(n + 1, steps.length - 1)), REVEAL_HOLD)
+    return () => clearTimeout(t)
+  }, [opened, mode, steps.length])
 
   const step = steps[i]
   const chosen = opened || seedByKey(pick)
@@ -110,6 +134,11 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
 
   return (
     <div className="onb-overlay">
+      {/* Above the setup card, and the same component the shop uses — the
+          first packet is opened by the real thing, not a rehearsal of it. */}
+      {rolling && (
+        <PackOpening packet={STARTER_PACKET} seed={rolling} onDone={packDone} />
+      )}
       <div className="onb-card">
         <div className="onb-steps" aria-hidden="true">
           {steps.map((k, n) => <span key={k} className={`onb-pip${n <= i ? ' on' : ''}`} />)}

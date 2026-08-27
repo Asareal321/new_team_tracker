@@ -119,7 +119,7 @@ export default function BoardPage() {
   const { user } = useAuth()
   const { currentTeamId } = useTeam()
   const {
-    rewardTaskAdded, rewardTaskDone, recordDoingCleared, beginFocus, endFocus,
+    rewardTaskAdded, rewardTaskDone, bankClouds, recordDoingCleared, beginFocus, endFocus,
     state: garden, ready: gardenReady, completeOnboarding,
   } = useGarden()
   const [tasks, setTasks] = useState([])
@@ -576,10 +576,10 @@ export default function BoardPage() {
               await supabase.from('tasks').insert(
                 seed.map((t, n) => ({ ...t, user_id: user.id, team_id: null, position: (n + 1) * 1000 }))
               )
-              // The finished ones are worth their clouds, exactly as they would
-              // have been if you had ticked them off yourself. They bank, and
-              // the greenhouse lights up for you to pop them.
-              for (let n = 0; n < seededClouds(seed); n++) await rewardTaskDone()
+              // The finished ones are worth their clouds — but not a streak.
+              // You did not do them, and running them through rewardTaskDone
+              // put the full-screen streak panel over the top of the tour.
+              await bankClouds(seededClouds(seed))
             } catch { /* a seeded board is a nicety, never a blocker */ }
             // Visibility is a community feature, so it needs the community
             // migration. An unmigrated database shouldn't cost you the setup —

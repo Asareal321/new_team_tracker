@@ -395,6 +395,23 @@ export function GardenProvider({ children }) {
     setClouds(prev => prev.filter(c => c.id !== id))
   }, [])
 
+  // Put clouds aside without pretending you earned them just now.
+  //
+  // The first-run seed finishes a couple of tasks on your behalf so the board
+  // isn't empty, and those are worth their clouds — but they are not worth a
+  // streak. Running them through rewardTaskDone advanced the streak to day one
+  // and threw the full-screen streak panel over the top of setup, which is
+  // both a lie about what you did and a wall in front of the tour.
+  const bankClouds = useCallback(async n => {
+    const count = Math.max(0, Math.floor(n))
+    if (!count) return 0
+    const cur = stateRef.current
+    await commit({
+      stats: { ...(cur?.stats || {}), pendingClouds: pendingClouds(cur) + count },
+    })
+    return count
+  }, [commit])
+
   // Let the banked ones in. The count is zeroed as they are released rather
   // than as they are popped: they are on screen now, and a reload that lost
   // both the bank and the clouds would be worse than one that lost neither.
@@ -968,7 +985,7 @@ export function GardenProvider({ children }) {
     // deletes the bed server-side, and nothing here would otherwise know.
     reload: load,
     devResetOnboarding, devResetQuests, devCompleteQuests, devShowStreak,
-    spawnCloud, releaseBankedClouds, rewardTaskAdded, rewardTaskDone, recordDoingCleared, notify, setQuietMode, setPlanningHours, beginFocus, endFocus, completeOnboarding, buyPacket, openPacket, plantSeed, placeFlower, moveFlower, compostGrown, compostPlanted, unlockSeed, expandGarden,
+    spawnCloud, bankClouds, releaseBankedClouds, rewardTaskAdded, rewardTaskDone, recordDoingCleared, notify, setQuietMode, setPlanningHours, beginFocus, endFocus, completeOnboarding, buyPacket, openPacket, plantSeed, placeFlower, moveFlower, compostGrown, compostPlanted, unlockSeed, expandGarden,
     isDev, devOpen, openDevPanel: () => setDevOpen(true),
   }
 
@@ -976,7 +993,10 @@ export function GardenProvider({ children }) {
     <GardenContext.Provider value={value}>
       {children}
       <RewardToasts notices={notices} />
-      {streakCue && (
+      {/* Never over the top of setup. Belt and braces alongside the seed no
+          longer advancing the streak: anything that raises a cue while the
+          account is still being made would land on the setup sheet. */}
+      {streakCue && state?.onboarded && (
         <StreakPanel
           streak={streakCue.streak}
           prevStreak={streakCue.prevStreak}
