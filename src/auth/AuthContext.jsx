@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { CALENDAR_SCOPE, saveToken, clearToken, storeRefreshToken } from '../lib/googleCalendar'
 import { pendingReferral, clearReferral } from '../lib/referral'
 import { claimReferral } from '../lib/community'
+import { nativeAuthAvailable, startNativeOAuth, installNativeAuthBridge } from '../lib/nativeAuth'
 
 const AuthContext = createContext(null)
 
@@ -10,6 +11,13 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+
+  const [authError, setAuthError] = useState('')
+
+  // The shell's way back in. Installed once, for the life of the provider —
+  // the callback can arrive at any point after the Safari sheet opens, which
+  // may be after the user has navigated somewhere else entirely.
+  useEffect(() => installNativeAuthBridge(supabase, { onError: setAuthError }), [])
 
   useEffect(() => {
     let mounted = true
@@ -74,6 +82,10 @@ export function AuthProvider({ children }) {
   }
 
   function signInWithGoogle() {
+    // In the iOS shell there is no redirect to come back to: Google refuses
+    // the embedded web view, so the round-trip happens in a Safari sheet the
+    // shell owns and the callback is handed back to us. See lib/nativeAuth.
+    if (nativeAuthAvailable()) return startNativeOAuth(supabase)
     // Preserve the current path + query (e.g. ?account=tester) so an isolated
     // tab lands back in the same isolated session after the OAuth round-trip.
     return supabase.auth.signInWithOAuth({
@@ -97,11 +109,15 @@ export function AuthProvider({ children }) {
   // access token and no refresh token — which looks like it worked and then
   // quietly expires an hour later.
   function connectCalendar() {
+    const queryParams = { access_type: 'offline', prompt: 'consent' }
+    if (nativeAuthAvailable()) {
+      return startNativeOAuth(supabase, { scopes: CALENDAR_SCOPE, queryParams })
+    }
     return supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         scopes: CALENDAR_SCOPE,
-        queryParams: { access_type: 'offline', prompt: 'consent' },
+        queryParams,
         redirectTo: window.location.origin + window.location.pathname + window.location.search,
       },
     })
@@ -120,6 +136,10 @@ export function AuthProvider({ children }) {
     signIn,
     signInWithGoogle,
     connectCalendar,
+    // Only ever set by the iOS sign-in path, which has no page to show an
+    // error on — the Safari sheet has already closed by the time it fails.
+    authError,
+    clearAuthError: () => setAuthError(''),
     signOut,
     refreshProfile,
   }

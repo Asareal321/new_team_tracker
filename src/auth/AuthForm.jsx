@@ -16,7 +16,7 @@ function GoogleIcon() {
 }
 
 export default function AuthForm({ initialMode = 'signin', onBack }) {
-  const { signIn, signUp, signInWithGoogle } = useAuth()
+  const { signIn, signUp, signInWithGoogle, authError, clearAuthError } = useAuth()
   const [mode, setMode] = useState(initialMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -59,13 +59,28 @@ export default function AuthForm({ initialMode = 'signin', onBack }) {
   async function handleGoogle() {
     setError('')
     setInfo('')
+    clearAuthError?.()
     setGoogleLoading(true)
-    const { error } = await signInWithGoogle()
-    if (error) {
-      setError(error.message)
+    try {
+      // Two different shapes: the browser path resolves to Supabase's
+      // { error }, the iOS path resolves to the URL it handed the shell and
+      // throws on failure.
+      const result = await signInWithGoogle()
+      if (result?.error) {
+        setError(result.error.message)
+        setGoogleLoading(false)
+        return
+      }
+    } catch (e) {
+      setError(e?.message || String(e))
       setGoogleLoading(false)
+      return
     }
-    // on success the browser redirects away to Google, so no further state change here
+    // In the browser the page is now navigating to Google and nothing here
+    // will run again. In the app the Safari sheet is the interface from this
+    // point, and closing it without signing in has to give the button back —
+    // otherwise cancelling leaves a spinner nothing can clear.
+    if (isNativeApp()) setGoogleLoading(false)
   }
 
   function toggleMode() {
@@ -146,7 +161,7 @@ export default function AuthForm({ initialMode = 'signin', onBack }) {
           </label>
         )}
 
-        {error && <p className="auth-error">{error}</p>}
+        {(error || authError) && <p className="auth-error">{error || authError}</p>}
         {info && <p className="auth-info">{info}</p>}
 
         <button className="btn-primary" type="submit" disabled={submitting}>
