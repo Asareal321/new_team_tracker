@@ -8,6 +8,7 @@ import { useTeam } from '../context/TeamContext'
 import Onboarding from '../components/Onboarding'
 import { resetTour, requestTour } from '../lib/tourState'
 import { isNativeApp, rememberMe, setRememberMe } from '../lib/nativeBridge'
+import useNotifications from '../components/useNotifications'
 import { formatTime, parseTime, isActive, WINDOW_MINUTES } from '../lib/planningHours'
 import './AccountPage.css'
 
@@ -140,6 +141,8 @@ export default function AccountPage() {
         </div>
       </div>
 
+      <NotificationSettings />
+
       <div className="account-card settings-card" data-tour="acct-quiet">
         <div>
           <strong>Quiet mode</strong>
@@ -246,6 +249,59 @@ export default function AccountPage() {
       )}
 
       <button className="btn-ghost" onClick={signOut}>Sign out</button>
+    </div>
+  )
+}
+
+// Notifications, iOS only.
+//
+// The system permission sheet appears exactly once in the life of an install,
+// so this explains itself first and asks second. Once granted, each kind can
+// be turned off on its own — particularly the nudges, which are the only ones
+// that arrive when nothing has actually happened.
+function NotificationSettings() {
+  const { available, status, settings, ask, update } = useNotifications()
+  if (!available) return null
+
+  const on = key => settings?.[key] !== false
+  const rows = [
+    ['nudge', 'Nudges through the day', 'Every couple of hours: write things down in the morning, and how it is going in the afternoon. Names something from Doing, never from Up next.'],
+    ['flower', 'Your flower is ready', 'Once, when the greenhouse timer finishes.'],
+    ['planning', 'Planning hours', 'When your double-rewards hour starts, morning and evening. Needs your wake and bed times set.'],
+    ['streak', 'Streak about to lapse', 'Late evening, only when you have a streak going.'],
+    ['focus', 'A focus block starting', 'Five minutes before a calendar event clears the board down to its project.'],
+  ]
+
+  return (
+    <div className="account-card settings-card">
+      <div>
+        <strong>Notifications</strong>
+        <p className="dev-card-hint">
+          {status === 'authorized'
+            ? 'Scheduled on this iPhone. Nothing leaves the device.'
+            : status === 'denied'
+              ? 'Turned off. iOS only asks once, so this one has to be switched back on in Settings → Trakkit → Notifications.'
+              : 'A few prompts through the day, worked out on this iPhone. Nothing leaves the device and nothing is sent from a server.'}
+        </p>
+        {status === 'authorized' && (
+          <div className="notify-rows">
+            {rows.map(([key, label, hint]) => (
+              <label className="notify-row" key={key}>
+                <input type="checkbox" checked={on(key)} onChange={e => update({ [key]: e.target.checked })} />
+                <span>
+                  <strong>{label}</strong>
+                  <span className="dev-card-hint">{hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+      {status === 'notDetermined' && (
+        <div className="settings-controls">
+          <button className="btn-ghost btn-sm" onClick={ask}>Turn on</button>
+        </div>
+      )}
     </div>
   )
 }

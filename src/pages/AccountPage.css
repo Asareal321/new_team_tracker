@@ -151,3 +151,13 @@
 }
 .hours-note { margin: 6px 0 0; font-size: 0.8rem; color: var(--muted, #8a978c); }
 .hours-live { color: #4a8f5b; font-weight: 600; }
+
+/* Notification switches. A list of checkboxes rather than the switch control
+   the other settings use: there are five of them, and five switches in a
+   column reads as a control panel where a list reads as a list. */
+.notify-rows { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.notify-row { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+.notify-row input { margin-top: 3px; flex: none; }
+.notify-row > span { display: flex; flex-direction: column; gap: 2px; }
+.notify-row strong { font-size: 0.9rem; font-weight: 600; }
+.notify-row .dev-card-hint { margin: 0; }
