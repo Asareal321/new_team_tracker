@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#e7f7f2">
+  <meta name="description" content="Take or upload a photo of your teeth, then scrub them with a toothbrush until they sparkle.">
+  <title>Pearl Scrub — Brush your teeth photo</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2312a088'/%3E%3Cpath d='M32 8c8 0 13 5 15 12 2 8 1 17-1.5 27-1.4 5-4 10-7.5 10s-4.2-4.4-6-9.4c-1.8 5-3 9.4-6 9.4s-6.1-5-7.5-10C16 37 15 28 17 20 19 13 24 8 32 8z' fill='white'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560;9..144,680&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #14342f;
+      --ink-soft: #3e655c;
+      --mint: #12816f;
+      --mint-deep: #0c6456;
+      --foam: #e7faf4;
+      --cream: #fffcf8;
+      --gold: #e2b122;
+      --line: #d5efe8;
+      --serif: "Fraunces", "Iowan Old Style", Palatino, Georgia, serif;
+      --sans: "Nunito", "Avenir Next", "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: var(--sans);
+      color: var(--ink);
+      background:
+        radial-gradient(900px 420px at -10% -10%, #fff3c4 0%, transparent 55%),
+        radial-gradient(700px 480px at 110% 0%, #c9f6ea 0%, transparent 50%),
+        linear-gradient(180deg, #f4fffb 0%, #e7f6f1 42%, #f6f3ec 100%);
+      padding:
+        22px
+        max(14px, env(safe-area-inset-right))
+        max(28px, env(safe-area-inset-bottom))
+        max(14px, env(safe-area-inset-left));
+    }
+
+    main {
+      width: min(820px, 100%);
+      margin: 0 auto;
+      background: var(--cream);
+      border-radius: 32px;
+      box-shadow: 0 24px 60px rgba(20, 70, 60, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.9);
+    }
+
+    .stripe {
+      height: 12px;
+      border-radius: 32px 32px 0 0;
+      background: repeating-linear-gradient(
+        90deg,
+        #fff 0 14px,
+        #8ee6d2 14px 26px,
+        #fff 26px 32px,
+        #14967f 32px 44px
+      );
+    }
+
+    .pad { padding: 22px 22px 8px; }
+
+    header {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .logo { width: 64px; height: 64px; flex: none; }
+
+    .kicker {
+      margin: 0 0 2px;
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--mint);
+    }
+
+    h1 {
+      margin: 0;
+      font-family: var(--serif);
+      font-size: clamp(2rem, 5vw, 3.15rem);
+      font-weight: 680;
+      letter-spacing: -0.03em;
+      line-height: 0.95;
+    }
+
+    .lede {
+      margin: 8px 0 0;
+      color: var(--ink-soft);
+      font-size: 1.05rem;
+      line-height: 1.45;
+      max-width: 38rem;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 18px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .steps li {
+      margin: 0;
+      padding: 12px 12px 12px 14px;
+      background: var(--foam);
+      border-radius: 16px;
+      color: var(--ink-soft);
+      font-weight: 700;
+      font-size: 0.92rem;
+      line-height: 1.35;
+    }
+
+    .steps span {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--mint);
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .btn {
+      position: relative;
+      flex: 1 1 220px;
+      min-height: 56px;
+      padding: 0 18px;
+      border-radius: 999px;
+      border: 2px solid transparent;
+      font: inherit;
+      font-weight: 800;
+      font-size: 1.05rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .btn-primary {
+      background: linear-gradient(180deg, #1aaa90 0%, #0c7d68 100%);
+      color: #fff;
+      box-shadow: 0 10px 18px rgba(12, 125, 104, 0.22);
+    }
+
+    .btn-primary:hover { filter: brightness(1.06); }
+
+    .btn-ghost {
+      background: #fff;
+      color: var(--mint-deep);
+      border-color: #b7e6da;
+    }
+
+    .btn-ghost:hover { background: #f3fffb; }
+
+    .btn:active { transform: translateY(1px); }
+
+    .btn:focus-visible,
+    .shutter:focus-visible {
+      outline: 3px solid #f0b429;
+      outline-offset: 3px;
+    }
+
+    .file-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .drop-hint {
+      margin: 12px 0 0;
+      color: var(--ink-soft);
+      font-size: 0.92rem;
+    }
+
+    #view-home.is-drop {
+      outline: 2px dashed var(--mint);
+      outline-offset: 8px;
+      border-radius: 16px;
+    }
+
+    .status:empty { display: none; }
+
+    .status {
+      margin: 14px 0 0;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: #fff1ea;
+      color: #8a3d32;
+      font-weight: 700;
+    }
+
+    .fine {
+      margin: 16px 0 18px;
+      color: #6d8a83;
+      font-size: 0.85rem;
+    }
+
+    .hint {
+      margin: 0 0 12px;
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    .preview-frame {
+      border-radius: 22px;
+      overflow: hidden;
+      background: #163832;
+      box-shadow: 0 16px 40px rgba(22, 70, 60, 0.14);
+    }
+
+    video {
+      display: block;
+      width: 100%;
+      max-height: min(62vh, 640px);
+      min-height: 220px;
+      object-fit: cover;
+      background: #163832;
+    }
+
+    video.mirrored { transform: scaleX(-1); }
+
+    .live-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 10px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #e7faf4;
+      color: var(--mint-deep);
+      font-weight: 800;
+      font-size: 0.85rem;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #e24b4b;
+      box-shadow: 0 0 0 0 rgba(226, 75, 75, 0.6);
+      animation: pulse 1.4s ease-out infinite;
+    }
+
+    .camera-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      margin: 16px 0 18px;
+    }
+
+    .shutter {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: var(--mint-deep);
+      font: inherit;
+      font-weight: 800;
+      font-size: 1.05rem;
+      cursor: pointer;
+    }
+
+    .shutter-disc {
+      width: 86px;
+      height: 86px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 50% 50%, #fff 0 46%, #d7f6ee 47% 49%, #fff 50% 100%);
+      box-shadow:
+        0 0 0 4px #fff,
+        0 0 0 8px var(--mint),
+        0 12px 22px rgba(18, 90, 78, 0.2);
+    }
+
+    .shutter:disabled { opacity: 0.45; cursor: wait; }
+    .shutter:active .shutter-disc { transform: scale(0.94); }
+
+    .stage-wrap {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+
+    .stage {
+      position: relative;
+      width: max-content;
+      max-width: 100%;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    .stage.has-brush { cursor: none; }
+
+    #view {
+      display: block;
+      border-radius: 22px;
+      background: #dceee8;
+      box-shadow: 0 16px 40px rgba(22, 70, 60, 0.14);
+    }
+
+    .brush {
+      position: absolute;
+      left: 0;
+      top: 0;
+      z-index: 4;
+      pointer-events: none;
+      transform-origin: 18.2% 84.4%;
+      filter: drop-shadow(2px 8px 3px rgba(20, 60, 50, 0.28));
+    }
+
+    .sparkles {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      border-radius: 22px;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .sheen {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.72) 48%, transparent 62%);
+      transform: translateX(-120%);
+    }
+
+    .sparkles.play .sheen { animation: sheen 1.15s ease-out 1; }
+
+    .star {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      background: #ffe27a;
+      clip-path: polygon(50% 0%, 61% 36%, 100% 50%, 61% 64%, 50% 100%, 39% 64%, 0% 50%, 39% 36%);
+      animation: twinkle 1.15s ease-in-out infinite;
+    }
+
+    .star.white { background: #fff; width: 10px; height: 10px; }
+
+    .meter { margin-top: 4px; }
+
+    .meter-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      font-weight: 800;
+    }
+
+    #progress-value { color: var(--mint-deep); font-variant-numeric: tabular-nums; }
+
+    .meter-track {
+      margin-top: 8px;
+      height: 16px;
+      border-radius: 999px;
+      background: #e5f4ef;
+      overflow: hidden;
+      box-shadow: inset 0 1px 2px rgba(20, 60, 50, 0.08);
+    }
+
+    .meter-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #8ee6d2, #12967d);
+      transition: width 140ms linear;
+    }
+
+    .meter.is-full .meter-fill {
+      background: linear-gradient(90deg, #ffe58a, #e2b122);
+    }
+
+    .meter.is-full #progress-value { color: #8a6508; }
+
+    .meter-note {
+      margin: 8px 0 0;
+      color: var(--ink-soft);
+      font-size: 0.92rem;
+    }
+
+    .celebration {
+      margin-top: 14px;
+      padding: 16px 16px 14px;
+      border-radius: 18px;
+      text-align: center;
+      background: linear-gradient(180deg, #fffdf6 0%, #fff3c9 100%);
+      border: 1px solid #f0dd9a;
+      animation: pop 420ms ease-out;
+    }
+
+    .celebration h2 {
+      margin: 0;
+      font-family: var(--serif);
+      font-size: clamp(1.8rem, 4vw, 2.4rem);
+      font-weight: 680;
+      color: #8a6508;
+      letter-spacing: -0.03em;
+    }
+
+    .celebration p {
+      margin: 6px 0 0;
+      color: #6d5316;
+      font-weight: 700;
+    }
+
+    .spark-icon {
+      width: 28px;
+      height: 28px;
+      margin-bottom: 4px;
+    }
+
+    [hidden] { display: none !important; }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @keyframes pulse {
+      70% { box-shadow: 0 0 0 8px rgba(226, 75, 75, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(226, 75, 75, 0); }
+    }
+
+    @keyframes pop {
+      from { opacity: 0; transform: translateY(8px) scale(0.98); }
+      to { opacity: 1; transform: none; }
+    }
+
+    @keyframes sheen {
+      from { transform: translateX(-120%); }
+      to { transform: translateX(120%); }
+    }
+
+    @keyframes twinkle {
+      0%, 100% { transform: scale(0.72) rotate(0deg); opacity: 0.35; }
+      50% { transform: scale(1.15) rotate(14deg); opacity: 1; }
+    }
+
+    @media (max-width: 680px) {
+      main { border-radius: 24px; }
+      .stripe { border-radius: 24px 24px 0 0; }
+      .pad { padding: 18px 16px 4px; }
+      .steps { grid-template-columns: 1fr; }
+      header { align-items: flex-start; }
+      .logo { width: 54px; height: 54px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="stripe" aria-hidden="true"></div>
+    <div class="pad">
+      <header>
+        <svg class="logo" viewBox="0 0 72 72" aria-hidden="true">
+          <rect width="72" height="72" rx="20" fill="#e7faf4"/>
+          <path d="M36 12c8.2 0 14 5.2 16.2 13 2.2 8.2 1 18.2-1.6 28.2-1.4 5.4-4.4 10.6-8 10.6-3.2 0-4.4-4.6-6.6-10.2-2.2 5.6-3.4 10.2-6.6 10.2-3.6 0-6.6-5.2-8-10.6C19 43.2 17.8 33.2 20 25 22.2 17.2 27.8 12 36 12z" fill="#fff" stroke="#bfe8dc" stroke-width="1.5"/>
+          <path d="M27 46.5c2.4 2.2 5 3.3 9 3.3s6.6-1.1 9-3.3" fill="none" stroke="#12816f" stroke-width="2.4" stroke-linecap="round"/>
+          <circle cx="29" cy="34" r="2.1" fill="#12816f"/>
+          <circle cx="43" cy="34" r="2.1" fill="#12816f"/>
+          <path d="M54 16.5l1.1 2.8 3 .3-2.3 1.9.7 2.9-2.5-1.5-2.5 1.5.7-2.9-2.3-1.9 3-.3z" fill="#f0c14a"/>
+        </svg>
+        <div>
+          <p class="kicker">Smile studio</p>
+          <h1>Pearl Scrub</h1>
+        </div>
+      </header>
+      <p class="lede" id="lede">Take a picture of your teeth, or upload one you already have. Then scrub with the toothbrush until they shine.</p>
+      <p class="status" id="status" role="status"></p>
+
+      <section id="view-home">
+        <ol class="steps">
+          <li><span>1. Photo</span>Snap a smile or upload a picture.</li>
+          <li><span>2. Scrub</span>Drag the brush. Foam follows the stroke.</li>
+          <li><span>3. Sparkle</span>Keep going until the smile is clean.</li>
+        </ol>
+        <div class="actions">
+          <button type="button" class="btn btn-primary" id="btn-camera">Take a photo</button>
+          <label class="btn btn-ghost" id="upload-label">
+            Upload a photo
+            <input class="file-input" id="file-input" type="file" accept="image/*">
+          </label>
+        </div>
+        <p class="drop-hint">You can also drop a photo anywhere on this card.</p>
+        <p class="fine">Your photo stays in this browser. Nothing is uploaded.</p>
+      </section>
+
+      <section id="view-camera" hidden>
+        <p class="live-pill"><span class="dot" aria-hidden="true"></span> Camera on</p>
+        <p class="hint" id="camera-hint">Center your teeth, then press Take photo.</p>
+        <div class="preview-frame">
+          <video id="preview" playsinline autoplay muted></video>
+        </div>
+        <div class="camera-actions">
+          <button type="button" class="shutter" id="btn-shutter" disabled>
+            <span class="shutter-disc" aria-hidden="true"></span>
+            Take photo
+          </button>
+          <button type="button" class="btn btn-ghost" id="btn-cancel">Cancel</button>
+        </div>
+      </section>
+
+      <section id="view-scrub" hidden>
+        <p class="hint" id="scrub-hint">Hold and drag across the teeth.</p>
+        <div class="stage-wrap" id="stage-wrap">
+          <div class="stage" id="stage">
+            <canvas id="view" aria-label="Your photo. Drag across it with the toothbrush to scrub."></canvas>
+            <div class="sparkles" id="sparkles" hidden>
+              <span class="sheen"></span>
+              <span class="star" style="left:8%;top:14%;animation-delay:0s"></span>
+              <span class="star white" style="left:22%;top:28%;animation-delay:.2s"></span>
+              <span class="star" style="left:70%;top:12%;animation-delay:.35s"></span>
+              <span class="star white" style="left:84%;top:30%;animation-delay:.1s"></span>
+              <span class="star" style="left:14%;top:62%;animation-delay:.45s"></span>
+              <span class="star" style="left:48%;top:18%;animation-delay:.15s"></span>
+              <span class="star white" style="left:60%;top:70%;animation-delay:.28s"></span>
+              <span class="star" style="left:78%;top:58%;animation-delay:.5s"></span>
+            </div>
+            <div class="brush" id="brush" hidden>
+              <svg viewBox="0 0 220 90" width="100%" height="100%" aria-hidden="true">
+                <rect x="78" y="30" width="128" height="24" rx="12" fill="#14967f"/>
+                <rect x="78" y="30" width="128" height="11" rx="10" fill="#8ee6d2"/>
+                <path d="M132 36v12M146 36v12M160 36v12M174 36v12" stroke="#0c6456" stroke-width="2" stroke-linecap="round" opacity="0.35"/>
+                <rect x="58" y="34" width="28" height="16" rx="6" fill="#f7fffd"/>
+                <rect x="16" y="20" width="50" height="34" rx="12" fill="#ffffff" stroke="#cfeee6" stroke-width="2"/>
+                <ellipse cx="41" cy="36" rx="14" ry="8" fill="#b8ffe9"/>
+                <ellipse cx="36" cy="33" rx="6" ry="3.2" fill="#ffffff" opacity="0.9"/>
+                <g stroke="#7ec8dc" stroke-width="2.4" stroke-linecap="round">
+                  <path d="M26 54 v14"/>
+                  <path d="M32 54 v18"/>
+                  <path d="M38 54 v22"/>
+                  <path d="M44 54 v18"/>
+                  <path d="M50 54 v14"/>
+                  <path d="M29 54 v16"/>
+                  <path d="M35 54 v20"/>
+                  <path d="M41 54 v20"/>
+                  <path d="M47 54 v16"/>
+                </g>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="meter" id="progressbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0 percent of the way to sparkling clean" aria-label="Scrub progress">
+          <div class="meter-top">
+            <span id="meter-label">Scrub progress</span>
+            <span id="progress-value">0%</span>
+          </div>
+          <div class="meter-track">
+            <div class="meter-fill" id="meter-fill"></div>
+          </div>
+          <p class="meter-note" id="meter-note">The meter fills as the brush covers the photo.</p>
+        </div>
+
+        <div class="celebration" id="celebration" hidden>
+          <svg class="spark-icon" viewBox="0 0 32 32" aria-hidden="true">
+            <path d="M16 2l2.2 8.2L26 12l-7.8 1.8L16 22l-2.2-8.2L6 12l7.8-1.8z" fill="#f0c14a"/>
+            <path d="M25 18l1 3.2 3.2.6-2.5 1.8.8 3.2-2.5-1.6-2.5 1.6.8-3.2-2.5-1.8 3.2-.6z" fill="#fff4c2"/>
+          </svg>
+          <h2>Sparkling clean!</h2>
+          <p>That smile is shining. Nice brushing.</p>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn btn-ghost" id="btn-reset">Reset scrub</button>
+          <button type="button" class="btn btn-primary" id="btn-retake">Retake photo</button>
+        </div>
+        <p class="fine">Reset scrub clears the toothpaste and keeps this photo. Retake photo starts over.</p>
+      </section>
+    </div>
+  </main>
+  <p id="announce" class="sr-only" aria-live="polite"></p>
+  <noscript>Pearl Scrub needs JavaScript to use the camera, show your photo, and brush.</noscript>
+
+  <script>
+    (function () {
+      'use strict';
+
+      var CLEAN_AT = 0.26;
+      var MAX_EDGE = 1280;
+      var MIN_EDGE = 900;
+
+      var lede = document.getElementById('lede');
+      var statusEl = document.getElementById('status');
+      var announce = document.getElementById('announce');
+      var home = document.getElementById('view-home');
+      var cameraView = document.getElementById('view-camera');
+      var scrubView = document.getElementById('view-scrub');
+      var fileInput = document.getElementById('file-input');
+      var preview = document.getElementById('preview');
+      var shutter = document.getElementById('btn-shutter');
+      var cameraHint = document.getElementById('camera-hint');
+      var stageWrap = document.getElementById('stage-wrap');
+      var stage = document.getElementById('stage');
+      var view = document.getElementById('view');
+      var brush = document.getElementById('brush');
+      var sparkles = document.getElementById('sparkles');
+      var scrubHint = document.getElementById('scrub-hint');
+      var progressbar = document.getElementById('progressbar');
+      var meterLabel = document.getElementById('meter-label');
+      var progressValue = document.getElementById('progress-value');
+      var meterFill = document.getElementById('meter-fill');
+      var meterNote = document.getElementById('meter-note');
+      var celebration = document.getElementById('celebration');
+
+      var photo = document.createElement('canvas');
+      var whiteLayer = document.createElement('canvas');
+      var mask = document.createElement('canvas');
+      var foam = document.createElement('canvas');
+      var scratch = document.createElement('canvas');
+      var sample = document.createElement('canvas');
+
+      var photoCtx = photo.getContext('2d', { willReadFrequently: true });
+      var whiteCtx = whiteLayer.getContext('2d');
+      var maskCtx = mask.getContext('2d');
+      var foamCtx = foam.getContext('2d');
+      var scratchCtx = scratch.getContext('2d');
+      var sampleCtx = sample.getContext('2d', { willReadFrequently: true });
+      var viewCtx = view.getContext('2d');
+
+      var mode = 'home';
+      var stream = null;
+      var mirrorPreview = true;
+      var painting = false;
+      var celebrated = false;
+      var lastPoint = null;
+      var lastStampAt = 0;
+      var loopOn = false;
+      var width = 0;
+      var height = 0;
+      var tilt = -48;
+      var brushNorm = { x: 0.5, y: 0.5 };
+      var audioCtx = null;
+      var dragDepth = 0;
+
+      var HOME_LEDE = lede.textContent;
+
+      function setStatus(message) {
+        statusEl.textContent = message || '';
+      }
+
+      function show(section) {
+        home.hidden = section !== home;
+        cameraView.hidden = section !== cameraView;
+        scrubView.hidden = section !== scrubView;
+      }
+
+      function fitDimensions(sw, sh) {
+        var longEdge = Math.max(sw, sh);
+        var scale = 1;
+        if (longEdge > MAX_EDGE) scale = MAX_EDGE / longEdge;
+        else if (longEdge > 0 && longEdge < MIN_EDGE) scale = MIN_EDGE / longEdge;
+        return {
+          w: Math.max(1, Math.round(sw * scale)),
+          h: Math.max(1, Math.round(sh * scale))
+        };
+      }
+
+      function sizeCanvas(canvas, w, h) {
+        if (canvas.width !== w || canvas.height !== h) {
+          canvas.width = w;
+          canvas.height = h;
+        }
+      }
+
+      function clearCtx(ctx, w, h) {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, w, h);
+      }
+
+      function buildWhitened() {
+        var img = photoCtx.getImageData(0, 0, width, height);
+        var d = img.data;
+        for (var i = 0; i < d.length; i += 4) {
+          var r = d[i];
+          var g = d[i + 1];
+          var b = d[i + 2];
+          d[i] = r + (255 - r) * 0.30;
+          d[i + 1] = g + (255 - g) * 0.40;
+          d[i + 2] = b + (255 - b) * 0.52;
+        }
+        whiteCtx.putImageData(img, 0, 0);
+      }
+
+      function layoutBrush() {
+        var cssW = view.clientWidth || stageWrap.clientWidth || 320;
+        var brushW = Math.max(132, Math.min(210, cssW * 0.38));
+        brush.style.width = brushW + 'px';
+        brush.style.height = (brushW * 90 / 220) + 'px';
+      }
+
+      function layout() {
+        var wrapW = stageWrap.clientWidth || 320;
+        var cssW = wrapW;
+        var cssH = cssW * (height / width);
+        var maxH = Math.max(220, Math.min(window.innerHeight * 0.62, 700));
+        if (cssH > maxH) {
+          cssH = maxH;
+          cssW = cssH * (width / height);
+        }
+        view.style.width = Math.round(cssW) + 'px';
+        view.style.height = Math.round(cssH) + 'px';
+        layoutBrush();
+        applyBrush();
+      }
+
+      function applyBrush() {
+        var cssX = brushNorm.x * view.clientWidth;
+        var cssY = brushNorm.y * view.clientHeight;
+        var scale = painting ? 0.96 : 1;
+        brush.style.left = cssX + 'px';
+        brush.style.top = cssY + 'px';
+        brush.style.transform = 'translate(-18.2%, -84.4%) rotate(' + tilt.toFixed(2) + 'deg) scale(' + scale + ')';
+      }
+
+      function placeBrushCenter() {
+        brushNorm.x = 0.55;
+        brushNorm.y = 0.52;
+        tilt = -48;
+        brush.hidden = false;
+        stage.classList.add('has-brush');
+        layoutBrush();
+        applyBrush();
+      }
+
+      function composite() {
+        viewCtx.globalCompositeOperation = 'source-over';
+        viewCtx.setTransform(1, 0, 0, 1, 0, 0);
+        viewCtx.clearRect(0, 0, width, height);
+        viewCtx.drawImage(photo, 0, 0);
+
+        clearCtx(scratchCtx, width, height);
+        scratchCtx.drawImage(whiteLayer, 0, 0);
+        scratchCtx.globalCompositeOperation = 'destination-in';
+        scratchCtx.drawImage(mask, 0, 0);
+
+        viewCtx.drawImage(scratch, 0, 0);
+        viewCtx.drawImage(foam, 0, 0);
+      }
+
+      function currentRadius() {
+        var rect = view.getBoundingClientRect();
+        var cssW = rect.width || 300;
+        var brushW = brush.getBoundingClientRect().width || cssW * 0.38;
+        var radiusCss = brushW * 0.22;
+        return radiusCss * (view.width / cssW);
+      }
+
+      function stampMask(x, y, radius) {
+        var g = maskCtx.createRadialGradient(x, y, radius * 0.12, x, y, radius);
+        g.addColorStop(0, 'rgba(255,255,255,1)');
+        g.addColorStop(0.42, 'rgba(255,255,255,0.82)');
+        g.addColorStop(0.72, 'rgba(255,255,255,0.28)');
+        g.addColorStop(1, 'rgba(255,255,255,0)');
+        maskCtx.globalCompositeOperation = 'source-over';
+        maskCtx.fillStyle = g;
+        maskCtx.beginPath();
+        maskCtx.arc(x, y, radius, 0, Math.PI * 2);
+        maskCtx.fill();
+      }
+
+      function stampFoam(x, y, radius) {
+        foamCtx.globalCompositeOperation = 'source-over';
+        var blob = foamCtx.createRadialGradient(x, y, radius * 0.08, x, y, radius * 1.05);
+        blob.addColorStop(0, 'rgba(255,255,255,0.48)');
+        blob.addColorStop(0.45, 'rgba(198,255,244,0.30)');
+        blob.addColorStop(1, 'rgba(198,255,244,0)');
+        foamCtx.fillStyle = blob;
+        foamCtx.beginPath();
+        foamCtx.arc(x, y, radius * 1.05, 0, Math.PI * 2);
+        foamCtx.fill();
+
+        for (var i = 0; i < 4; i++) {
+          var angle = Math.random() * Math.PI * 2;
+          var dist = Math.random() * radius * 0.72;
+          var br = radius * (0.09 + Math.random() * 0.14);
+          var bx = x + Math.cos(angle) * dist;
+          var by = y + Math.sin(angle) * dist;
+          foamCtx.beginPath();
+          foamCtx.arc(bx, by, br, 0, Math.PI * 2);
+          foamCtx.fillStyle = 'rgba(255,255,255,0.88)';
+          foamCtx.fill();
+          foamCtx.lineWidth = Math.max(1, br * 0.16);
+          foamCtx.strokeStyle = 'rgba(140, 210, 198, 0.95)';
+          foamCtx.stroke();
+          foamCtx.beginPath();
+          foamCtx.arc(bx - br * 0.28, by - br * 0.28, Math.max(1, br * 0.28), 0, Math.PI * 2);
+          foamCtx.fillStyle = 'rgba(255,255,255,0.95)';
+          foamCtx.fill();
+        }
+      }
+
+      function paintLine(from, to) {
+        var radius = currentRadius();
+        var dist = Math.hypot(to.x - from.x, to.y - from.y);
+        var step = Math.max(1, radius * 0.22);
+        var steps = Math.min(90, Math.max(1, Math.ceil(dist / step)));
+        for (var i = 1; i <= steps; i++) {
+          var t = i / steps;
+          var x = from.x + (to.x - from.x) * t;
+          var y = from.y + (to.y - from.y) * t;
+          stampMask(x, y, radius);
+          stampFoam(x, y, radius);
+        }
+        composite();
+      }
+
+      function fadeFoam() {
+        foamCtx.globalCompositeOperation = 'destination-out';
+        foamCtx.fillStyle = 'rgba(0,0,0,0.045)';
+        foamCtx.fillRect(0, 0, width, height);
+        foamCtx.globalCompositeOperation = 'source-over';
+      }
+
+      function measureCoverage() {
+        var sw = 180;
+        var sh = Math.max(1, Math.round(sw * height / width));
+        if (sample.width !== sw || sample.height !== sh) {
+          sample.width = sw;
+          sample.height = sh;
+        }
+        sampleCtx.globalCompositeOperation = 'source-over';
+        sampleCtx.clearRect(0, 0, sw, sh);
+        sampleCtx.drawImage(mask, 0, 0, sw, sh);
+        var data = sampleCtx.getImageData(0, 0, sw, sh).data;
+        var hit = 0;
+        var total = sw * sh;
+        for (var i = 3; i < data.length; i += 4) {
+          if (data[i] > 28) hit++;
+        }
+        return hit / total;
+      }
+
+      function renderProgress(shown) {
+        progressValue.textContent = shown + '%';
+        meterFill.style.width = shown + '%';
+        progressbar.setAttribute('aria-valuenow', String(shown));
+        progressbar.setAttribute('aria-valuetext', celebrated
+          ? 'Sparkling clean'
+          : shown + ' percent of the way to sparkling clean');
+      }
+
+      function celebrate() {
+        celebrated = true;
+        meterLabel.textContent = 'Sparkling clean';
+        meterNote.textContent = 'That is enough of the photo for a shining smile.';
+        progressbar.classList.add('is-full');
+        renderProgress(100);
+        celebration.hidden = false;
+        sparkles.hidden = false;
+        stage.classList.add('is-clean');
+        sparkles.classList.remove('play');
+        void sparkles.offsetWidth;
+        sparkles.classList.add('play');
+        announce.textContent = 'Sparkling clean. The photo has been brushed enough to shine.';
+        chime();
+      }
+
+      function updateProgress() {
+        if (!width || !height) return;
+        var coverage = measureCoverage();
+        if (!celebrated && coverage >= CLEAN_AT) {
+          celebrate();
+          return;
+        }
+        if (celebrated) {
+          renderProgress(100);
+          return;
+        }
+        var shown = Math.max(0, Math.min(100, Math.round((coverage / CLEAN_AT) * 100)));
+        meterLabel.textContent = 'Scrub progress';
+        meterNote.textContent = 'The meter fills as the brush covers the photo.';
+        progressbar.classList.remove('is-full');
+        renderProgress(shown);
+      }
+
+      function chime() {
+        try {
+          var Ctx = window.AudioContext || window.webkitAudioContext;
+          if (!Ctx) return;
+          audioCtx = audioCtx || new Ctx();
+          if (audioCtx.state === 'suspended') audioCtx.resume();
+          var now = audioCtx.currentTime;
+          [523.25, 659.25, 783.99, 1046.5].forEach(function (freq, index) {
+            var osc = audioCtx.createOscillator();
+            var gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            var start = now + index * 0.07;
+            gain.gain.setValueAtTime(0.0001, start);
+            gain.gain.exponentialRampToValueAtTime(0.06, start + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.38);
+            osc.connect(gain).connect(audioCtx.destination);
+            osc.start(start);
+            osc.stop(start + 0.42);
+          });
+        } catch (err) {
+          /* A missing chime should not block the celebration. */
+        }
+      }
+
+      function frame(now) {
+        if (mode !== 'scrub') {
+          loopOn = false;
+          return;
+        }
+        if (!lastStampAt || now - lastStampAt > 1600) {
+          composite();
+          updateProgress();
+          loopOn = false;
+          return;
+        }
+        fadeFoam();
+        composite();
+        updateProgress();
+        requestAnimationFrame(frame);
+      }
+
+      function startLoop() {
+        if (loopOn) return;
+        loopOn = true;
+        requestAnimationFrame(frame);
+      }
+
+      function resetCelebration() {
+        celebrated = false;
+        celebration.hidden = true;
+        sparkles.hidden = true;
+        sparkles.classList.remove('play');
+        stage.classList.remove('is-clean');
+        progressbar.classList.remove('is-full');
+      }
+
+      function startScrub(source) {
+        stopCamera();
+        var fitted = fitDimensions(source.width, source.height);
+        width = fitted.w;
+        height = fitted.h;
+        mode = 'scrub';
+        painting = false;
+        lastPoint = null;
+        lastStampAt = 0;
+        resetCelebration();
+        setStatus('');
+        show(scrubView);
+        lede.textContent = 'Drag the toothbrush across the teeth. Foam and a little whitening follow your stroke.';
+        scrubHint.hidden = false;
+
+        sizeCanvas(photo, width, height);
+        sizeCanvas(whiteLayer, width, height);
+        sizeCanvas(mask, width, height);
+        sizeCanvas(foam, width, height);
+        sizeCanvas(scratch, width, height);
+        sizeCanvas(view, width, height);
+
+        clearCtx(photoCtx, width, height);
+        photoCtx.fillStyle = '#e7f2ee';
+        photoCtx.fillRect(0, 0, width, height);
+        photoCtx.drawImage(source, 0, 0, width, height);
+        clearCtx(maskCtx, width, height);
+        clearCtx(foamCtx, width, height);
+        buildWhitened();
+        layout();
+        composite();
+        updateProgress();
+        placeBrushCenter();
+      }
+
+      function localPoint(event) {
+        var rect = view.getBoundingClientRect();
+        var clientX = event.clientX;
+        var clientY = event.clientY;
+        if (event.pointerType === 'touch') clientY -= 48;
+        var cssX = clientX - rect.left;
+        var cssY = clientY - rect.top;
+        var scaleX = rect.width ? view.width / rect.width : 1;
+        var scaleY = rect.height ? view.height / rect.height : 1;
+        return { x: cssX * scaleX, y: cssY * scaleY, cssX: cssX, cssY: cssY };
+      }
+
+      function trackBrush(point) {
+        var prevX = brushNorm.x * view.clientWidth;
+        var prevY = brushNorm.y * view.clientHeight;
+        var dx = point.cssX - prevX;
+        var dy = point.cssY - prevY;
+        if (dx * dx + dy * dy > 9) {
+          var target = Math.atan2(dy, dx) * (180 / Math.PI);
+          var influence = Math.max(-18, Math.min(18, target * 0.08));
+          tilt += ((-48 + influence) - tilt) * 0.35;
+        }
+        var vw = view.clientWidth || 1;
+        var vh = view.clientHeight || 1;
+        brushNorm.x = point.cssX / vw;
+        brushNorm.y = point.cssY / vh;
+        brush.hidden = false;
+        applyBrush();
+      }
+
+      function onPointerDown(event) {
+        if (mode !== 'scrub') return;
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
+        event.preventDefault();
+        painting = true;
+        scrubHint.hidden = true;
+        try { stage.setPointerCapture(event.pointerId); } catch (err) { /* capture is a bonus */ }
+        var point = localPoint(event);
+        lastPoint = point;
+        trackBrush(point);
+        brush.classList.add('is-scrubbing');
+        var radius = currentRadius();
+        stampMask(point.x, point.y, radius);
+        stampFoam(point.x, point.y, radius);
+        composite();
+        lastStampAt = performance.now();
+        startLoop();
+      }
+
+      function onPointerMove(event) {
+        if (mode !== 'scrub') return;
+        if (painting) event.preventDefault();
+        var point = localPoint(event);
+        if (!painting && event.pointerType === 'touch') return;
+        trackBrush(point);
+        if (!painting || !lastPoint) return;
+        paintLine(lastPoint, point);
+        lastPoint = point;
+        lastStampAt = performance.now();
+        if (!loopOn) startLoop();
+      }
+
+      function endStroke() {
+        if (!painting) return;
+        painting = false;
+        lastPoint = null;
+        brush.classList.remove('is-scrubbing');
+        applyBrush();
+        updateProgress();
+      }
+
+      function stopCamera() {
+        if (stream) {
+          stream.getTracks().forEach(function (track) { track.stop(); });
+          stream = null;
+        }
+        preview.srcObject = null;
+      }
+
+      function cameraErrorMessage(err) {
+        if (!err) return 'The camera could not start. Upload a photo instead.';
+        if (err.name === 'NotAllowedError' || err.name === 'SecurityError') {
+          return 'Camera permission was blocked. You can still upload a photo.';
+        }
+        if (err.name === 'NotFoundError' || err.name === 'OverconstrainedError') {
+          return 'No camera was found. Upload a photo instead.';
+        }
+        return 'The camera could not start. Upload a photo instead.';
+      }
+
+      async function startCamera() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          setStatus('This browser has no camera access. Upload a photo instead.');
+          return;
+        }
+        setStatus('');
+        shutter.disabled = true;
+        cameraHint.textContent = 'Starting the camera…';
+        show(cameraView);
+        lede.textContent = 'The live preview stays on this device until you take the photo.';
+        try {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              audio: false,
+              video: {
+                facingMode: { ideal: 'user' },
+                width: { ideal: 1280 },
+                height: { ideal: 960 }
+              }
+            });
+          } catch (firstErr) {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+          }
+          var facing = '';
+          var tracks = stream.getVideoTracks();
+          if (tracks[0] && tracks[0].getSettings) facing = tracks[0].getSettings().facingMode || '';
+          mirrorPreview = facing !== 'environment';
+          preview.classList.toggle('mirrored', mirrorPreview);
+          preview.srcObject = stream;
+          await preview.play();
+          var armShutter = function () {
+            shutter.disabled = false;
+            cameraHint.textContent = 'Center your teeth, then press Take photo.';
+          };
+          if (preview.videoWidth) armShutter();
+          else preview.addEventListener('loadedmetadata', armShutter, { once: true });
+        } catch (err) {
+          stopCamera();
+          show(home);
+          lede.textContent = HOME_LEDE;
+          setStatus(cameraErrorMessage(err));
+        }
+      }
+
+      function capturePhoto() {
+        var vw = preview.videoWidth;
+        var vh = preview.videoHeight;
+        if (!vw || !vh) {
+          setStatus('The camera did not return a photo. Try again or upload one.');
+          return;
+        }
+        var fitted = fitDimensions(vw, vh);
+        var snap = document.createElement('canvas');
+        snap.width = fitted.w;
+        snap.height = fitted.h;
+        var ctx = snap.getContext('2d');
+        if (mirrorPreview) {
+          ctx.translate(fitted.w, 0);
+          ctx.scale(-1, 1);
+        }
+        ctx.drawImage(preview, 0, 0, fitted.w, fitted.h);
+        stopCamera();
+        startScrub(snap);
+      }
+
+      function loadImageElement(file) {
+        return new Promise(function (resolve, reject) {
+          var url = URL.createObjectURL(file);
+          var img = new Image();
+          img.onload = function () {
+            URL.revokeObjectURL(url);
+            resolve(img);
+          };
+          img.onerror = function () {
+            URL.revokeObjectURL(url);
+            reject(new Error('image'));
+          };
+          img.src = url;
+        });
+      }
+
+      async function openFile(file) {
+        if (!file) return;
+        if (file.type && file.type.indexOf('image/') !== 0) {
+          setStatus('Please choose a picture file.');
+          fileInput.value = '';
+          return;
+        }
+        setStatus('Opening your photo…');
+        try {
+          var source;
+          if (typeof createImageBitmap === 'function') {
+            source = await createImageBitmap(file);
+          } else {
+            source = await loadImageElement(file);
+          }
+          startScrub(source);
+          if (source.close) source.close();
+        } catch (err) {
+          show(home);
+          lede.textContent = HOME_LEDE;
+          setStatus('That picture could not be opened. Try a different one.');
+        } finally {
+          fileInput.value = '';
+        }
+      }
+
+      function resetScrub() {
+        if (mode !== 'scrub') return;
+        clearCtx(maskCtx, width, height);
+        clearCtx(foamCtx, width, height);
+        lastStampAt = 0;
+        painting = false;
+        lastPoint = null;
+        brush.classList.remove('is-scrubbing');
+        resetCelebration();
+        scrubHint.hidden = false;
+        composite();
+        updateProgress();
+        announce.textContent = 'Scrub reset. Drag the toothbrush across the photo to start again.';
+      }
+
+      function retake() {
+        mode = 'home';
+        painting = false;
+        lastPoint = null;
+        lastStampAt = 0;
+        stopCamera();
+        resetCelebration();
+        brush.hidden = true;
+        brush.classList.remove('is-scrubbing');
+        stage.classList.remove('has-brush');
+        show(home);
+        lede.textContent = HOME_LEDE;
+        setStatus('');
+        announce.textContent = 'Ready for a new photo.';
+      }
+
+      document.getElementById('btn-camera').addEventListener('click', startCamera);
+      document.getElementById('btn-cancel').addEventListener('click', function () {
+        stopCamera();
+        show(home);
+        lede.textContent = HOME_LEDE;
+        shutter.disabled = true;
+      });
+      shutter.addEventListener('click', capturePhoto);
+      fileInput.addEventListener('change', function () {
+        var file = fileInput.files && fileInput.files[0];
+        if (file) openFile(file);
+      });
+      document.getElementById('btn-reset').addEventListener('click', resetScrub);
+      document.getElementById('btn-retake').addEventListener('click', retake);
+
+      stage.addEventListener('pointerdown', onPointerDown, { passive: false });
+      stage.addEventListener('pointermove', onPointerMove, { passive: false });
+      stage.addEventListener('pointerup', endStroke);
+      stage.addEventListener('pointercancel', endStroke);
+      stage.addEventListener('lostpointercapture', endStroke);
+      stage.addEventListener('contextmenu', function (event) { event.preventDefault(); });
+
+      var card = document.querySelector('main');
+      card.addEventListener('dragenter', function (event) {
+        event.preventDefault();
+        dragDepth += 1;
+        if (mode === 'home') home.classList.add('is-drop');
+      });
+      card.addEventListener('dragover', function (event) {
+        event.preventDefault();
+      });
+      card.addEventListener('dragleave', function () {
+        dragDepth = Math.max(0, dragDepth - 1);
+        if (dragDepth === 0) home.classList.remove('is-drop');
+      });
+      card.addEventListener('drop', function (event) {
+        event.preventDefault();
+        dragDepth = 0;
+        home.classList.remove('is-drop');
+        var file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
+        if (file) openFile(file);
+      });
+
+      window.addEventListener('resize', function () {
+        if (mode === 'scrub') layout();
+      });
+      window.addEventListener('pagehide', stopCamera);
+    }());
+  </script>
+</body>
+</html>
