@@ -93,6 +93,9 @@ html[data-theme="dark"] {
 .lb-select:disabled { color: var(--text-4); }
 .lb-go { flex: none; }
 .lb-error { margin: 0; color: var(--red-text); font-size: var(--fs-sm); }
+.lb-plant { margin: 0; font-size: var(--fs-xs); color: var(--text-3); }
+.lb-plant strong { color: var(--text-2); }
+.lb-plant a { color: var(--text-3); }
 .lb-empty p { margin: 0; color: var(--text-2); }
 
 .sph-nudge {

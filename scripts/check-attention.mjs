@@ -14,7 +14,7 @@
 import {
   attentionFor, signatures, primeSignatures, attentionTitle, affordablePacketTier, affordable,
   ROUTE_BOARD, ROUTE_COMMUNITY, ROUTE_GARDEN,
-  GARDEN_GREENHOUSE, GARDEN_BEDS, GARDEN_HERBARIUM, GARDEN_SHOP,
+  GARDEN_SEEDS, GARDEN_HERBARIUM, GARDEN_SHOP,
 } from '../src/lib/attention.js'
 import { PACKETS } from '../src/lib/garden.js'
 
@@ -28,8 +28,8 @@ const HOUR = 3600
 const ago = h => new Date(Date.now() - h * HOUR * 1000).toISOString()
 
 const empty = { coins: 0, plot_count: 8, discovered: {}, packet_inventory: {} }
-const done = { ...empty, growing_seed: 'daisy', growing_started_at: ago(4), growing_grow_seconds: 3 * HOUR }
-const growing = { ...empty, growing_seed: 'daisy', growing_started_at: ago(1), growing_grow_seconds: 3 * HOUR }
+// A sealed packet in the bag is the seed bag's one cause.
+const done = { ...empty, packet_inventory: { common: 1 } }
 
 // Look at everything, so nothing is "new" any more.
 const seenAll = input => signatures(input)
@@ -39,8 +39,22 @@ const seenAll = input => signatures(input)
 ok('an empty app glows nowhere',
   Object.keys(attentionFor({ state: empty, flowers: [], quests: [], community: {} })).length === 0)
 
-ok('a flower still growing is not news',
-  !attentionFor({ state: growing, flowers: [], quests: [], community: {} })[GARDEN_GREENHOUSE])
+ok('an empty seed bag is not news',
+  !attentionFor({ state: { ...empty, packet_inventory: { common: 0 } }, flowers: [], quests: [], community: {} })[GARDEN_SEEDS])
+
+// The rooms these used to light are gone. Old state can still carry a
+// finished flower, banked clouds or a full set of beds — none of it may glow,
+// since there is no longer anywhere to go and act on it.
+const leftovers = attentionFor({
+  state: {
+    ...empty, plot_count: 2, overflow_seconds: 600, stats: { pendingClouds: 3 },
+    growing_seed: 'daisy', growing_started_at: ago(9), growing_grow_seconds: HOUR,
+  },
+  flowers: [{}, {}], quests: [], community: {},
+})
+ok('nothing glows for the greenhouse or the beds, which no longer exist',
+  !leftovers[ROUTE_GARDEN] && Object.keys(leftovers).every(k => !k.startsWith('garden:')),
+  Object.keys(leftovers).join(', '))
 
 ok('an unclaimable quest is not news',
   !attentionFor({ state: empty, flowers: [], quests: [{ claimable: false }], community: {} })[ROUTE_BOARD])
@@ -65,26 +79,20 @@ ok('the quest count rides the badge', q[ROUTE_BOARD].count === 2)
 // — the garden's own rooms —
 
 const g1 = attentionFor({ state: done, flowers: [], quests: [], community: {} })
-ok('a finished flower lights the greenhouse', g1[GARDEN_GREENHOUSE]?.level === 'ready')
-ok('it says which flower', /daisy/i.test(attentionTitle(g1[GARDEN_GREENHOUSE])))
+ok('a packet to open lights the seed bag', g1[GARDEN_SEEDS]?.level === 'ready')
+ok('it says so', /packet to open/i.test(attentionTitle(g1[GARDEN_SEEDS])))
 ok('and it lights the garden tab in the rail too', g1[ROUTE_GARDEN]?.level === 'ready')
 
 const g2 = attentionFor({
   state: { ...empty, packet_inventory: { common: 2 } }, flowers: [], quests: [], community: {},
 })
-ok('packets waiting light the greenhouse', g2[GARDEN_GREENHOUSE]?.level === 'ready')
-
-const full = { ...empty, plot_count: 3 }
-const g3 = attentionFor({ state: full, flowers: [{}, {}, {}], quests: [], community: {} })
-ok('a full garden lights the beds', g3[GARDEN_BEDS]?.level === 'ready')
-ok('a garden with room does not',
-  !attentionFor({ state: full, flowers: [{}, {}], quests: [], community: {} })[GARDEN_BEDS])
+ok('several packets are counted', g2[GARDEN_SEEDS]?.count === 2)
 
 // — going to look is what puts it out —
 
 const doneInput = { state: done, flowers: [], quests: [], community: {} }
 const afterGreenhouse = attentionFor({ ...doneInput, seen: seenAll(doneInput) })
-ok('visiting clears the greenhouse glow', !afterGreenhouse[GARDEN_GREENHOUSE])
+ok('visiting clears the seed bag glow', !afterGreenhouse[GARDEN_SEEDS])
 ok('visiting clears the rail glow with it', !afterGreenhouse[ROUTE_GARDEN])
 
 // The rail can be put out on its own — that is the whole point of the roll-up.
@@ -98,11 +106,11 @@ const railOnly = attentionFor({
   seen: { [ROUTE_GARDEN]: signatures(doneInput)[ROUTE_GARDEN] },
 })
 ok('visiting the garden clears the rail but leaves the room lit',
-  !railOnly[ROUTE_GARDEN] && !!railOnly[GARDEN_GREENHOUSE])
+  !railOnly[ROUTE_GARDEN] && !!railOnly[GARDEN_SEEDS])
 
 // And a new cause in any room re-lights the rail, even one already visited.
 const moreLater = attentionFor({
-  state: { ...done, stats: { pendingClouds: 1 } }, flowers: [], quests: [], community: {},
+  state: { ...done, packet_inventory: { common: 2 } }, flowers: [], quests: [], community: {},
   seen: { [ROUTE_GARDEN]: signatures(doneInput)[ROUTE_GARDEN] },
 })
 ok('a new cause re-lights the rail after a visit', !!moreLater[ROUTE_GARDEN])
@@ -119,9 +127,9 @@ ok('but a SECOND finished quest does',
     community: {}, seen: seenOne,
   })[ROUTE_BOARD]?.level === 'ready')
 
-const otherFlower = { ...done, growing_seed: 'tulip' }
-ok('a different flower finishing is news again',
-  attentionFor({ state: otherFlower, flowers: [], quests: [], community: {}, seen: seenAll(doneInput) })[GARDEN_GREENHOUSE]?.level === 'ready')
+const morePackets = { ...done, packet_inventory: { common: 3 } }
+ok('another packet arriving is news again',
+  attentionFor({ state: morePackets, flowers: [], quests: [], community: {}, seen: seenAll(doneInput) })[GARDEN_SEEDS]?.level === 'ready')
 
 // — the shop, in seeds —
 //
@@ -170,8 +178,8 @@ ok('a fourth seed is not news',
 const primeInput = { state: { ...empty, seeds: SEED_PACKET.cost, discovered: { daisy: 1 } }, flowers: [], quests: [], community: {} }
 const primed = primeSignatures(primeInput)
 ok('priming covers the quiet scopes', !!primed[GARDEN_SHOP] && !!primed[GARDEN_HERBARIUM])
-ok('priming never silences a loud one — a banked cloud still speaks on first run',
-  !primeSignatures({ state: { ...empty, stats: { pendingClouds: 1 } }, flowers: [], quests: [], community: {} })[GARDEN_GREENHOUSE])
+ok('priming never silences a loud one — a sealed packet still speaks on first run',
+  !primeSignatures({ state: { ...empty, packet_inventory: { common: 1 } }, flowers: [], quests: [], community: {} })[GARDEN_SEEDS])
 
 // — the shop, in coins —
 
@@ -201,25 +209,6 @@ ok('a new species lights the herbarium',
   attentionFor({ state: { ...empty, discovered: { daisy: 1, tulip: 1 } }, flowers: [], quests: [], community: {}, seen: seenAll(herbInput) })[GARDEN_HERBARIUM]?.level === 'new')
 ok('the same species does not light it twice',
   !attentionFor({ ...herbInput, seen: seenAll(herbInput) })[GARDEN_HERBARIUM])
-
-// — banked clouds —
-//
-// Clouds are put by instead of interrupting, so the greenhouse is the only
-// thing that says they exist. If this signal is wrong they are invisible.
-
-const banked = { ...empty, stats: { pendingClouds: 3 } }
-const bankedInput = { state: banked, flowers: [], quests: [], community: {} }
-ok('waiting clouds light the greenhouse',
-  attentionFor(bankedInput)[GARDEN_GREENHOUSE]?.level === 'ready')
-ok('the cloud count rides the badge', attentionFor(bankedInput)[GARDEN_GREENHOUSE].count === 3)
-ok('and they light the rail too', attentionFor(bankedInput)[ROUTE_GARDEN]?.level === 'ready')
-ok('letting them in puts it out',
-  !attentionFor({ state: { ...empty, stats: { pendingClouds: 0 } }, flowers: [], quests: [], community: {} })[GARDEN_GREENHOUSE])
-ok('one more cloud is news again',
-  attentionFor({
-    state: { ...empty, stats: { pendingClouds: 4 } }, flowers: [], quests: [], community: {},
-    seen: seenAll(bankedInput),
-  })[GARDEN_GREENHOUSE]?.level === 'ready')
 
 // — community —
 

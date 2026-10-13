@@ -7,6 +7,7 @@
 
 import {
   tally, balanceNudge, logReward, checkGoal, daysLeft, daysSince, loggedToday,
+  pickPlant, takeSeed, logDaily,
   LOG_REWARD, DAILY_LOG_CAP, NUDGE_MIN_WEEK_LOGS,
 } from '../src/lib/spheres.js'
 import { readFileSync, readdirSync } from 'fs'
@@ -90,6 +91,60 @@ ok('a log that straddles the cap pays the remainder', (() => {
 ok('the boost does not get its own allowance past the cap',
   logReward({ daily: { logCoins: DAILY_LOG_CAP.coins }, boost: true }).coins === 0)
 ok('a missing daily bucket is a fresh day', logReward({}).coins === LOG_REWARD.coins)
+
+ok('a log pays a sprout too', logReward({ daily: {} }).seeds === LOG_REWARD.seeds)
+ok('sprouts stop at the seed cap on their own',
+  logReward({ daily: { seeds: DAILY_LOG_CAP.seeds } }).seeds === 0
+  && logReward({ daily: { seeds: DAILY_LOG_CAP.seeds } }).coins === LOG_REWARD.coins)
+ok('coins stop at their cap on their own',
+  logReward({ daily: { logCoins: DAILY_LOG_CAP.coins } }).seeds === LOG_REWARD.seeds)
+
+// — what a log plants —
+
+ok('an empty bag still plants something, for free',
+  (() => { const p = pickPlant({ inventory: {}, id: 'x' }); return !!p.seedKey && p.consume === false })())
+ok('a pinned seed you hold is planted and used up', (() => {
+  const p = pickPlant({ inventory: { rose: 1, daisy: 9 }, pinned: 'rose', id: 'x' })
+  return p.seedKey === 'rose' && p.consume
+})())
+ok('a pinned seed you have run out of falls back to the bag', (() => {
+  const p = pickPlant({ inventory: { daisy: 2 }, pinned: 'rose', id: 'x' })
+  return p.seedKey === 'daisy' && p.consume
+})())
+ok('the same log always draws the same plant', (() => {
+  const inv = { rose: 3, daisy: 5, clover: 2 }
+  return pickPlant({ inventory: inv, id: 'same' }).seedKey === pickPlant({ inventory: inv, id: 'same' }).seedKey
+})())
+ok('the draw is weighted by how many of each you hold', (() => {
+  const inv = { rose: 1, daisy: 99 }
+  let daisies = 0
+  for (let i = 0; i < 400; i++) if (pickPlant({ inventory: inv, id: `log-${i}` }).seedKey === 'daisy') daisies++
+  return daisies > 360
+})())
+ok('only seeds actually in the bag are ever drawn', (() => {
+  for (let i = 0; i < 200; i++) {
+    const k = pickPlant({ inventory: { tulip: 1 }, id: `l${i}` }).seedKey
+    if (k !== 'tulip') return false
+  }
+  return true
+})())
+
+ok('taking a seed removes one', takeSeed({ rose: 2 }, 'rose').rose === 1)
+ok('taking the last one removes the entry', !('rose' in takeSeed({ rose: 1 }, 'rose')))
+ok('taking one you do not have changes nothing',
+  JSON.stringify(takeSeed({ daisy: 1 }, 'rose')) === JSON.stringify({ daisy: 1 }))
+ok('the bag passed in is not mutated', (() => { const b = { rose: 2 }; takeSeed(b, 'rose'); return b.rose === 2 })())
+
+// — today's counters —
+
+const d1 = logDaily({}, { sphereId: 'econ', goalId: 'g1', coins: 25, seeds: 1 })
+const d2 = logDaily(d1, { sphereId: 'econ', coins: 25, seeds: 1 })
+const d3 = logDaily(d2, { sphereId: 'gym', coins: 0, seeds: 0 })
+ok('every log counts', d3.logs === 3)
+ok('spheres touched is a distinct count, not a running total', d3.spheres === 2)
+ok('goal logs only count logs that named a goal', d3.goalLogs === 1)
+ok('coins and sprouts paid are added up for the caps', d3.logCoins === 50 && d3.seeds === 2)
+ok('the bucket passed in is not mutated', d1.logs === 1)
 
 // — goals —
 

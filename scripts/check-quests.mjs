@@ -5,7 +5,8 @@
 // beyond the date string itself.
 
 import { QUEST_POOL, QUEST_TIERS, questsForDay, questView, claimableCount } from '../src/lib/quests.js'
-import { DAILY_CAPS, localDay } from '../src/lib/garden.js'
+import { localDay } from '../src/lib/garden.js'
+import { DAILY_LOG_CAP, LOG_REWARD } from '../src/lib/spheres.js'
 
 let pass = 0, fail = 0
 function ok(name, cond, detail = '') {
@@ -34,9 +35,15 @@ ok('harder tiers pay more',
 
 // A quest asking for more than a day can produce would be permanently
 // unclaimable — the caps are the ceiling on how much of a day exists.
+//
+// Logging itself is never capped — only what it pays — so the ceiling on logs
+// is the number of paid logs in a day: a quest past that would be asking you
+// to keep logging for nothing. Spheres are capped at three on the assumption
+// written in the quest pool: most people keep four or five, and a quest that
+// needs every one of them could not be done most days.
+const PAID_LOGS = Math.floor(DAILY_LOG_CAP.coins / LOG_REWARD.coins)
 const CEILING = {
-  done: DAILY_CAPS.clouds, added: DAILY_CAPS.seeds, popped: DAILY_CAPS.clouds,
-  clears: 5, packets: 5, grown: 3, planted: 5,
+  logs: PAID_LOGS, goalLogs: PAID_LOGS, spheres: 3, goals: 5, packets: 5,
 }
 ok('no quest asks for more than a day holds',
   QUEST_POOL.every(q => q.goal <= (CEILING[q.counter] ?? 0)),

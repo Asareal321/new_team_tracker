@@ -2,7 +2,6 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { supabase } from '../supabase'
 import { useAuth } from '../auth/AuthContext'
 import { useGarden } from './GardenContext'
-import { SEEDS } from '../lib/garden'
 import { tally } from '../lib/spheres'
 
 // The spheres model, loaded once and shared.
@@ -20,19 +19,9 @@ const LOG_LIMIT = 2000
 // useSpheres().
 export const SpheresContext = createContext(null)
 
-// Until packets decide what grows (phase 3), every log plants one of the
-// common seeds, picked from its own id so that a plant never changes once it
-// has been drawn.
-const COMMON = SEEDS.filter(s => s.rarity === 1)
-export function seedFor(id) {
-  let h = 0
-  for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) >>> 0
-  return COMMON[h % COMMON.length]?.key ?? 'sprig'
-}
-
 export function SpheresProvider({ children }) {
   const { user } = useAuth()
-  const { rewardLog } = useGarden()
+  const { rewardLog, choosePlant, recordGoalSet } = useGarden()
   const [areas, setAreas] = useState([])
   const [spheres, setSpheres] = useState([])
   const [goals, setGoals] = useState([])
@@ -95,8 +84,9 @@ export function SpheresProvider({ children }) {
       .select().single()
     if (e) throw e
     setGoals(prev => [...prev, data].sort((x, y) => (x.end_date < y.end_date ? -1 : 1)))
+    await recordGoalSet()
     return data
-  }, [user])
+  }, [user, recordGoalSet])
 
   const setGoalStatus = useCallback(async (id, status) => {
     const closed_at = status === 'active' ? null : new Date().toISOString()
@@ -106,20 +96,22 @@ export function SpheresProvider({ children }) {
   }, [])
 
   // The day's one paid action. The row is written first and the reward second,
-  // so a failed write can never have paid out; the id is minted here so the
-  // plant can be drawn from it before the round trip.
+  // so a failed write can never have paid out or spent a seed. The id is
+  // minted here so the plant can be drawn from it before the round trip —
+  // packets decide what it is; see pickPlant in lib/spheres.
   const addLog = useCallback(async ({ sphereId, goalId = null, note, boost = false }) => {
     const id = crypto.randomUUID()
+    const plant = choosePlant(id)
     const row = {
       id, sphere_id: sphereId, goal_id: goalId || null, user_id: user.id,
-      note: note.trim(), seed_key: seedFor(id), logged_at: new Date().toISOString(),
+      note: note.trim(), seed_key: plant.seedKey, logged_at: new Date().toISOString(),
     }
     const { error: e } = await supabase.from('progress_logs').insert(row)
     if (e) throw e
     setLogs(prev => [row, ...prev])
-    await rewardLog({ boost })
+    await rewardLog({ boost, sphereId, goalId, seedKey: plant.seedKey, consume: plant.consume })
     return row
-  }, [user, rewardLog])
+  }, [user, rewardLog, choosePlant])
 
   const deleteLog = useCallback(async id => {
     const { error: e } = await supabase.from('progress_logs').delete().eq('id', id)

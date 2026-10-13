@@ -1599,3 +1599,33 @@ html[data-theme="dark"] .cloud-bank {
 }
 .garden-purse { justify-content: center; flex-wrap: wrap; }
 .shelf-tabs { justify-content: center; }
+
+/* ── seed bag ──────────────────────────────────────────────────────────────
+   What your next logs will plant. The pinned seed is marked the way a packet
+   in hand would be: lifted, with its rarity colour round it. */
+.seeds-explainer {
+  max-width: 62ch;
+  margin: 0 0 4px;
+  /* The panel's own ink, not .garden-hint's white — that one is written for
+     the sky behind the panels, and on the cream card it all but vanished. */
+  color: #4a3b2a;
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+.plant-next { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
+.plant-next-pick {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-weight: 600;
+}
+.plant-next-emoji { font-size: 1.4rem; }
+.seed-packet.is-pinned {
+  outline: 3px solid var(--rarity, #9bd227);
+  outline-offset: 2px;
+  transform: translateY(-2px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .seed-packet.is-pinned { transform: none; }
+}

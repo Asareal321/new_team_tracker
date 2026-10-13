@@ -7,7 +7,6 @@
 
 import { cloudOutcome, cloudStatsPatch, pendingClouds, cloudNotice, cloudPayout } from '../src/lib/clouds.js'
 import { DAILY_CAPS, CLOUD_EXPECTED_COINS } from '../src/lib/garden.js'
-import { attentionFor, GARDEN_GREENHOUSE, ROUTE_GARDEN } from '../src/lib/attention.js'
 
 let pass = 0, fail = 0
 function ok(name, cond, detail = '') {
@@ -29,12 +28,11 @@ ok('a banked cloud pays no coins directly', normal.coins === 0)
 const merged = { tasksDone: 5, ...cloudStatsPatch(normal) }
 ok('the patch survives being spread alongside other stats', merged.pendingClouds === 1)
 
-// — and the whole point: a banked cloud must light the nav —
-
-const banked = { coins: 0, plot_count: 8, discovered: {}, packet_inventory: {}, stats: { pendingClouds: 1 } }
-const lit = attentionFor({ state: banked, flowers: [], quests: [], community: {} })
-ok('one banked cloud lights the greenhouse', lit[GARDEN_GREENHOUSE]?.level === 'ready')
-ok('and lights the rail', lit[ROUTE_GARDEN]?.level === 'ready')
+// Clouds no longer light anything. The greenhouse that let them in is gone —
+// in the spheres model progress is logged, not finished, and a log plants
+// straight into its sphere's garden — so the banking rules below are kept only
+// for the old board at /board until it is removed. check-attention asserts the
+// other half: that nothing glows for a room you can no longer reach.
 
 // — quiet mode and the cap —
 
@@ -160,17 +158,6 @@ ok('a negative remaining time cannot invent a shave',
   cloudPayout({ shave: EPIC, growing: true, left: -600 }).applied === 0)
 
 ok('no arguments is not a crash', cloudPayout().applied === 0)
-
-// — and the banked time has to be visible —
-//
-// Signed by the amount: banking more after you have already looked at the
-// greenhouse has to light it again.
-const bankedState = { overflow_seconds: 3600 }
-const more = { overflow_seconds: 7200 }
-const sig = state => attentionFor({ state })[GARDEN_GREENHOUSE]?.signature
-ok('banked time lights the greenhouse', !!sig(bankedState))
-ok('and banking more lights it again', sig(bankedState) !== sig(more))
-ok('while the same bank stays quiet once seen', sig(bankedState) === sig({ overflow_seconds: 3600 }))
 
 console.log(`\n${pass}/${pass + fail} passed`)
 process.exit(fail ? 1 : 0)

@@ -26,7 +26,7 @@
 // means "this appeared since you last looked", and on a first run there is no
 // last look — a brand new account should not open onto a lit-up rail.
 
-import { remainingSeconds, PACKETS, seedByKey, SEEDS, localDay } from './garden.js'
+import { PACKETS, SEEDS, localDay } from './garden.js'
 import { activeWindow } from './planningHours.js'
 
 export const ROUTE_BOARD = '/'
@@ -35,13 +35,15 @@ export const ROUTE_GARDEN = '/garden'
 
 // Rooms inside the garden page. Prefixed so they can share one seen-store with
 // the routes without ever colliding with a path.
-export const GARDEN_GREENHOUSE = 'garden:greenhouse'
-export const GARDEN_BEDS = 'garden:garden'
+export const GARDEN_SEEDS = 'garden:seeds'
 export const GARDEN_HERBARIUM = 'garden:herbarium'
 export const GARDEN_SHOP = 'garden:shop'
 
-// Which rail tab a garden room reports up to.
-export const GARDEN_SCOPES = [GARDEN_GREENHOUSE, GARDEN_BEDS, GARDEN_HERBARIUM, GARDEN_SHOP]
+// Which rail tab a garden room reports up to. The greenhouse and the beds are
+// gone — gardens live on each sphere now and grow when you log — so nothing
+// may light a room that no longer exists: a glow you cannot follow to its
+// cause is worse than no glow.
+export const GARDEN_SCOPES = [GARDEN_SEEDS, GARDEN_HERBARIUM, GARDEN_SHOP]
 
 // The best coin-priced packet the purse can reach, as an index into PACKETS.
 export function affordablePacketTier(state) {
@@ -121,36 +123,13 @@ function raw({ state, flowers, quests, community, now = new Date() }) {
       claimable === 1 ? 'A quest is finished' : `${claimable} quests are finished`, claimable)
   }
 
-  // — the greenhouse —
-  if (state?.growing_seed && remainingSeconds(state) === 0) {
-    const seed = seedByKey(state.growing_seed)
-    add(GARDEN_GREENHOUSE, 'ready', `ready:${state.growing_seed}`,
-      `Your ${seed ? seed.name.toLowerCase() : 'flower'} is ready`)
-  }
-  // Signed by the amount, so banking more time lights it again. A constant
-  // signature meant the first visit cleared the signal for every future bank.
-  const overflow = state?.overflow_seconds ?? 0
-  if (overflow > 0) {
-    add(GARDEN_GREENHOUSE, 'ready', `overflow:${overflow}`, 'Banked time is waiting for a seed')
-  }
-  // Clouds your finished tasks earned, waiting to be let in.
-  const pending = state?.stats?.pendingClouds || 0
-  if (pending > 0) {
-    add(GARDEN_GREENHOUSE, 'ready', `clouds:${pending}`,
-      pending === 1 ? 'A cloud is waiting' : `${pending} clouds are waiting`, pending)
-  }
-
+  // — the seed bag —
+  // Sealed packets are the one thing waiting in it. Signed by the count, so a
+  // new packet lights it again after a visit.
   const packets = packetsHeld(state)
   if (packets > 0) {
-    add(GARDEN_GREENHOUSE, 'ready', `packets:${packets}`,
+    add(GARDEN_SEEDS, 'ready', `packets:${packets}`,
       packets === 1 ? 'A packet to open' : `${packets} packets to open`, packets)
-  }
-
-  // — the beds —
-  const planted = flowers?.length ?? 0
-  const plots = state?.plot_count ?? 0
-  if (plots > 0 && planted >= plots) {
-    add(GARDEN_BEDS, 'ready', `full:${planted}/${plots}`, 'Your garden is full')
   }
 
   // — the herbarium —

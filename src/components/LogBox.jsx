@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useSpheres } from '../context/SpheresContext'
+import { useGarden } from '../context/GardenContext'
+import { seedByKey } from '../lib/garden'
 
 // The one thing you do every day: say what you moved, and where.
 //
@@ -10,6 +13,7 @@ import { useSpheres } from '../context/SpheresContext'
 
 export default function LogBox({ sphereId: fixedSphere = null, autoFocus = false, onLogged }) {
   const { areas, spheres, goals, addLog } = useSpheres()
+  const { state } = useGarden() || {}
   const [sphereId, setSphereId] = useState(fixedSphere || '')
   const [goalId, setGoalId] = useState('')
   const [note, setNote] = useState('')
@@ -99,7 +103,29 @@ export default function LogBox({ sphereId: fixedSphere = null, autoFocus = false
           {busy ? 'Logging…' : 'Log it'}
         </button>
       </div>
+      <NextPlant state={state} />
       {error && <p className="lb-error">{error}</p>}
     </form>
+  )
+}
+
+// What the next log will plant, said where you log — so a packet you opened is
+// visibly the reason your next plant is a rose. Says what is knowable without
+// rolling: a pinned seed by name, otherwise "something from your bag".
+function NextPlant({ state }) {
+  if (!state) return null
+  const inv = state.seed_inventory || {}
+  const held = Object.values(inv).reduce((n, v) => n + v, 0)
+  const pinned = (inv[state.prefs?.plantNext] || 0) > 0 ? seedByKey(state.prefs.plantNext) : null
+  return (
+    <p className="lb-plant">
+      {pinned
+        ? <>Plants a <strong>{pinned.emoji} {pinned.name}</strong> from your bag</>
+        : held
+          ? <>Plants a seed from your bag ({held} left)</>
+          : <>Plants a free sprout — open a packet for something rarer</>}
+      {' · '}
+      <Link to="/garden">Seed bag</Link>
+    </p>
   )
 }

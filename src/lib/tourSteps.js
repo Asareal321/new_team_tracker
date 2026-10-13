@@ -244,28 +244,16 @@ export const TOUR_STEPS = [
     body: 'This is the part that pays you for finishing things.',
   },
   {
-    key: 'beds', route: '/garden', mood: 'happy',
-    anchor: ['.plot-grid', '.field-panel'],
-    title: 'Your garden',
-    body: 'Every flower you have grown, in the ground. Tap one for its name and its options.',
-  },
-  {
-    key: 'greenhouse-go', route: '/garden', mood: 'point', act: 'click',
-    anchor: ['[data-tour="room-greenhouse"]'],
-    title: 'Open the greenhouse',
-    body: 'Second along the row of rooms. It is where a seed becomes a flower.',
-  },
-  {
-    key: 'greenhouse', route: '/garden', mood: 'idle',
-    anchor: ['.growing-pot', '.greenhouse'],
-    title: 'One seed at a time',
-    body: 'It fills on a real clock. Clouds you banked pop here and cut the wait.',
+    key: 'bag', route: '/garden', mood: 'happy',
+    anchor: ['.seeds-panel'],
+    title: 'Your seed bag',
+    body: 'Every log plants a seed from here in that sphere’s garden. Pin one to plant it next.',
   },
   {
     key: 'herbarium-go', route: '/garden', mood: 'point', act: 'click',
     anchor: ['[data-tour="room-herbarium"]'],
     title: 'Click the herbarium',
-    body: 'Your record of species, kept even after you sell the flower.',
+    body: 'Every species your packets have ever turned up, kept for good.',
   },
   {
     key: 'awards-go', route: '/garden', mood: 'point', act: 'click',
@@ -277,7 +265,7 @@ export const TOUR_STEPS = [
     key: 'shop-go', route: '/garden', mood: 'happy', act: 'click',
     anchor: ['[data-tour="room-shop"]'],
     title: 'Click the shop',
-    body: 'Last icon. Coins buy packets, and a packet is a roll with printed odds.',
+    body: 'Last icon. Logging earns coins and sprouts, and they buy packets here.',
   },
 
   // — account ————————————————————————————————————————————————

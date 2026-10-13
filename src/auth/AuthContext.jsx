@@ -5,7 +5,8 @@ import { pendingReferral, clearReferral } from '../lib/referral'
 import { claimReferral } from '../lib/community'
 import { nativeAuthAvailable, startNativeOAuth, installNativeAuthBridge } from '../lib/nativeAuth'
 
-const AuthContext = createContext(null)
+// Exported for the render harness only; the app goes through useAuth().
+export const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)

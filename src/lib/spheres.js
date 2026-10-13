@@ -11,7 +11,7 @@
 //
 // Pure. Checked by scripts/check-spheres.mjs.
 
-import { localDay } from './garden.js'
+import { localDay, DAILY_CAPS, SEEDS } from './garden.js'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -19,8 +19,13 @@ const DAY_MS = 24 * 60 * 60 * 1000
 // to do and self-reported, so the cap is on the reward, never on the log: your
 // garden still grows from every honest entry, it just stops paying after the
 // twelfth, which removes the reason to split one hour into twelve sentences.
-export const LOG_REWARD = { coins: 25 }
-export const DAILY_LOG_CAP = { coins: 300 }
+//
+// Two currencies. Coins buy the better packets; a sprout is what the basic
+// Garden packet costs, so three logs is always one more packet. Sprouts meter
+// against the same daily seed cap the old add-a-task reward used, since both
+// draw from one bucket while the old board still exists.
+export const LOG_REWARD = { coins: 25, seeds: 1 }
+export const DAILY_LOG_CAP = { coins: 300, seeds: DAILY_CAPS.seeds }
 
 // How far back "this week" looks.
 export const WEEK_DAYS = 7
@@ -130,10 +135,74 @@ export function balanceNudge({ spheres = [], logs = [], now = new Date() } = {})
 // clock to game here, so a second, separate allowance would just be a bigger
 // cap with extra steps.
 export function logReward({ daily, boost = false, base = LOG_REWARD, cap = DAILY_LOG_CAP } = {}) {
-  const already = Math.max(0, daily?.logCoins || 0)
-  const want = base.coins * (boost ? 2 : 1)
-  const coins = Math.max(0, Math.min(want, cap.coins - already))
-  return { coins, capped: coins < want }
+  const mult = boost ? 2 : 1
+  const wantCoins = base.coins * mult
+  const wantSeeds = base.seeds * mult
+  const coins = Math.max(0, Math.min(wantCoins, cap.coins - Math.max(0, daily?.logCoins || 0)))
+  const seeds = Math.max(0, Math.min(wantSeeds, cap.seeds - Math.max(0, daily?.seeds || 0)))
+  return { coins, seeds, capped: coins < wantCoins || seeds < wantSeeds }
+}
+
+// ── what a log plants ─────────────────────────────────────────────────────
+
+// Packets decide what grows. A log plants one seed from your bag and uses it
+// up — the one you pinned if you still have it, otherwise one drawn at random
+// in proportion to how many of each you hold, so a bag of nine daisies and one
+// rose mostly plants daisies. An empty bag never stops a log: it plants a
+// free common sprout, because progress has to count whether or not you have
+// been shopping.
+//
+// Drawn from the log's own id, so the same log always resolves to the same
+// plant and nothing about it changes after the fact.
+const COMMON = SEEDS.filter(s => s.rarity === 1)
+
+function hashOf(id) {
+  let h = 2166136261
+  for (const c of String(id)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619) }
+  return h >>> 0
+}
+
+export function pickPlant({ inventory = {}, pinned = null, id = '' } = {}) {
+  if (pinned && (inventory[pinned] || 0) > 0) return { seedKey: pinned, consume: true }
+
+  const bag = SEEDS.filter(s => (inventory[s.key] || 0) > 0)
+  const total = bag.reduce((n, s) => n + inventory[s.key], 0)
+  if (total > 0) {
+    let roll = hashOf(id) % total
+    for (const s of bag) {
+      roll -= inventory[s.key]
+      if (roll < 0) return { seedKey: s.key, consume: true }
+    }
+  }
+  return { seedKey: COMMON[hashOf(id) % COMMON.length]?.key ?? 'sprig', consume: false }
+}
+
+// Take one seed out of the bag. Never below zero, and an emptied slot is
+// removed rather than left at 0, so "what do I own" stays a simple key check.
+export function takeSeed(inventory = {}, key) {
+  const next = { ...inventory }
+  if (!next[key]) return next
+  next[key] -= 1
+  if (next[key] <= 0) delete next[key]
+  return next
+}
+
+// ── the day's counters ────────────────────────────────────────────────────
+
+// What a log adds to today's bucket. Quests read these, so they are kept as
+// plain counts; the list of sphere ids is kept alongside so "spheres touched
+// today" is a true distinct count rather than a running total of logs.
+export function logDaily(daily, { sphereId, goalId = null, coins = 0, seeds = 0 } = {}) {
+  const d = { ...(daily || {}) }
+  const ids = new Set(d.sphereIds || [])
+  if (sphereId) ids.add(sphereId)
+  d.logs = (d.logs || 0) + 1
+  d.logCoins = (d.logCoins || 0) + coins
+  d.seeds = (d.seeds || 0) + seeds
+  d.sphereIds = [...ids]
+  d.spheres = ids.size
+  if (goalId) d.goalLogs = (d.goalLogs || 0) + 1
+  return d
 }
 
 // ── goals ───────────────────────────────────────────────────────────────────

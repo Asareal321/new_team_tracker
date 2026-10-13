@@ -19,15 +19,15 @@
 
 import { localDay } from './garden.js'
 
-// Counters the day's bucket keeps for quests, on top of the three that the
-// caps use. All are "how many times today".
+// Counters the day's bucket keeps for quests. All are "how many today", and
+// all are written by lib/spheres' logDaily or by bumpDaily in the garden
+// context — nothing here listens for events.
 //
-// 'clears' is still written by recordDoingCleared and still listed here, but
-// no quest reads it any more. Emptying Doing stopped being something to chase:
-// it pays nothing, and asking for it turned a WIP limit into a target — the
-// quickest way to empty Doing is to put less in it, which is the opposite of
-// the point.
-export const QUEST_COUNTERS = ['done', 'added', 'clears', 'popped', 'packets', 'grown', 'planted']
+// Rewritten for spheres. The old pool asked for finished tasks and burst
+// clouds, both of which are gone; what is worth asking for now is the thing
+// the redesign is for — logging progress, and spreading it across the parts
+// of your life rather than piling it onto one.
+export const QUEST_COUNTERS = ['logs', 'spheres', 'goalLogs', 'goals', 'packets']
 
 export const QUEST_TIERS = {
   easy:     { label: 'Warm-up', coins: 30,  seeds: 0 },
@@ -35,27 +35,26 @@ export const QUEST_TIERS = {
   hard:     { label: 'Tall order', coins: 120, seeds: 2 },
 }
 
-// Goals are sized against the daily caps: 12 seeds means at most 12 tasks
-// added, 10 clouds means at most 10 bursts, so no quest can ask for more of a
-// day than a day contains.
+// Sized against a real day. Twelve logs is where the daily reward cap sits,
+// so nothing here asks for more than twelve; and "spheres" asks for at most
+// three, since most people have four or five spheres and a quest that needs
+// all of them is a quest most days cannot be done.
 export const QUEST_POOL = [
   // — warm-up —
-  { key: 'e-done-2',   tier: 'easy', counter: 'done',    goal: 2, icon: '✅', name: 'Two down',        blurb: 'Finish 2 tasks' },
-  { key: 'e-added-3',  tier: 'easy', counter: 'added',   goal: 3, icon: '📝', name: 'Write it down',   blurb: 'Add 3 tasks' },
-  { key: 'e-pop-2',    tier: 'easy', counter: 'popped',  goal: 2, icon: '☁️', name: 'Light rain',      blurb: 'Burst 2 clouds' },
-  { key: 'e-plant-1',  tier: 'easy', counter: 'planted', goal: 1, icon: '🌱', name: 'In the ground',   blurb: 'Plant a seed' },
+  { key: 'e-logs-2',    tier: 'easy', counter: 'logs',     goal: 2, icon: '✍️', name: 'Two steps forward', blurb: 'Log progress twice' },
+  { key: 'e-goal-1',    tier: 'easy', counter: 'goalLogs', goal: 1, icon: '🎯', name: 'On target',         blurb: 'Log progress toward a goal' },
+  { key: 'e-spheres-2', tier: 'easy', counter: 'spheres',  goal: 2, icon: '🧭', name: 'Look around',       blurb: 'Log in 2 different spheres' },
 
   // — a day's work —
-  { key: 's-done-5',   tier: 'standard', counter: 'done',    goal: 5, icon: '✅', name: 'A solid five',   blurb: 'Finish 5 tasks' },
-  { key: 's-pop-5',    tier: 'standard', counter: 'popped',  goal: 5, icon: '🌧️', name: 'Steady weather', blurb: 'Burst 5 clouds' },
-  { key: 's-packet-1', tier: 'standard', counter: 'packets', goal: 1, icon: '📦', name: 'Something new',  blurb: 'Tear open a seed packet' },
-  { key: 's-plant-2',  tier: 'standard', counter: 'planted', goal: 2, icon: '🌱', name: 'Keep it turning', blurb: 'Plant 2 seeds' },
+  { key: 's-logs-5',    tier: 'standard', counter: 'logs',     goal: 5, icon: '📈', name: 'A solid five',     blurb: 'Log progress 5 times' },
+  { key: 's-goal-3',    tier: 'standard', counter: 'goalLogs', goal: 3, icon: '🎯', name: 'Narrowing in',     blurb: 'Log 3 times toward goals' },
+  { key: 's-packet-1',  tier: 'standard', counter: 'packets',  goal: 1, icon: '📦', name: 'Something new',    blurb: 'Tear open a seed packet' },
+  { key: 's-goals-1',   tier: 'standard', counter: 'goals',    goal: 1, icon: '🏁', name: 'Aim',              blurb: 'Set a new goal' },
 
   // — tall order —
-  { key: 'h-done-10',  tier: 'hard', counter: 'done',   goal: 10, icon: '🏅', name: 'Ten before dark', blurb: 'Finish 10 tasks' },
-  { key: 'h-pop-10',   tier: 'hard', counter: 'popped', goal: 10, icon: '⚡', name: 'Downpour',        blurb: 'Burst 10 clouds' },
-  { key: 'h-added-8',  tier: 'hard', counter: 'added',  goal: 8,  icon: '🗂️', name: 'Brain on paper',  blurb: 'Add 8 tasks' },
-  { key: 'h-grown-1',  tier: 'hard', counter: 'grown',  goal: 1,  icon: '🌸', name: 'Full bloom',      blurb: 'Grow a flower all the way' },
+  { key: 'h-logs-8',    tier: 'hard', counter: 'logs',     goal: 8, icon: '🏅', name: 'Big day',        blurb: 'Log progress 8 times' },
+  { key: 'h-spheres-3', tier: 'hard', counter: 'spheres',  goal: 3, icon: '🌍', name: 'Well rounded',   blurb: 'Log in 3 different spheres' },
+  { key: 'h-goal-5',    tier: 'hard', counter: 'goalLogs', goal: 5, icon: '🎯', name: 'Locked in',      blurb: 'Log 5 times toward goals' },
 ]
 
 // FNV-1a. Any stable hash would do; this one is short and has no dependencies.
@@ -69,8 +68,8 @@ function hash(str) {
 }
 
 // One quest per tier, chosen by the date. Tiers are drawn in order and each
-// avoids the counter the previous one used, so a day never asks you to finish
-// tasks three different ways.
+// avoids the counter the previous one used, so a day never asks for the same
+// thing three ways.
 export function questsForDay(day = localDay()) {
   const picked = []
   const usedCounters = new Set()

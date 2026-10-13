@@ -7,7 +7,7 @@ import {
   ADD_TASK_REWARD, DAILY_CAPS, CLOUD_EXPECTED_COINS, FOCUS_BONUS_COINS,
   localDay, todayBucket, advanceStreak,
 } from '../lib/garden'
-import { logReward } from '../lib/spheres'
+import { logReward, pickPlant, takeSeed, logDaily } from '../lib/spheres'
 import { newlyUnlocked } from '../lib/achievements'
 import { questView } from '../lib/quests'
 import { streakReward } from '../lib/streak'
@@ -620,23 +620,74 @@ export function GardenProvider({ children }) {
 
   // Writing something down is worth a seed — the cheapest reward, for the
   // cheapest action.
-  // A logged piece of progress — the spheres model's one paid action. Coins
-  // only: the plant it grows is written on the log itself, so the garden
-  // grows from every honest entry while the coins stop at the daily cap.
-  // `boost` doubles it (a planning hour, or a focus block on this sphere).
-  const rewardLog = useCallback(async ({ boost = false } = {}) => {
+  // What the next log will plant, and whether it uses a seed up. Pure — see
+  // pickPlant — and read from the ref, so a log written straight after a
+  // packet is opened draws from the bag that packet just filled.
+  const choosePlant = useCallback(id => pickPlant({
+    inventory: stateRef.current?.seed_inventory || {},
+    pinned: stateRef.current?.prefs?.plantNext || null,
+    id,
+  }), [])
+
+  // Pin a seed to be planted next (null to go back to drawing at random).
+  const setPlantNext = useCallback(key => save({
+    prefs: { ...(stateRef.current?.prefs || {}), plantNext: key || null },
+  }), [save])
+
+  // A logged piece of progress — the spheres model's one paid action, and the
+  // only thing that moves the streak now. It pays coins and a sprout (both
+  // capped for the day), spends the seed the log planted, and on the day's
+  // first log advances the streak with the same panel finishing a task used
+  // to raise. Called after the log row is written, never before, so a failed
+  // write can never have paid out or used a seed.
+  const rewardLog = useCallback(async ({
+    boost = false, sphereId = null, goalId = null, seedKey = null, consume = false,
+  } = {}) => {
     const cur = stateRef.current
     if (!cur) return null
     const daily = todayBucket(cur.daily)
-    const { coins } = logReward({ daily, boost })
+    const day = localDay()
+    const { coins, seeds } = logReward({ daily, boost })
+
+    const streakAdvanced = cur.streak?.lastDay !== day
+    const nextStreak = advanceStreak(cur.streak, day)
+    const streakPay = streakAdvanced ? streakReward(nextStreak.current) : null
+    const packets = { ...(cur.packet_inventory || {}) }
+    if (streakPay?.packetKey) packets[streakPay.packetKey] = (packets[streakPay.packetKey] || 0) + 1
+
+    const totalCoins = (cur.coins || 0) + coins + (streakPay?.coins || 0)
     await commit({
-      ...(coins > 0 ? { coins: (cur.coins || 0) + coins } : {}),
-      daily: { ...daily, logs: (daily.logs || 0) + 1, logCoins: (daily.logCoins || 0) + coins },
+      coins: totalCoins,
+      ...(seeds > 0 ? { seeds: (cur.seeds || 0) + seeds } : {}),
+      ...(consume && seedKey ? { seed_inventory: takeSeed(cur.seed_inventory, seedKey) } : {}),
+      ...(streakPay?.packetKey ? { packet_inventory: packets } : {}),
+      daily: logDaily(daily, { sphereId, goalId, coins, seeds }),
+      streak: nextStreak,
       stats: bumpStats({ progressLogs: 1 }),
     })
-    if (coins > 0) notify(`+${coins} 🪙${boost ? ' · doubled' : ''}`)
-    return { coins }
+
+    const parts = [seeds > 0 && `+${seeds} 🌱`, coins > 0 && `+${coins} 🪙`].filter(Boolean)
+    const say = () => { if (parts.length) notify(`${parts.join(' ')}${boost ? ' · doubled' : ''}`) }
+
+    if (streakPay) {
+      setStreakCue({
+        ...streakPay,
+        prevStreak: Math.max(0, nextStreak.current - 1),
+        totalCoins,
+        release: say,
+      })
+    } else {
+      say()
+    }
+    return { coins, seeds, streak: streakAdvanced ? nextStreak.current : null }
   }, [commit, bumpStats, notify])
+
+  // Setting a goal is a quest counter and nothing else — no payout, since a
+  // goal written down is a promise, not progress.
+  const recordGoalSet = useCallback(
+    () => commit({ daily: bumpDaily({ goals: 1 }) }),
+    [commit, bumpDaily],
+  )
 
   const rewardTaskAdded = useCallback(async () => {
     const cur = stateRef.current
@@ -800,7 +851,7 @@ export function GardenProvider({ children }) {
     const balance = packet.currency === 'seeds' ? (current.seeds || 0) : (current.coins || 0)
     if (balance < packet.cost) {
       throw new Error(packet.currency === 'seeds'
-        ? `Not enough seeds — finish ${packet.cost - balance} more task(s).`
+        ? `Not enough sprouts — log progress ${packet.cost - balance} more time${packet.cost - balance === 1 ? '' : 's'}.`
         : 'Not enough coins.')
     }
     // Buying no longer decides what's inside — the packet goes to the shelf
@@ -1004,7 +1055,7 @@ export function GardenProvider({ children }) {
     // deletes the bed server-side, and nothing here would otherwise know.
     reload: load,
     devResetOnboarding, devResetQuests, devCompleteQuests, devShowStreak,
-    spawnCloud, bankClouds, releaseBankedClouds, rewardLog, rewardTaskAdded, rewardTaskDone, recordDoingCleared, notify, setQuietMode, setPlanningHours, beginFocus, endFocus, completeOnboarding, buyPacket, openPacket, plantSeed, placeFlower, moveFlower, compostGrown, compostPlanted, unlockSeed, expandGarden,
+    spawnCloud, bankClouds, releaseBankedClouds, rewardLog, choosePlant, setPlantNext, recordGoalSet, rewardTaskAdded, rewardTaskDone, recordDoingCleared, notify, setQuietMode, setPlanningHours, beginFocus, endFocus, completeOnboarding, buyPacket, openPacket, plantSeed, placeFlower, moveFlower, compostGrown, compostPlanted, unlockSeed, expandGarden,
     isDev, devOpen, openDevPanel: () => setDevOpen(true),
   }
 
