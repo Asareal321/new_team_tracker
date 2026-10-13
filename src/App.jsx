@@ -4,8 +4,11 @@ import { AuthProvider } from './auth/AuthContext'
 import AuthGate from './auth/AuthGate'
 import { TeamProvider } from './context/TeamContext'
 import { GardenProvider } from './context/GardenContext'
+import { SpheresProvider } from './context/SpheresContext'
 import Layout from './components/Layout'
 import BoardPage from './pages/BoardPage'
+import TodayPage from './pages/TodayPage'
+import SpherePage from './pages/SpherePage'
 import DeadlinesPage from './pages/DeadlinesPage'
 import TeamsPage from './pages/TeamsPage'
 import DashboardPage from './pages/DashboardPage'
@@ -39,25 +42,31 @@ export default function App() {
       <AuthGate>
         <TeamProvider>
           <GardenProvider>
-            <Routes>
-              <Route element={<Layout />}>
-                <Route index element={<BoardPage />} />
-                <Route path="deadlines" element={<DeadlinesPage />} />
-                <Route path="community" element={<TeamsPage />} />
-                {/* The section was called Teams until it was renamed; old links still land. */}
-                <Route path="teams" element={<Navigate to="/community" replace />} />
-                <Route path="dashboard" element={<DashboardPage />} />
-                <Route path="account" element={<AccountPage />} />
-                <Route path="garden" element={<GardenPage />} />
-                {/* By code first — "visit" can never be a user id. */}
-                <Route path="garden/visit/:code" element={<VisitGardenPage />} />
-                {/* A friend's garden: checked by friendship, and narrower than
-                    a code's view — the beds and the herbarium only. */}
-                <Route path="garden/friend/:userId" element={<VisitGardenPage asFriend />} />
-                <Route path="garden/:userId" element={<VisitGardenPage />} />
-                <Route path="projects/:projectId" element={<ProjectPage />} />
-              </Route>
-            </Routes>
+            <SpheresProvider>
+              <Routes>
+                <Route element={<Layout />}>
+                  <Route index element={<TodayPage />} />
+                  <Route path="spheres/:sphereId" element={<SpherePage />} />
+                  {/* The old board, until phase 6 removes it. Still where first-run
+                      setup mounts, so it stays reachable rather than vanishing. */}
+                  <Route path="board" element={<BoardPage />} />
+                  <Route path="deadlines" element={<DeadlinesPage />} />
+                  <Route path="community" element={<TeamsPage />} />
+                  {/* The section was called Teams until it was renamed; old links still land. */}
+                  <Route path="teams" element={<Navigate to="/community" replace />} />
+                  <Route path="dashboard" element={<DashboardPage />} />
+                  <Route path="account" element={<AccountPage />} />
+                  <Route path="garden" element={<GardenPage />} />
+                  {/* By code first — "visit" can never be a user id. */}
+                  <Route path="garden/visit/:code" element={<VisitGardenPage />} />
+                  {/* A friend's garden: checked by friendship, and narrower than
+                      a code's view — the beds and the herbarium only. */}
+                  <Route path="garden/friend/:userId" element={<VisitGardenPage asFriend />} />
+                  <Route path="garden/:userId" element={<VisitGardenPage />} />
+                  <Route path="projects/:projectId" element={<ProjectPage />} />
+                </Route>
+              </Routes>
+            </SpheresProvider>
           </GardenProvider>
         </TeamProvider>
       </AuthGate>

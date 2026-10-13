@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useTeam } from '../context/TeamContext'
 import Tour from './Tour'
+import SphereTree from './SphereTree'
 import { tourDone, markTourDone, tourRequested, clearTourRequest, TOUR_EVENT } from '../lib/tourState'
 import useAttention from './useAttention'
 import { attentionTitle } from '../lib/attention'
@@ -16,7 +17,7 @@ const navClass = ({ isActive }) => (isActive ? 'nav-btn active' : 'nav-btn')
 
 // Each destination's icon, drawn in components/NavIcons.jsx.
 const NAV = [
-  { to: '/',          label: 'Taskboard', Icon: IconBoard,     end: true },
+  { to: '/',          label: 'Today',     Icon: IconBoard,     end: true },
   { to: '/deadlines', label: 'Deadlines', Icon: IconDeadlines },
   { to: '/community', label: 'Community', Icon: IconCommunity },
   { to: '/dashboard', label: 'Dashboard', Icon: IconDashboard, admin: true },
@@ -109,6 +110,9 @@ export default function Layout() {
             )
           })}
         </nav>
+        {/* Personal only, like the garden: a team board has no spheres of its
+            own — a community's shared spheres appear inside this tree. */}
+        {!currentTeamId && <SphereTree />}
         <div className="sidebar-foot">
           <select
             className="team-switcher"

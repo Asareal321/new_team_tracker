@@ -50,7 +50,7 @@ export function stepsFor({ phone = false } = {}) {
 }
 
 const NAV = {
-  taskboard: '[data-tour="nav-taskboard"]',
+  taskboard: '[data-tour="nav-today"]',
   deadlines: '[data-tour="nav-deadlines"]',
   community: '[data-tour="nav-community"]',
   garden: '[data-tour="nav-garden"]',

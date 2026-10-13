@@ -1,0 +1,354 @@
+/* Spheres: Today, a sphere's page, and the rail tree.
+   Built on the app's existing tokens (index.css) and its data-theme switch,
+   so dark mode comes from the same place everything else's does. The only
+   new colours are the soil, which nothing else in the app needed. */
+
+:root {
+  --soil:        #8a5a32;
+  --soil-deep:   #6d4424;
+  --soil-fleck:  rgba(255, 236, 205, 0.10);
+  --soil-ink:    #f6ead9;
+}
+html[data-theme="dark"] {
+  --soil:        #4a3220;
+  --soil-deep:   #362416;
+  --soil-fleck:  rgba(255, 236, 205, 0.06);
+  --soil-ink:    #d9c8b2;
+}
+
+/* ── page frame ─────────────────────────────────────────────────────────── */
+
+.sph-page {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 28px 28px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.sph-head h1 {
+  font-size: 1.9rem;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin: 2px 0 6px;
+  color: var(--on-page-1);
+  text-wrap: balance;
+}
+.sph-crumb {
+  margin: 0;
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  color: var(--on-page-3);
+}
+.sph-sub { margin: 0; color: var(--on-page-2); font-size: var(--fs-md); font-variant-numeric: tabular-nums; }
+.sph-sub strong { color: var(--on-page-1); }
+.sph-error { color: var(--red-text); background: var(--red-bg); border-radius: var(--r-md); padding: 10px 12px; margin: 0; }
+
+.sph-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
+  padding: 16px;
+}
+.sph-section { display: flex; flex-direction: column; gap: 10px; }
+.sph-section h2, .sph-start h2 {
+  font-size: var(--fs-xl);
+  margin: 0;
+  color: var(--on-page-1);
+  letter-spacing: -0.01em;
+}
+.sph-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sph-empty { margin: 0; color: var(--on-page-2); font-size: var(--fs-sm); }
+.sph-start p { color: var(--text-2); line-height: 1.6; margin: 8px 0 0; max-width: 62ch; }
+
+/* ── the log box ────────────────────────────────────────────────────────── */
+
+.lb { display: flex; flex-direction: column; gap: 10px; }
+.lb-note input {
+  width: 100%;
+  font: inherit;
+  font-size: var(--fs-lg);
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  color: var(--text-1);
+}
+.lb-note input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.lb-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lb-select {
+  flex: 1 1 180px;
+  min-width: 0;
+  font: inherit;
+  font-size: var(--fs-md);
+  padding: 9px 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-1);
+}
+.lb-select:disabled { color: var(--text-4); }
+.lb-go { flex: none; }
+.lb-error { margin: 0; color: var(--red-text); font-size: var(--fs-sm); }
+.lb-empty p { margin: 0; color: var(--text-2); }
+
+.sph-nudge {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--yellow-bg);
+  color: var(--yellow-text);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.sph-nudge a { color: inherit; font-weight: 600; }
+
+/* ── gardens ────────────────────────────────────────────────────────────── */
+
+/* The bed. Plant tiles are a fixed size at every scale, so a garden with
+   twice the logs is twice the area — the comparison has to be honest. */
+.sg-bed {
+  --tile: 26px;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 2px;
+  padding: 10px;
+  border-radius: var(--r-md);
+  background:
+    radial-gradient(var(--soil-fleck) 1px, transparent 1.5px) 0 0 / 9px 9px,
+    linear-gradient(var(--soil), var(--soil-deep));
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+.sg-sm { --tile: 20px; padding: 8px; min-height: 52px; }
+.sg-lg { --tile: 30px; min-height: 96px; }
+.sg-plant {
+  width: var(--tile);
+  height: var(--tile);
+  display: grid;
+  place-items: center;
+  font-size: calc(var(--tile) * 0.78);
+  line-height: 1;
+  cursor: default;
+}
+.sg-more {
+  height: var(--tile);
+  padding: 0 6px;
+  display: grid;
+  place-items: center;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--soil-ink);
+  font-variant-numeric: tabular-nums;
+}
+.sg-empty { align-items: center; justify-content: center; }
+.sg-bare { color: var(--soil-ink); opacity: 0.75; font-size: var(--fs-sm); }
+
+.sph-gardens {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: 12px;
+}
+.sph-garden-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
+  text-decoration: none;
+  color: var(--text-1);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.sph-garden-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-pop); }
+.sph-garden-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sph-garden-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
+.sph-garden-name { font-weight: 600; font-size: var(--fs-lg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sph-garden-area { font-size: var(--fs-xs); color: var(--text-3); flex: none; }
+.sph-garden-tally { font-size: var(--fs-sm); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.sph-garden-tally strong { color: var(--text-1); }
+
+/* ── logs ───────────────────────────────────────────────────────────────── */
+
+.sph-logs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.sph-log {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.sph-log-plant { font-size: 1.1rem; }
+.sph-log-note { color: var(--text-1); font-size: var(--fs-md); overflow-wrap: anywhere; }
+.sph-log-where { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; font-size: var(--fs-xs); color: var(--text-3); }
+.sph-log-goal { max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sph-chip {
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: var(--pj-bg, var(--bg-muted));
+  color: var(--pj-text, var(--text-2));
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.sph-log-del {
+  border: 0;
+  background: none;
+  color: var(--text-4);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.sph-log-del:hover, .sph-log-del:focus-visible { color: var(--red-text); background: var(--red-bg); }
+
+/* ── goals ──────────────────────────────────────────────────────────────── */
+
+.sph-goals { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.sph-goal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--pj-text, var(--accent));
+  border-radius: var(--r-md);
+}
+.sph-goal.late { border-left-color: var(--prio-medium); }
+.sph-goal-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.sph-goal-title { font-weight: 600; color: var(--text-1); overflow-wrap: anywhere; }
+.sph-goal-meta { font-size: var(--fs-sm); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.sph-goal-actions { display: flex; gap: 6px; flex: none; }
+.sph-quiet { color: var(--text-4); }
+.sph-goals-closed .sph-goal { opacity: 0.75; border-left-color: var(--border); }
+.sph-toggle {
+  align-self: flex-start;
+  border: 0;
+  background: none;
+  color: var(--on-page-2);
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* ── goal form ──────────────────────────────────────────────────────────── */
+
+.gf { display: flex; flex-direction: column; gap: 12px; }
+.gf-field { display: flex; flex-direction: column; gap: 5px; font-size: var(--fs-sm); font-weight: 600; color: var(--text-2); }
+.gf-field small { font-weight: 400; color: var(--text-4); }
+.gf-field input, .gf-field textarea {
+  font: inherit;
+  font-weight: 400;
+  font-size: var(--fs-md);
+  padding: 9px 11px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  color: var(--text-1);
+}
+.gf-date input { max-width: 200px; }
+.gf-err { font-style: normal; font-weight: 400; color: var(--red-text); font-size: var(--fs-sm); margin: 0; }
+.gf-hints { list-style: none; margin: -4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.gf-hints li { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); color: var(--text-3); }
+.gf-letter {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+  background: var(--accent-bg);
+  color: var(--accent-text);
+  font-weight: 700;
+  font-size: var(--fs-xs);
+  flex: none;
+}
+.gf-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ── rail tree ──────────────────────────────────────────────────────────── */
+
+.st { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--rail-foot-border); min-height: 0; overflow-y: auto; }
+.st-head { display: flex; align-items: center; justify-content: space-between; padding: 0 0.6rem; }
+.st-title, .st-area-name {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  color: var(--rail-nav);
+  opacity: 0.8;
+}
+.st-area { display: flex; flex-direction: column; gap: 1px; }
+.st-area-name { padding: 0 0.6rem 4px; opacity: 0.6; }
+.st-area-name small { text-transform: none; letter-spacing: 0; font-weight: 500; }
+.st-sphere {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0.6rem;
+  border-radius: var(--r-md);
+  color: var(--rail-nav);
+  text-decoration: none;
+  font-size: var(--fs-md);
+}
+.st-sphere:hover { background: var(--rail-nav-hover-bg); }
+.st-sphere.active { background: var(--rail-active-bg); color: var(--rail-active-text); font-weight: 600; }
+.st-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pj-text, var(--rail-track)); }
+.st-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-week { font-size: var(--fs-xs); font-variant-numeric: tabular-nums; font-weight: 600; }
+.st-week.zero { opacity: 0.4; }
+.st-add {
+  align-self: flex-start;
+  border: 0;
+  background: none;
+  color: var(--rail-nav);
+  opacity: 0.7;
+  font: inherit;
+  font-size: var(--fs-sm);
+  padding: 4px 0.6rem;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.st-add:hover, .st-add:focus-visible { opacity: 1; background: var(--rail-nav-hover-bg); }
+.st-add-sphere { font-size: var(--fs-xs); }
+.st-form { padding: 2px 0.4rem; }
+.st-form input {
+  width: 100%;
+  font: inherit;
+  font-size: var(--fs-sm);
+  padding: 6px 8px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--rail-ctrl-border);
+  background: var(--rail-ctrl-bg);
+  color: var(--rail-ctrl-text);
+}
+
+/* ── phone ──────────────────────────────────────────────────────────────── */
+/* The rail becomes the bottom bar on a phone, which has no room for a tree.
+   Spheres are reached from the gardens grid on Today until phase 6 gives the
+   phone its own way in. */
+@media (max-width: 820px) {
+  .st { display: none; }
+  .sph-page { padding: 18px 16px 96px; gap: 18px; }
+  .sph-head h1 { font-size: 1.6rem; }
+  .sph-log { grid-template-columns: auto minmax(0, 1fr); }
+  .sph-log-where { grid-column: 2; justify-content: flex-start; }
+  .sph-goal { flex-direction: column; align-items: stretch; }
+  .sph-goal-actions { justify-content: flex-end; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sph-garden-card { transition: none; }
+  .sph-garden-card:hover { transform: none; }
+}

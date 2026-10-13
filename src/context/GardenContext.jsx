@@ -7,6 +7,7 @@ import {
   ADD_TASK_REWARD, DAILY_CAPS, CLOUD_EXPECTED_COINS, FOCUS_BONUS_COINS,
   localDay, todayBucket, advanceStreak,
 } from '../lib/garden'
+import { logReward } from '../lib/spheres'
 import { newlyUnlocked } from '../lib/achievements'
 import { questView } from '../lib/quests'
 import { streakReward } from '../lib/streak'
@@ -619,6 +620,24 @@ export function GardenProvider({ children }) {
 
   // Writing something down is worth a seed — the cheapest reward, for the
   // cheapest action.
+  // A logged piece of progress — the spheres model's one paid action. Coins
+  // only: the plant it grows is written on the log itself, so the garden
+  // grows from every honest entry while the coins stop at the daily cap.
+  // `boost` doubles it (a planning hour, or a focus block on this sphere).
+  const rewardLog = useCallback(async ({ boost = false } = {}) => {
+    const cur = stateRef.current
+    if (!cur) return null
+    const daily = todayBucket(cur.daily)
+    const { coins } = logReward({ daily, boost })
+    await commit({
+      ...(coins > 0 ? { coins: (cur.coins || 0) + coins } : {}),
+      daily: { ...daily, logs: (daily.logs || 0) + 1, logCoins: (daily.logCoins || 0) + coins },
+      stats: bumpStats({ progressLogs: 1 }),
+    })
+    if (coins > 0) notify(`+${coins} 🪙${boost ? ' · doubled' : ''}`)
+    return { coins }
+  }, [commit, bumpStats, notify])
+
   const rewardTaskAdded = useCallback(async () => {
     const cur = stateRef.current
     if (!cur) return null
@@ -985,7 +1004,7 @@ export function GardenProvider({ children }) {
     // deletes the bed server-side, and nothing here would otherwise know.
     reload: load,
     devResetOnboarding, devResetQuests, devCompleteQuests, devShowStreak,
-    spawnCloud, bankClouds, releaseBankedClouds, rewardTaskAdded, rewardTaskDone, recordDoingCleared, notify, setQuietMode, setPlanningHours, beginFocus, endFocus, completeOnboarding, buyPacket, openPacket, plantSeed, placeFlower, moveFlower, compostGrown, compostPlanted, unlockSeed, expandGarden,
+    spawnCloud, bankClouds, releaseBankedClouds, rewardLog, rewardTaskAdded, rewardTaskDone, recordDoingCleared, notify, setQuietMode, setPlanningHours, beginFocus, endFocus, completeOnboarding, buyPacket, openPacket, plantSeed, placeFlower, moveFlower, compostGrown, compostPlanted, unlockSeed, expandGarden,
     isDev, devOpen, openDevPanel: () => setDevOpen(true),
   }
 

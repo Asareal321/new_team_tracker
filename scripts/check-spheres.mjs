@@ -9,6 +9,8 @@ import {
   tally, balanceNudge, logReward, checkGoal, daysLeft, daysSince, loggedToday,
   LOG_REWARD, DAILY_LOG_CAP, NUDGE_MIN_WEEK_LOGS,
 } from '../src/lib/spheres.js'
+import { readFileSync, readdirSync } from 'fs'
+import { join } from 'path'
 
 let pass = 0, fail = 0
 const ok = (name, cond, detail = '') => {
@@ -115,6 +117,28 @@ ok('daysSince of nothing is nothing', daysSince(null, NOW) === null)
 
 ok('a log today counts for the streak', loggedToday([log('econ', 0)], NOW))
 ok('one from yesterday does not', !loggedToday([log('econ', 1)], NOW))
+
+// — the stylesheet owns its prefixes —
+//
+// The first render of these pages came out with a 460px log box and invisible
+// sphere chips, because the streak panel already used the sp- prefix and its
+// fixed width and entrance-animation opacity landed on these elements. Nothing
+// errors when that happens; the page just looks wrong. So each prefix this
+// stylesheet uses must be defined nowhere else.
+
+const OWN = ['sph-', 'st-', 'sg-', 'lb-', 'gf-']
+const sheets = []
+;(function walk(dir) {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, e.name)
+    if (e.isDirectory()) walk(p)
+    else if (p.endsWith('.css') && !p.endsWith('Spheres.css')) sheets.push(p)
+  }
+})('src')
+for (const prefix of OWN) {
+  const clash = sheets.filter(f => new RegExp(`\\.${prefix}[a-z]`).test(readFileSync(f, 'utf8')))
+  ok(`no other stylesheet defines .${prefix}* classes`, clash.length === 0, clash.join(', '))
+}
 
 console.log(`\n${pass}/${pass + fail} passed`)
 process.exit(fail ? 1 : 0)
