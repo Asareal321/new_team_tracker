@@ -4,6 +4,7 @@ import { balanceNudge } from '../lib/spheres'
 import { localDay, seedByKey } from '../lib/garden'
 import LogBox from '../components/LogBox'
 import SphereGarden from '../components/SphereGarden'
+import QuestStrip from '../components/QuestStrip'
 import { projectColorIndex } from '../lib/projectColors'
 import './Spheres.css'
 
@@ -73,6 +74,12 @@ export default function TodayPage() {
           </ul>
         </section>
       )}
+
+      {/* The quest glow lights this tab, so the quests have to be here — a
+          glow that sends you somewhere with nothing to act on is worse than
+          none. Only once there is a sphere to log in, since every quest is
+          about logging. */}
+      {live.length > 0 && <QuestStrip />}
 
       {ordered.length > 0 && (
         <section className="sph-section">
