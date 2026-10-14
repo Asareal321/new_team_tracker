@@ -369,3 +369,25 @@ export function deadlineGroups(goals = [], { counts = { byGoal: {} }, now = new 
   for (const k of Object.keys(groups)) groups[k].sort((a, b) => a.left - b.left)
   return groups
 }
+
+// — shared spheres ————————————————————————————————————————————————————————
+
+// Who has been logging in a shared sphere: one row per person, busiest this
+// week first, then by all time. A tally, like everything else — no ranks, no
+// "behind" — so a member who logged once still shows up as part of it.
+export function contributors(logs = [], { now = new Date(), days = WEEK_DAYS } = {}) {
+  const by = {}
+  for (const l of logs) {
+    const p = by[l.user_id] || (by[l.user_id] = { userId: l.user_id, week: 0, total: 0 })
+    p.total += 1
+    if (inLastDays(l, now, days)) p.week += 1
+  }
+  return Object.values(by).sort((a, b) => b.week - a.week || b.total - a.total)
+}
+
+// The logs that are yours. Shared spheres put teammates' logs in the same
+// list; anything about *your* day — what you logged today, the balance nudge,
+// reminders, your history — reads only these.
+export function ownLogs(logs = [], userId) {
+  return userId ? logs.filter(l => l.user_id === userId) : []
+}

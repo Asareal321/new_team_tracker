@@ -29,7 +29,8 @@ function dayLabel(day) {
 }
 
 export default function HistoryPage() {
-  const { logs, spheres, goals, loading } = useSpheres()
+  // Your own record; teammates' logs in shared spheres live on those spheres.
+  const { myLogs: logs, spheres, goals, loading } = useSpheres()
   const [query, setQuery] = useState('')
   const [sphereId, setSphereId] = useState('')
 

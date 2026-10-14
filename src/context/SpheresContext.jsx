@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { supabase } from '../supabase'
 import { useAuth } from '../auth/AuthContext'
 import { useGarden } from './GardenContext'
-import { tally, focusFor, boostFor } from '../lib/spheres'
+import { tally, focusFor, boostFor, ownLogs } from '../lib/spheres'
 import { activeWindow } from '../lib/planningHours'
 import {
   fetchTodaysEvents, fetchViaServer, hasStoredConnection, isConnected, clearToken, CalendarAuthError,
@@ -35,6 +35,7 @@ export function SpheresProvider({ children }) {
   const [spheres, setSpheres] = useState([])
   const [goals, setGoals] = useState([])
   const [logs, setLogs] = useState([])
+  const [members, setMembers] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -55,10 +56,30 @@ export function SpheresProvider({ children }) {
     setSpheres(s.data || [])
     setGoals(g.data || [])
     setLogs(l.data || [])
+    // Names for whoever logs in a shared sphere. Only the communities that
+    // actually have one are asked about; a personal-only account asks nothing.
+    const teamIds = [...new Set((s.data || []).map(x => x.team_id).filter(Boolean))]
+    if (teamIds.length) {
+      const { data: m } = await supabase.from('team_members')
+        .select('user_id, profiles(id, display_name)').in('team_id', teamIds)
+      setMembers(Object.fromEntries((m || []).filter(r => r.profiles)
+        .map(r => [r.profiles.id, r.profiles.display_name || 'Someone'])))
+    } else setMembers({})
     setLoading(false)
   }, [user])
 
   useEffect(() => { load() }, [load])
+
+  // Teammates log from their own devices. Coming back to the tab is when a
+  // shared garden is most likely to have grown, so re-read then — only when
+  // there is a shared sphere to have changed.
+  const hasShared = spheres.some(x => x.team_id)
+  useEffect(() => {
+    if (!hasShared) return undefined
+    const onBack = () => { if (document.visibilityState === 'visible') load() }
+    document.addEventListener('visibilitychange', onBack)
+    return () => document.removeEventListener('visibilitychange', onBack)
+  }, [hasShared, load])
 
   // — the calendar: focus blocks ———————————————————————————————————————————
   //
@@ -169,8 +190,10 @@ export function SpheresProvider({ children }) {
       .select().single()
     if (e) throw e
     setSpheres(prev => [...prev, data])
+    // A community's first shared sphere: fetch its members' names.
+    if (teamId) load()
     return data
-  }, [user, spheres])
+  }, [user, spheres, load])
 
   const renameSphere = useCallback(async (id, name) => {
     const { error: e } = await supabase.from('spheres').update({ name: name.trim() }).eq('id', id)
@@ -220,11 +243,14 @@ export function SpheresProvider({ children }) {
     setLogs(prev => prev.filter(l => l.id !== id))
   }, [])
 
+  // A sphere's counts and garden are everyone's; "mine" is for your own day.
   const counts = useMemo(() => tally(logs), [logs])
+  const myLogs = useMemo(() => ownLogs(logs, user?.id), [logs, user])
+  const nameOf = useCallback(id => (id === user?.id ? 'You' : members[id] || 'Someone'), [members, user])
 
   const value = {
     loading, error, reload: load,
-    areas, spheres, goals, logs, counts,
+    areas, spheres, goals, logs, myLogs, counts, nameOf,
     addArea, addSphere, renameSphere, addGoal, setGoalStatus, addLog, deleteLog,
     focus, planning, boostInfo,
     calendar: {

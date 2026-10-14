@@ -6,6 +6,7 @@
 // nothing is measured against a target, so there is nothing to "fail".
 
 import {
+  contributors, ownLogs,
   tally, balanceNudge, logReward, checkGoal, daysLeft, daysSince, loggedToday,
   pickPlant, takeSeed, logDaily, focusFor, boostFor, searchLogs, byDay, deadlineGroups,
   LOG_REWARD, DAILY_LOG_CAP, NUDGE_MIN_WEEK_LOGS,
@@ -272,6 +273,23 @@ ok('a goal ending within a fortnight with nothing logged this week is flagged qu
   dg.month[0].goal.id === 'tenday' && dg.month[0].quiet === true)
 ok('one further out than a fortnight is not, yet', dg.month[1].quiet === false)
 ok('one with logs this week is not', dg.week[0].quiet === false)
+
+// — shared spheres —
+{
+  const N = new Date('2026-10-13T12:00:00Z')
+  const at = d => new Date(N.getTime() - d * 86400000).toISOString()
+  const L = [
+    { user_id: 'a', logged_at: at(1) }, { user_id: 'a', logged_at: at(20) },
+    { user_id: 'b', logged_at: at(2) }, { user_id: 'b', logged_at: at(3) },
+    { user_id: 'c', logged_at: at(30) },
+  ]
+  const c = contributors(L, { now: N })
+  ok('contributors: one row per person', c.length === 3)
+  ok('busiest this week first', c[0].userId === 'b' && c[0].week === 2)
+  ok('a member with nothing this week still appears', c[2].userId === 'c' && c[2].week === 0 && c[2].total === 1)
+  ok('ownLogs keeps only yours', ownLogs(L, 'a').length === 2)
+  ok('ownLogs with no user is empty', ownLogs(L, null).length === 0)
+}
 
 // — the stylesheet owns its prefixes —
 //

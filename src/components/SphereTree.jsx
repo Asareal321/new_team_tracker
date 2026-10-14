@@ -64,9 +64,10 @@ export default function SphereTree() {
     </NavLink>
   )
 
+  // Every community you're in gets a section, even before it has a sphere,
+  // so starting one is a click away for any member.
   const shared = (teams || [])
     .map(t => ({ team: t, items: live.filter(s => s.team_id === t.id) }))
-    .filter(g => g.items.length)
 
   return (
     <div className="st" aria-label="Spheres">
@@ -87,6 +88,8 @@ export default function SphereTree() {
         <div key={team.id} className="st-area">
           <span className="st-area-name">{team.name} <small>shared</small></span>
           {items.map(sphereLink)}
+          <InlineAdd label="+ Shared sphere" placeholder={`A sphere for ${team.name}`} className="st-add-sphere"
+            onAdd={name => addSphere({ teamId: team.id, name })} />
         </div>
       ))}
 

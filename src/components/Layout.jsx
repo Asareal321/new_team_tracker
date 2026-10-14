@@ -39,8 +39,8 @@ export default function Layout() {
   const { signals } = useAttention()
   // The phone's alarms are kept in step from here, the one component that is
   // mounted whatever page is open. A no-op outside the iOS shell.
-  const { spheres, logs, focus } = useSpheres()
-  useNotifications({ spheres, logs, focusBlocks: focus?.upcoming || [] })
+  const { spheres, myLogs, focus } = useSpheres()
+  useNotifications({ spheres, logs: myLogs, focusBlocks: focus?.upcoming || [] })
   const [theme, setTheme] = useState(getInitialTheme)
 
   // The walk lives here because it changes route as it goes — a page that

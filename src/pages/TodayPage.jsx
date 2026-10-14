@@ -19,11 +19,11 @@ import './Spheres.css'
 const GARDEN_PREVIEW = 30
 
 export default function TodayPage() {
-  const { spheres, areas, goals, logs, counts, loading, error } = useSpheres()
+  const { spheres, areas, goals, logs, myLogs, counts, loading, error } = useSpheres()
   const now = new Date()
   const today = localDay(now)
-  const todays = logs.filter(l => localDay(l.logged_at) === today)
-  const nudge = balanceNudge({ spheres, logs, now })
+  const todays = myLogs.filter(l => localDay(l.logged_at) === today)
+  const nudge = balanceNudge({ spheres, logs: myLogs, now })
   const byId = Object.fromEntries(spheres.map(s => [s.id, s]))
   const goalById = Object.fromEntries(goals.map(g => [g.id, g]))
   const areaName = id => areas.find(a => a.id === id)?.name

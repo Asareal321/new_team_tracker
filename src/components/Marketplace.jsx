@@ -94,13 +94,20 @@ export default function Marketplace() {
   // the database but one thing to a person selling one, so they collapse to a
   // single chip with a count; listing takes whichever came first, since they
   // are interchangeable.
-  const flowerGroups = Object.values((flowers || []).reduce((acc, f) => {
+  //
+  // Flowers no longer go up for sale: in the spheres model a plant is a record
+  // of something you did, and selling it would sell the record. Packets are
+  // the trade goods. The grouping stays for anyone who wants it back.
+  const SELL_FLOWERS = false
+  const flowerGroups = !SELL_FLOWERS ? [] : Object.values((flowers || []).reduce((acc, f) => {
     const seed = seedByKey(f.seed_key)
     if (!seed) return acc
     if (!acc[f.seed_key]) acc[f.seed_key] = { key: f.seed_key, seed, ids: [] }
     acc[f.seed_key].ids.push(f.id)
     return acc
   }, {}))
+
+  const shown = listings.filter(l => l.kind !== 'flower' || l.mine)
 
   // Packets you hold, as things you could sell.
   const heldPackets = Object.entries(state?.packet_inventory || {})
@@ -127,8 +134,8 @@ export default function Marketplace() {
         <span className="mk-purse">{coins.toLocaleString()} 🪙</span>
       </div>
       <p className="mk-explain">
-        Flowers and packets, priced by whoever is selling them. Put a flower up from your
-        garden; take anything of yours back whenever you like.
+        Seed packets, priced by whoever is selling them. Put up a packet you haven’t
+        opened; take anything of yours back whenever you like.
       </p>
 
       {(flowerGroups.length > 0 || heldPackets.length > 0) && (
@@ -230,12 +237,14 @@ export default function Marketplace() {
       {status === 'loading' && <p className="mk-empty">Looking…</p>}
       {status === 'error' && <p className="mk-empty">Couldn’t load the market. Try again in a moment.</p>}
 
-      {status === 'ready' && listings.length === 0 && (
+      {status === 'ready' && shown.length === 0 && (
         <p className="mk-empty">Nothing for sale. Put something up and you’ll be the first.</p>
       )}
 
       <div className="mk-list">
-        {listings.map(l => {
+        {/* Flower listings made before the switch stay visible to their
+            sellers so they can be taken back; nobody else sees them. */}
+        {shown.map(l => {
           const item = itemOf(l)
           const tooDear = !l.mine && coins < l.price
           return (

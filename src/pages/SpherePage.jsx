@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useSpheres } from '../context/SpheresContext'
-import { daysLeft, daysSince } from '../lib/spheres'
+import { daysLeft, daysSince, contributors } from '../lib/spheres'
+import { useAuth } from '../auth/AuthContext'
+import { useTeam } from '../context/TeamContext'
 import { seedByKey } from '../lib/garden'
 import { projectColorIndex } from '../lib/projectColors'
 import LogBox from '../components/LogBox'
@@ -26,7 +28,9 @@ function when(goal, now) {
 
 export default function SpherePage() {
   const { sphereId } = useParams()
-  const { spheres, areas, goals, logs, counts, setGoalStatus, deleteLog, loading } = useSpheres()
+  const { spheres, areas, goals, logs, counts, setGoalStatus, deleteLog, nameOf, loading } = useSpheres()
+  const { user } = useAuth()
+  const { teams } = useTeam() || {}
   const [adding, setAdding] = useState(false)
   const [showClosed, setShowClosed] = useState(false)
   const now = new Date()
@@ -49,11 +53,14 @@ export default function SpherePage() {
   const open = sphereGoals.filter(g => g.status === 'active')
   const closed = sphereGoals.filter(g => g.status !== 'active')
   const goalById = Object.fromEntries(sphereGoals.map(g => [g.id, g]))
+  const team = sphere.team_id ? (teams || []).find(t => t.id === sphere.team_id) : null
+  const shared = !!sphere.team_id
+  const people = shared ? contributors(mine, { now }) : []
 
   return (
     <div className={`sph-page pc-${projectColorIndex(sphere.id)}`}>
       <header className="sph-head">
-        <p className="sph-crumb">{area ? area.name : 'Shared'}</p>
+        <p className="sph-crumb">{area ? area.name : `Shared · ${team?.name || 'community'}`}</p>
         <h1>{sphere.name}</h1>
         <p className="sph-sub">
           <strong>{c.week}</strong> this week · {c.total} logged in all
@@ -69,6 +76,15 @@ export default function SpherePage() {
         <h2>Garden</h2>
         <SphereGarden logs={mine} size="lg"
           label={`${sphere.name}'s garden: ${mine.length} plant${mine.length === 1 ? '' : 's'}`} />
+        {shared && (
+          <p className="sph-sub sph-people">
+            {people.length
+              ? <>Grown by {people.map((p, i) => (
+                  <span key={p.userId}>{i ? ', ' : ''}<strong>{nameOf(p.userId)}</strong> {p.week ? `${p.week} this week` : `${p.total} in all`}</span>
+                ))}</>
+              : <>Everyone in {team?.name || 'the community'} can log here, and every log plants something.</>}
+          </p>
+        )}
       </section>
 
       <section className="sph-section">
@@ -131,12 +147,15 @@ export default function SpherePage() {
               <span className="sph-log-plant" aria-hidden="true">{seedByKey(l.seed_key)?.emoji || '🌱'}</span>
               <span className="sph-log-note">{l.note}</span>
               <span className="sph-log-where">
+                {shared && <span className="sph-log-who">{nameOf(l.user_id)}</span>}
                 {l.goal_id && goalById[l.goal_id] && <span className="sph-log-goal">{goalById[l.goal_id].title}</span>}
                 <time dateTime={l.logged_at}>
                   {new Date(l.logged_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                 </time>
-                <button className="sph-log-del" aria-label="Delete this log"
-                  onClick={() => window.confirm('Delete this log? Its plant comes out of the garden with it.') && deleteLog(l.id)}>×</button>
+                {l.user_id === user?.id && (
+                  <button className="sph-log-del" aria-label="Delete this log"
+                    onClick={() => window.confirm('Delete this log? Its plant comes out of the garden with it.') && deleteLog(l.id)}>×</button>
+                )}
               </span>
             </li>
           ))}

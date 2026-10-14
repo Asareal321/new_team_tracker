@@ -409,3 +409,7 @@ html[data-theme="dark"] {
   .sph-garden-card { transition: none; }
   .sph-garden-card:hover { transform: none; }
 }
+
+/* Shared spheres: who logged what. */
+.sph-log-who { font-weight: 600; }
+.sph-people { margin-top: 10px; }
