@@ -15,6 +15,9 @@ function InlineAdd({ label, placeholder, onAdd, className = '' }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
+  // A refused write has to say so. This form used to swallow the error, so a
+  // database rejection looked exactly like Enter doing nothing.
+  const [error, setError] = useState('')
 
   if (!open) {
     return <button className={`st-add ${className}`} onClick={() => setOpen(true)}>{label}</button>
@@ -23,12 +26,23 @@ function InlineAdd({ label, placeholder, onAdd, className = '' }) {
     e.preventDefault()
     if (!name.trim() || busy) return
     setBusy(true)
-    try { await onAdd(name); setName(''); setOpen(false) } finally { setBusy(false) }
+    setError('')
+    try {
+      await onAdd(name)
+      setName('')
+      setOpen(false)
+    } catch (err) {
+      setError(err?.message || String(err))
+    } finally {
+      setBusy(false)
+    }
   }
   return (
     <form className={`st-form ${className}`} onSubmit={submit}>
-      <input autoFocus value={name} onChange={e => setName(e.target.value)} placeholder={placeholder}
-        maxLength={60} onKeyDown={e => e.key === 'Escape' && setOpen(false)} aria-label={placeholder} />
+      <input autoFocus value={name} onChange={e => { setName(e.target.value); setError('') }} placeholder={placeholder}
+        maxLength={60} disabled={busy} aria-invalid={!!error}
+        onKeyDown={e => e.key === 'Escape' && (setOpen(false), setError(''))} aria-label={placeholder} />
+      {error && <p className="st-error" role="alert">Couldn’t save that: {error}</p>}
     </form>
   )
 }

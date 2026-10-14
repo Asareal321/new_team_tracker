@@ -137,8 +137,14 @@ drop policy if exists spheres_read   on spheres;
 drop policy if exists spheres_insert on spheres;
 drop policy if exists spheres_update on spheres;
 drop policy if exists spheres_delete on spheres;
+-- Reads the row's own columns rather than calling can_see_sphere(id): on
+-- INSERT ... RETURNING the function's lookup runs against a snapshot from
+-- before the row existed and finds nothing, refusing every new sphere.
 create policy spheres_read on spheres
-  for select using (can_see_sphere(id));
+  for select using (
+    (team_id is null and user_id = auth.uid())
+    or (team_id is not null and is_team_member(team_id, auth.uid()))
+  );
 create policy spheres_insert on spheres
   for insert with check (
     user_id = auth.uid()
