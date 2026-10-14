@@ -10,6 +10,7 @@ import TodayPage from './pages/TodayPage'
 import SpherePage from './pages/SpherePage'
 import GoalDeadlinesPage from './pages/GoalDeadlinesPage'
 import HistoryPage from './pages/HistoryPage'
+import StudyPage from './pages/StudyPage'
 import TeamsPage from './pages/TeamsPage'
 import DashboardPage from './pages/DashboardPage'
 import AccountPage from './pages/AccountPage'
@@ -51,6 +52,7 @@ export default function App() {
                   <Route path="board" element={<Navigate to="/" replace />} />
                   <Route path="deadlines" element={<GoalDeadlinesPage />} />
                   <Route path="history" element={<HistoryPage />} />
+                  <Route path="study" element={<StudyPage />} />
                   <Route path="community" element={<TeamsPage />} />
                   {/* The section was called Teams until it was renamed; old links still land. */}
                   <Route path="teams" element={<Navigate to="/community" replace />} />

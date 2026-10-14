@@ -142,3 +142,13 @@ export function IconHistory() {
     </Icon>
   )
 }
+
+export function IconStudy() {
+  return (
+    <Icon label="Study">
+      <path d="M3 8.5 L12 4 L21 8.5 L12 13 Z" />
+      <path d="M7 10.5 V15.5 C7 17 9.5 18.5 12 18.5 C14.5 18.5 17 17 17 15.5 V10.5" />
+      <path d="M21 8.5 V14" />
+    </Icon>
+  )
+}

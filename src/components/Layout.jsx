@@ -9,9 +9,9 @@ import { useSpheres } from '../context/SpheresContext'
 import { tourDone, markTourDone, tourRequested, clearTourRequest, TOUR_EVENT } from '../lib/tourState'
 import useAttention from './useAttention'
 import { attentionTitle } from '../lib/attention'
-import { isIsolatedSession, isolatedSessionLabel } from '../supabase'
+import { supabase, isIsolatedSession, isolatedSessionLabel } from '../supabase'
 import {
-  IconBoard, IconDeadlines, IconHistory, IconCommunity, IconDashboard, IconGarden, IconAccount,
+  IconBoard, IconDeadlines, IconHistory, IconCommunity, IconDashboard, IconGarden, IconAccount, IconStudy,
 } from './NavIcons'
 import '../App.css'
 
@@ -26,6 +26,8 @@ const NAV = [
   { to: '/dashboard', label: 'Dashboard', Icon: IconDashboard, admin: true },
   // Personal-only: the garden belongs to you, not to a team.
   { to: '/garden',    label: 'Garden',    Icon: IconGarden,    personal: true },
+  // Allowlisted in the database — see migration-study.sql.
+  { to: '/study',     label: 'Study',     Icon: IconStudy,     study: true },
   { to: '/account',   label: 'Account',   Icon: IconAccount },
 ]
 
@@ -61,6 +63,16 @@ export default function Layout() {
 
   const isAdmin = currentTeam?.role === 'owner' || currentTeam?.role === 'admin'
 
+  // The study tab is shown only when the database says this account may see
+  // it. Asked once per sign-in; an unmigrated database just answers no.
+  const [canStudy, setCanStudy] = useState(false)
+  useEffect(() => {
+    if (!user) return
+    let alive = true
+    supabase.rpc('study_can_view').then(({ data, error }) => { if (alive) setCanStudy(!error && !!data) })
+    return () => { alive = false }
+  }, [user])
+
   function toggleTheme() {
     const next = theme === 'dark' ? 'light' : 'dark'
     setTheme(next)
@@ -87,6 +99,7 @@ export default function Layout() {
           {NAV.map(item => {
             if (item.admin && !isAdmin) return null
             if (item.personal && currentTeamId) return null
+            if (item.study && !canStudy) return null
             // Why a tab is lit is said out loud, not just shown — the glow
             // is the thing you notice, the title is the thing you act on.
             const signal = signals[item.to]
