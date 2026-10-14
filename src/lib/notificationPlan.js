@@ -4,8 +4,7 @@
 // APNs. Everything here is worked out on the device and handed to iOS as a
 // list of alarms. That is possible because almost everything worth being told
 // about happens at a time the app already knows — a planning hour starts at a
-// time you set yourself, a focus block starts when the calendar says, and the
-// nudges run on your own waking hours.
+// time you set yourself, and the nudges run on your own waking hours.
 //
 // The whole plan is a pure function of state, which matters for two reasons.
 // It can be tested without a device — see scripts/check-notification-plan.mjs
@@ -43,7 +42,7 @@ export const AFTERNOON_FROM = 12 * 60
 const DAY = 24 * 60
 const MIN = 60 * 1000
 
-export const CATEGORIES = ['planning', 'streak', 'focus', 'nudge']
+export const CATEGORIES = ['planning', 'streak', 'nudge']
 
 // Sensible bounds for someone who has not set their hours. The nudges are
 // worth having without the planning-hours feature turned on, but nobody wants
@@ -127,7 +126,6 @@ export function planNotifications({
   garden = null,
   spheres = [],
   logs = [],
-  focusBlocks = [],
   settings = {},
 } = {}) {
   const out = []
@@ -168,22 +166,7 @@ export function planNotifications({
     for (let day = 0; day <= HORIZON_DAYS; day++) {
       add(`streak-${day}`, 'streak', at(now, day, Math.max(bed - 45, 0)),
         `Your ${garden.streak.current}-day streak`,
-        'One finished task keeps it alive. There is still time.')
-    }
-  }
-
-  // — a focus block about to start ——————————————————————————
-  //
-  // Worth a warning because it is money on the table: for the length of the
-  // event, logs in that sphere pay double.
-  if (enabled(settings, 'focus')) {
-    for (const b of focusBlocks) {
-      const start = b?.start ? new Date(b.start) : null
-      const name = b?.sphereName || b?.projectName
-      if (!start || !name) continue
-      add(`focus-${b.id}`, 'focus', new Date(start.getTime() - 5 * MIN),
-        `${name} in 5 minutes`,
-        `A focus hour — logs on ${name} pay double until it ends.`)
+        'One log keeps it alive. There is still time.')
     }
   }
 

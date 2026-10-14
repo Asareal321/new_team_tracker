@@ -5,7 +5,6 @@ import { localDay, seedByKey } from '../lib/garden'
 import LogBox from '../components/LogBox'
 import SphereGarden from '../components/SphereGarden'
 import QuestStrip from '../components/QuestStrip'
-import FocusStrip from '../components/FocusStrip'
 import SphereTree from '../components/SphereTree'
 import Onboarding from '../components/Onboarding'
 import { useAuth } from '../auth/AuthContext'
@@ -101,7 +100,6 @@ export default function TodayPage() {
 
       {error && <p className="sph-error">{error}</p>}
 
-      {live.length > 0 && <FocusStrip />}
 
       <section className="sph-card">
         <LogBox autoFocus />

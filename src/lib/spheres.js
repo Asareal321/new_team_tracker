@@ -12,7 +12,6 @@
 // Pure. Checked by scripts/check-spheres.mjs.
 
 import { localDay, DAILY_CAPS, SEEDS } from './garden.js'
-import { chooseBlock, matchProject } from './calendarFill.js'
 import { BONUS_CAP, spendBonus } from './planningHours.js'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -135,13 +134,12 @@ export function balanceNudge({ spheres = [], logs = [], now = new Date() } = {})
 //
 // Two halves, metered separately — the same rule planning hours always had,
 // and the one you asked for. The base half counts against the ordinary daily
-// cap. The bonus half, paid only inside a window (a planning hour, or a focus
-// block), ignores the daily cap and counts only against that window's own
+// cap. The bonus half, paid only inside a window (a planning hour), ignores the daily cap and counts only against that window's own
 // allowance, BONUS_CAP. So planning tomorrow at 11pm still pays on a day you
 // already maxed out, but no single window is a bottomless faucet.
 //
 // `window` is the key to meter the bonus under: 'morning' / 'evening' for a
-// planning hour, `focus:<event id>` for a focus block. Null means no bonus.
+// planning hour. Null means no bonus.
 export function logReward({ daily, window = null, base = LOG_REWARD, cap = DAILY_LOG_CAP } = {}) {
   const coins = Math.max(0, Math.min(base.coins, cap.coins - Math.max(0, daily?.logCoins || 0)))
   const seeds = Math.max(0, Math.min(base.seeds, cap.seeds - Math.max(0, daily?.seeds || 0)))
@@ -277,41 +275,11 @@ export function loggedToday(logs, now = new Date()) {
   return (logs || []).some(l => localDay(ts(l)) === today)
 }
 
-// ── focus blocks ──────────────────────────────────────────────────────────
+// ── double pay ────────────────────────────────────────────────────────────
 
-// A calendar event that names one of your spheres, happening now. There is no
-// board to clear any more, so a focus block does one thing: logs in that
-// sphere pay double until it ends. The choosing rules are calendarFill's —
-// the TRK marker first, then the more specific event, then the longer name —
-// so a title that matched a project before matches a sphere the same way.
-export function focusFor({ events = [], spheres = [], now = new Date() } = {}) {
-  const live = (spheres || []).filter(s => s && !s.archived_at)
-  const choice = chooseBlock({ events, projects: live, now: now.getTime() })
-  const at = now.getTime()
-  const upcoming = (events || [])
-    .filter(e => !e.allDay && new Date(e.start).getTime() > at)
-    .map(e => ({ e, sphere: matchProject(e.title, live) }))
-    .filter(x => x.sphere)
-    .map(({ e, sphere }) => ({ id: e.id, sphereId: sphere.id, sphereName: sphere.name, start: e.start, end: e.end }))
-  return {
-    block: choice.project ? choice.block : null,
-    sphere: choice.project || null,
-    overlapping: choice.overlapping,
-    upcoming,
-  }
-}
-
-// Whether a log in this sphere, right now, pays double — and why. Either a
-// focus block on this sphere or an open planning hour; never both at once,
-// because a doubled reward doubled again is a number nobody can reason about.
-// Focus wins the label when both apply, since it is the more specific reason.
-export function boostFor({ sphereId, focus = null, planning = null } = {}) {
-  if (sphereId && focus?.sphere?.id === sphereId) {
-    return {
-      boost: true, why: 'focus', window: `focus:${focus.block?.id || focus.sphere.id}`,
-      label: `Focus hour on ${focus.sphere.name} — this log pays double`,
-    }
-  }
+// Whether a log right now pays double — and why. Inside a planning hour, it
+// does; `sphereId` is accepted so a per-sphere reason can come back later.
+export function boostFor({ sphereId, planning = null } = {}) {
   if (planning) {
     return {
       boost: true, why: 'planning', window: planning,

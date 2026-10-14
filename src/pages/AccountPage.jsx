@@ -268,7 +268,6 @@ function NotificationSettings() {
     ['nudge', 'Nudges through the day', 'Every couple of hours: what you will move forward in the morning, whether you logged it in the afternoon. Names the sphere you have been neglecting.'],
     ['planning', 'Planning hours', 'When your double-rewards hour starts, morning and evening. Needs your wake and bed times set.'],
     ['streak', 'Streak about to lapse', 'Late evening, only when you have a streak going.'],
-    ['focus', 'A focus hour starting', 'Five minutes before a calendar event that names a sphere — logs there pay double while it runs.'],
   ]
 
   return (

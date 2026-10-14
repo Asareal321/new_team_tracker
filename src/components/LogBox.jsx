@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useSpheres } from '../context/SpheresContext'
 import { useGarden } from '../context/GardenContext'
@@ -12,20 +12,13 @@ import { seedByKey } from '../lib/garden'
 // lives on a sphere's own page the sphere is fixed and the picker disappears.
 
 export default function LogBox({ sphereId: fixedSphere = null, autoFocus = false, onLogged }) {
-  const { areas, spheres, goals, addLog, focus, boostInfo } = useSpheres()
+  const { areas, spheres, goals, addLog, boostInfo } = useSpheres()
   const { state } = useGarden() || {}
   const [sphereId, setSphereId] = useState(fixedSphere || '')
   const [goalId, setGoalId] = useState('')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-
-  // A focus hour picks its sphere for you — that is the sphere you blocked the
-  // time out for — but only until you choose one yourself.
-  const focusId = focus?.sphere?.id || null
-  useEffect(() => {
-    if (!fixedSphere && focusId) setSphereId(prev => prev || focusId)
-  }, [fixedSphere, focusId])
 
   const target = fixedSphere || sphereId
   const boost = target && boostInfo ? boostInfo(target) : null

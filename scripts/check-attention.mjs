@@ -210,23 +210,6 @@ ok('a new species lights the herbarium',
 ok('the same species does not light it twice',
   !attentionFor({ ...herbInput, seen: seenAll(herbInput) })[GARDEN_HERBARIUM])
 
-// — a focus hour on a sphere lights Today —
-
-const sphereFocus = attentionFor({
-  state: { ...empty, focus: { blockId: 'ev1', sphereId: 'econ', sphereName: 'ECON 2220' } },
-  flowers: [], quests: [], community: {},
-})
-ok('a focus hour on a sphere lights Today', sphereFocus[ROUTE_BOARD]?.level === 'ready')
-ok('and names the sphere', /ECON 2220/.test(attentionTitle(sphereFocus[ROUTE_BOARD])))
-ok('and says logs pay double, not tasks', (t => /logs on .+ pay double/.test(t) && !/task/i.test(t))(attentionTitle(sphereFocus[ROUTE_BOARD])))
-ok('the next block lights it again', (() => {
-  const first = { state: { ...empty, focus: { blockId: 'ev1', sphereId: 'econ' } }, flowers: [], quests: [], community: {} }
-  return !!attentionFor({
-    state: { ...empty, focus: { blockId: 'ev2', sphereId: 'econ' } }, flowers: [], quests: [], community: {},
-    seen: signatures(first),
-  })[ROUTE_BOARD]
-})())
-
 // — community —
 
 const req = { state: empty, flowers: [], quests: [], community: { incoming: 1 } }

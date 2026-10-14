@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../supabase'
-import { CALENDAR_SCOPE, saveToken, clearToken, storeRefreshToken } from '../lib/googleCalendar'
 import { pendingReferral, clearReferral } from '../lib/referral'
 import { claimReferral } from '../lib/community'
 import { nativeAuthAvailable, startNativeOAuth, installNativeAuthBridge } from '../lib/nativeAuth'
@@ -20,6 +19,13 @@ export function AuthProvider({ children }) {
   // may be after the user has navigated somewhere else entirely.
   useEffect(() => installNativeAuthBridge(supabase, { onError: setAuthError }), [])
 
+  // The Google Calendar integration is gone. A browser that used it may still
+  // hold its access token and its on/off switch; clear both once.
+  useEffect(() => {
+    try { sessionStorage.removeItem('trakkit.gcal') } catch { /* storage blocked */ }
+    try { localStorage.removeItem('trakkit.calendarFill') } catch { /* storage blocked */ }
+  }, [])
+
   useEffect(() => {
     let mounted = true
 
@@ -31,18 +37,6 @@ export function AuthProvider({ children }) {
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      // Supabase surfaces both Google tokens exactly once, on the sign-in that
-      // granted them — they are absent from every later session read. So they
-      // are caught here or not at all.
-      if (newSession?.provider_token) {
-        saveToken(newSession.provider_token, newSession.provider_token_expires_in)
-      }
-      // The refresh token is the whole difference between a connection that
-      // lasts an hour and one that lasts. It goes straight to the server and
-      // is never kept here.
-      if (newSession?.provider_refresh_token) {
-        storeRefreshToken(newSession.provider_refresh_token)
-      }
       setSession(newSession)
       if (newSession) { fetchProfile(newSession.user.id); redeemReferral() }
       else { setProfile(null); setLoading(false) }
@@ -96,32 +90,7 @@ export function AuthProvider({ children }) {
   }
 
   function signOut() {
-    clearToken()
     return supabase.auth.signOut()
-  }
-
-  // Re-runs the Google round-trip asking for calendar.readonly on top of
-  // sign-in.
-  //
-  // access_type=offline is what asks Google for a refresh token, and without
-  // it there is nothing to store and the connection can only ever be
-  // temporary. prompt=consent goes with it: Google issues a refresh token on
-  // the FIRST consent only, so a repeat authorisation without this returns an
-  // access token and no refresh token — which looks like it worked and then
-  // quietly expires an hour later.
-  function connectCalendar() {
-    const queryParams = { access_type: 'offline', prompt: 'consent' }
-    if (nativeAuthAvailable()) {
-      return startNativeOAuth(supabase, { scopes: CALENDAR_SCOPE, queryParams })
-    }
-    return supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        scopes: CALENDAR_SCOPE,
-        queryParams,
-        redirectTo: window.location.origin + window.location.pathname + window.location.search,
-      },
-    })
   }
 
   async function refreshProfile() {
@@ -136,7 +105,6 @@ export function AuthProvider({ children }) {
     signUp,
     signIn,
     signInWithGoogle,
-    connectCalendar,
     // Only ever set by the iOS sign-in path, which has no page to show an
     // error on — the Safari sheet has already closed by the time it fails.
     authError,

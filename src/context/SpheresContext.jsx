@@ -2,12 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { supabase } from '../supabase'
 import { useAuth } from '../auth/AuthContext'
 import { useGarden } from './GardenContext'
-import { tally, focusFor, boostFor, ownLogs } from '../lib/spheres'
+import { tally, boostFor, ownLogs } from '../lib/spheres'
 import { activeWindow } from '../lib/planningHours'
-import {
-  fetchTodaysEvents, fetchViaServer, hasStoredConnection, isConnected, clearToken, CalendarAuthError,
-} from '../lib/googleCalendar'
-import { calendarFillEnabled, setCalendarFillEnabled } from '../components/useCalendarFill'
 
 // The spheres model, loaded once and shared.
 //
@@ -20,17 +16,13 @@ import { calendarFillEnabled, setCalendarFillEnabled } from '../components/useCa
 
 const LOG_LIMIT = 2000
 
-// How often the calendar is asked what is happening now. A block that started
-// a minute ago being noticed a minute late costs one log at single pay at most.
-const CALENDAR_POLL_MS = 60_000
-
 // Exported for the render harness only; everything in the app goes through
 // useSpheres().
 export const SpheresContext = createContext(null)
 
 export function SpheresProvider({ children }) {
   const { user } = useAuth()
-  const { state: garden, rewardLog, choosePlant, recordGoalSet, beginFocus, endFocus } = useGarden() || {}
+  const { state: garden, rewardLog, choosePlant, recordGoalSet } = useGarden() || {}
   const [areas, setAreas] = useState([])
   const [spheres, setSpheres] = useState([])
   const [goals, setGoals] = useState([])
@@ -81,94 +73,16 @@ export function SpheresProvider({ children }) {
     return () => document.removeEventListener('visibilitychange', onBack)
   }, [hasShared, load])
 
-  // — the calendar: focus blocks ———————————————————————————————————————————
+  // — planning hours ————————————————————————————————————————————————————————
   //
-  // A calendar event that names one of your spheres makes that hour a focus
-  // block, and logs in that sphere pay double until it ends. Watched here
-  // rather than on a page so it holds wherever you are in the app — the glow
-  // and the doubled payout should not depend on which tab is open.
-  //
-  // Opt-in, behind the same switch the old board's calendar fill used, so
-  // anyone who already turned it on does not have to again.
-  const [calendarOn, setCalendarOn] = useState(calendarFillEnabled)
-  const [calendarConnected, setCalendarConnected] = useState(isConnected)
-  const [events, setEvents] = useState([])
-  const [calendarError, setCalendarError] = useState('')
-  const [minute, setMinute] = useState(0)
-
-  const pollCalendar = useCallback(async () => {
-    if (!calendarOn || !user) return
-    try {
-      // The server holds the refresh token and can always mint a working
-      // access token; the tab's own token is the fallback for before the Edge
-      // Function existed. null means "no answer", not "disconnected".
-      let next = await fetchViaServer()
-      if (next === null) {
-        if (!isConnected()) return
-        next = await fetchTodaysEvents()
-      }
-      setCalendarError('')
-      setEvents(next || [])
-    } catch (err) {
-      if (err instanceof CalendarAuthError) { setCalendarConnected(false); clearToken() }
-      setCalendarError(err?.message || String(err))
-    }
-  }, [calendarOn, user])
-
-  useEffect(() => {
-    if (!calendarOn) { setEvents([]); return undefined }
-    pollCalendar()
-    const id = setInterval(() => { pollCalendar(); setMinute(m => m + 1) }, CALENDAR_POLL_MS)
-    const onWake = () => { if (document.visibilityState === 'visible') { pollCalendar(); setMinute(m => m + 1) } }
-    document.addEventListener('visibilitychange', onWake)
-    return () => { clearInterval(id); document.removeEventListener('visibilitychange', onWake) }
-  }, [calendarOn, pollCalendar])
-
-  // The connection lands asynchronously after the Google round-trip, so it is
-  // re-checked on a timer rather than read once.
-  useEffect(() => {
-    let alive = true
-    const check = async () => {
-      const stored = await hasStoredConnection()
-      if (alive) setCalendarConnected(stored || isConnected())
-    }
-    check()
-    const id = setInterval(check, 15_000)
-    return () => { alive = false; clearInterval(id) }
-  }, [])
-
-  const toggleCalendar = useCallback(on => {
-    setCalendarFillEnabled(on)
-    setCalendarOn(on)
-  }, [])
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const focus = useMemo(() => focusFor({ events, spheres, now: new Date() }), [events, spheres, minute])
+  // Logs pay double inside a planning hour. Worked out at the moment of the
+  // log, not at the last render, so a log written the minute a window opens
+  // is judged by the window.
+  const garden_ = useRef(garden)
+  garden_.current = garden
   const planning = activeWindow(garden?.prefs, new Date())
-
-  // The block is written to the garden state so the glow on Today can say so
-  // from any tab. Only when it changes — this runs on every poll.
-  const focusId = focus.block?.id || null
-  const storedSphereFocus = garden?.focus?.sphereId ? garden.focus.blockId : null
-  useEffect(() => {
-    if (!beginFocus || !endFocus) return
-    if (focusId && storedSphereFocus !== focusId) {
-      beginFocus({
-        blockId: focusId, sphereId: focus.sphere.id, sphereName: focus.sphere.name, until: focus.block.end,
-      })
-    } else if (!focusId && storedSphereFocus) {
-      endFocus()
-    }
-  // focus.sphere/block are read only when focusId changed, so they are in step.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusId, storedSphereFocus, beginFocus, endFocus])
-
-  // Read at log time through a ref, so a log written the instant a block
-  // starts is judged by the block, not by the render before it.
-  const boostRef = useRef({ focus, planning })
-  boostRef.current = { focus, planning }
   const boostInfo = useCallback(
-    sphereId => boostFor({ sphereId, focus: boostRef.current.focus, planning: boostRef.current.planning }),
+    sphereId => boostFor({ sphereId, planning: activeWindow(garden_.current?.prefs, new Date()) }),
     [],
   )
 
@@ -252,11 +166,7 @@ export function SpheresProvider({ children }) {
     loading, error, reload: load,
     areas, spheres, goals, logs, myLogs, counts, nameOf,
     addArea, addSphere, renameSphere, addGoal, setGoalStatus, addLog, deleteLog,
-    focus, planning, boostInfo,
-    calendar: {
-      on: calendarOn, connected: calendarConnected, error: calendarError,
-      toggle: toggleCalendar, refresh: pollCalendar,
-    },
+    planning, boostInfo,
   }
   return <SpheresContext.Provider value={value}>{children}</SpheresContext.Provider>
 }

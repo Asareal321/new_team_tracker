@@ -36,7 +36,6 @@ const base = (over = {}) => planNotifications({
   spheres: over.spheres ?? SPHERES,
   logs: over.logs ?? LOGS,
   settings: over.settings,
-  focusBlocks: over.focusBlocks ?? [],
 })
 
 const mins = d => { const x = new Date(d); return x.getHours() * 60 + x.getMinutes() }
@@ -129,16 +128,6 @@ ok('no streak alarm without a streak to lose',
 
 ok('an empty account schedules nothing rather than throwing', Array.isArray(planNotifications({ now: NOW })))
 ok('and no argument at all does not throw', Array.isArray(planNotifications()))
-
-// — a focus block warns before it starts —
-
-const focus = base({
-  focusBlocks: [{ id: 'b1', sphereId: 'rec', sphereName: 'Recruiting', start: new Date(2026, 0, 15, 13, 0).toISOString() }],
-}).filter(n => n.category === 'focus')
-ok('a focus block warns you five minutes before it starts',
-  focus.length === 1 && mins(focus[0].at) === 12 * 60 + 55, JSON.stringify(focus))
-ok('and says logs there pay double', /pay double/i.test(focus[0]?.body || ''))
-ok('it never talks about clearing a board that no longer exists', !/board|park/i.test(focus[0]?.body || ''))
 
 ok('nudgeTimes is empty when the waking day is too short to fit one',
   nudgeTimes(8 * 60, 8 * 60 + 60).length === 0)

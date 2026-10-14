@@ -8,7 +8,7 @@
 import {
   contributors, ownLogs,
   tally, balanceNudge, logReward, checkGoal, daysLeft, daysSince, loggedToday,
-  pickPlant, takeSeed, logDaily, focusFor, boostFor, searchLogs, byDay, deadlineGroups,
+  pickPlant, takeSeed, logDaily, boostFor, searchLogs, byDay, deadlineGroups,
   LOG_REWARD, DAILY_LOG_CAP, NUDGE_MIN_WEEK_LOGS,
 } from '../src/lib/spheres.js'
 import { BONUS_CAP } from '../src/lib/planningHours.js'
@@ -107,19 +107,10 @@ ok('spending the evening’s allowance leaves the morning’s alone', (() => {
   const r = logReward({ daily: { bonus: { evening: { coins: BONUS_CAP.coins, seeds: BONUS_CAP.seeds } } }, window: 'morning' })
   return r.bonusCoins === LOG_REWARD.coins
 })())
-ok('and each focus block is its own window', (() => {
-  const d = { bonus: { 'focus:ev1': { coins: BONUS_CAP.coins, seeds: BONUS_CAP.seeds } } }
-  return logReward({ daily: d, window: 'focus:ev1' }).bonusCoins === 0
-    && logReward({ daily: d, window: 'focus:ev2' }).bonusCoins === LOG_REWARD.coins
-})())
 ok('no window, no bonus', logReward({ daily: {} }).bonusCoins === 0)
 ok('the bonus is recorded against its window, not the daily cap', (() => {
   const d = logDaily({}, { sphereId: 'econ', coins: 25, seeds: 1, window: 'evening', bonusCoins: 25, bonusSeeds: 1 })
   return d.logCoins === 25 && d.seeds === 1 && d.bonus.evening.coins === 25 && d.bonus.evening.seeds === 1
-})())
-ok('a focus log names its block as the window', (() => {
-  const f = { block: { id: 'ev9' }, sphere: { id: 'econ', name: 'ECON' } }
-  return boostFor({ sphereId: 'econ', focus: f }).window === 'focus:ev9'
 })())
 ok('a planning log names its hour', boostFor({ sphereId: 'econ', planning: 'morning' }).window === 'morning')
 ok('a missing daily bucket is a fresh day', logReward({}).coins === LOG_REWARD.coins)
@@ -205,31 +196,9 @@ ok('daysSince of nothing is nothing', daysSince(null, NOW) === null)
 ok('a log today counts for the streak', loggedToday([log('econ', 0)], NOW))
 ok('one from yesterday does not', !loggedToday([log('econ', 1)], NOW))
 
-// — focus blocks —
+// — double pay —
 
-const at = (h, m = 0) => new Date(2026, 9, 13, h, m).toISOString()
-const ev = (id, title, h1, h2) => ({ id, title, start: at(h1), end: at(h2) })
-const SPH = [ECON, REC, GYM]
-
-const f1 = focusFor({ events: [ev('e1', 'ECON 2220 problem set', 14, 16)], spheres: SPH, now: NOW })
-ok('an event naming a sphere, happening now, is a focus block', f1.sphere?.id === 'econ')
-ok('an event naming nothing is not', focusFor({ events: [ev('e2', 'Dentist', 14, 16)], spheres: SPH, now: NOW }).sphere === null)
-ok('an event that has not started yet is not', focusFor({ events: [ev('e3', 'Recruiting prep', 16, 17)], spheres: SPH, now: NOW }).sphere === null)
-ok('but it is listed as coming up', (() => {
-  const f = focusFor({ events: [ev('e3', 'Recruiting prep', 16, 17)], spheres: SPH, now: NOW })
-  return f.upcoming.length === 1 && f.upcoming[0].sphereId === 'rec'
-})())
-ok('an archived sphere never becomes a focus block',
-  focusFor({ events: [ev('e1', 'Fitness', 14, 16)], spheres: [{ ...GYM, archived_at: ago(3) }], now: NOW }).sphere === null)
-ok('all-day events never count', focusFor({
-  events: [{ id: 'd', title: 'Fitness', start: '2026-10-13', end: '2026-10-14', allDay: true }], spheres: SPH, now: NOW,
-}).sphere === null)
-
-ok('a log in the focus sphere is boosted', boostFor({ sphereId: 'econ', focus: f1 }).why === 'focus')
-ok('a log in another sphere is not', !boostFor({ sphereId: 'gym', focus: f1 }).boost)
 ok('a planning hour boosts any sphere', boostFor({ sphereId: 'gym', planning: 'evening' }).why === 'planning')
-ok('focus and planning together are still only double — and say focus',
-  (() => { const b = boostFor({ sphereId: 'econ', focus: f1, planning: 'morning' }); return b.boost === true && b.why === 'focus' })())
 ok('no reason, no boost', boostFor({ sphereId: 'econ' }).boost === false)
 
 // — search —

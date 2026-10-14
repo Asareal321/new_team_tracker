@@ -86,9 +86,6 @@ const DEFAULT_STATE = {
   // `stats` is handed to anyone with a share code. See
   // migration-planning-hours.sql.
   prefs: {},
-  // Which calendar block owns the board, and what was parked to give it room.
-  // Empty when nothing does. See migration-planning-hours.sql.
-  focus: {},
   streak: { current: 0, best: 0, lastDay: null },
   stats: {},
   achievements: {},
@@ -368,15 +365,6 @@ export function GardenProvider({ children }) {
 
   const setQuietMode = useCallback(on => save({ quiet_mode: !!on }), [save])
 
-  // A calendar block has taken the board. What was parked is written down with
-  // the band each task came from, because that record is the only thing that
-  // makes putting the board back possible.
-  const beginFocus = useCallback(
-    focus => save({ focus: focus || {} }),
-    [save],
-  )
-
-  const endFocus = useCallback(() => save({ focus: {} }), [save])
 
   // Your hours, taking effect tomorrow.
   //
@@ -653,7 +641,7 @@ export function GardenProvider({ children }) {
     // deletes the bed server-side, and nothing here would otherwise know.
     reload: load,
     devResetOnboarding, devResetQuests, devCompleteQuests, devShowStreak,
-    rewardLog, choosePlant, setPlantNext, recordGoalSet, notify, setQuietMode, setPlanningHours, beginFocus, endFocus, completeOnboarding, buyPacket, openPacket,
+    rewardLog, choosePlant, setPlantNext, recordGoalSet, notify, setQuietMode, setPlanningHours, completeOnboarding, buyPacket, openPacket,
     isDev, devOpen, openDevPanel: () => setDevOpen(true),
   }
 
