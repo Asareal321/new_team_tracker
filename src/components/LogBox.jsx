@@ -63,7 +63,7 @@ export default function LogBox({ sphereId: fixedSphere = null, autoFocus = false
   if (!live.length) {
     return (
       <div className="lb lb-empty">
-        <p>Make a sphere first — a part of your life you want to move forward. Use <strong>+ Area</strong> in the sidebar to start.</p>
+        <p>Make a sphere first — a part of your life you want to move forward. Use <strong>+ Area</strong> in your sphere list to start.</p>
       </div>
     )
   }

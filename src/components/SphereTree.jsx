@@ -47,7 +47,8 @@ function InlineAdd({ label, placeholder, onAdd, className = '' }) {
   )
 }
 
-export default function SphereTree() {
+// `onPage` is the copy drawn on Today for phones, where the rail has no room.
+export default function SphereTree({ onPage = false } = {}) {
   const { areas, spheres, counts, addArea, addSphere, loading } = useSpheres()
   const { teams } = useTeam() || {}
   const live = spheres.filter(s => !s.archived_at)
@@ -70,7 +71,7 @@ export default function SphereTree() {
     .map(t => ({ team: t, items: live.filter(s => s.team_id === t.id) }))
 
   return (
-    <div className="st" aria-label="Spheres">
+    <div className={`st${onPage ? ' st-page' : ''}`} aria-label="Spheres">
       <div className="st-head">
         <span className="st-title">Spheres</span>
       </div>

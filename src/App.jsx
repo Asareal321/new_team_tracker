@@ -6,7 +6,6 @@ import { TeamProvider } from './context/TeamContext'
 import { GardenProvider } from './context/GardenContext'
 import { SpheresProvider } from './context/SpheresContext'
 import Layout from './components/Layout'
-import BoardPage from './pages/BoardPage'
 import TodayPage from './pages/TodayPage'
 import SpherePage from './pages/SpherePage'
 import GoalDeadlinesPage from './pages/GoalDeadlinesPage'
@@ -48,9 +47,8 @@ export default function App() {
                 <Route element={<Layout />}>
                   <Route index element={<TodayPage />} />
                   <Route path="spheres/:sphereId" element={<SpherePage />} />
-                  {/* The old board, until phase 6 removes it. Still where first-run
-                      setup mounts, so it stays reachable rather than vanishing. */}
-                  <Route path="board" element={<BoardPage />} />
+                  {/* The task board is gone; old links land on Today. */}
+                  <Route path="board" element={<Navigate to="/" replace />} />
                   <Route path="deadlines" element={<GoalDeadlinesPage />} />
                   <Route path="history" element={<HistoryPage />} />
                   <Route path="community" element={<TeamsPage />} />

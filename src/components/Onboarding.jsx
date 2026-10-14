@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react'
 import {
-  RARITY_COLORS, RARITY_NAMES, PACKETS,
-  CLOUD_TIERS, CLOUD_MAX_TAPS, GROWTH_STAGES, DAILY_CAPS,
-  ADD_TASK_REWARD, formatDuration, rollPacket, seedByKey, packetByKey,
+  RARITY_COLORS, RARITY_NAMES, PACKETS, rollPacket, seedByKey, packetByKey,
 } from '../lib/garden'
-import { MAX_DOING, MAX_UP_NEXT } from './TaskBoard'
+import { LOG_REWARD, DAILY_LOG_CAP, checkGoal } from '../lib/spheres'
 import PacketArt from './PacketArt'
 import PackOpening from './PackOpening'
 import Trak from './Trak'
@@ -16,14 +14,14 @@ import './Onboarding.css'
 
 // The tour, narrated by Trak.
 //
-// It runs in two modes. `setup` is the first run: it plants a seed, names a
-// first project and writes a first task, so the board you land on is already
-// yours rather than a set of empty bands. `replay` is the same explanations
-// with nothing to fill in, for when you want the rules again later.
+// It runs in two modes. `setup` is the first run: it names a first area and
+// sphere, optionally a goal and a first log, and opens a first packet — so
+// Today is already yours rather than an empty page. `replay` is the same
+// explanations with nothing to fill in, for when you want the rules again.
 //
-// Every number on these screens is read from lib/garden.js and the board's own
-// limits rather than typed into the copy — a tour that quietly goes out of date
-// with the balance is worse than no tour.
+// Every number on these screens is read from lib/spheres.js and lib/garden.js
+// rather than typed into the copy — a tour that quietly goes out of date with
+// the balance is worse than no tour.
 
 // The cheapest packet — the one you can actually afford again tomorrow, so
 // the first pull teaches the loop rather than a one-off.
@@ -40,8 +38,11 @@ const PUBLIC_REWARD = packetByKey('epic')
 // is explanation, and explanation should not stand between you and the thing
 // you came for. `planted` follows it because the seed only exists once the
 // packet is open.
-const SETUP_STEPS  = ['hello', 'grow', 'economy', 'limits', 'profile', 'projects', 'task', 'packet', 'planted']
-const REPLAY_STEPS = ['hello', 'grow', 'economy', 'limits', 'board', 'projects']
+const SETUP_STEPS  = ['hello', 'grow', 'economy', 'limits', 'profile', 'sphere', 'goal', 'log', 'packet', 'planted']
+const REPLAY_STEPS = ['hello', 'spheres', 'grow', 'economy', 'limits']
+
+// Steps that only make sense once a sphere has been named.
+const NEEDS_SPHERE = ['goal', 'log']
 
 export default function Onboarding({ displayName, mode = 'setup', onFinish, onClose }) {
   const steps = mode === 'replay' ? REPLAY_STEPS : SETUP_STEPS
@@ -52,8 +53,12 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
   // The seed the cinematic is currently revealing, before it has landed.
   const [rolling, setRolling] = useState(null)
   const [tearing, setTearing] = useState(false)
-  const [projectName, setProjectName] = useState('')
-  const [firstTask, setFirstTask] = useState('')
+  const [areaName, setAreaName] = useState('')
+  const [sphereName, setSphereName] = useState('')
+  const [goalTitle, setGoalTitle] = useState('')
+  const [goalEnd, setGoalEnd] = useState('')
+  const [goalTried, setGoalTried] = useState(false)
+  const [firstLog, setFirstLog] = useState('')
   // Private by default. Being listed is a choice you make, not one you have to
   // notice and undo.
   const [isPublic, setIsPublic] = useState(false)
@@ -93,8 +98,28 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
 
   const step = steps[i]
   const chosen = opened || seedByKey(pick)
-  const next = () => setI(n => Math.min(n + 1, steps.length - 1))
-  const back = () => setI(n => Math.max(n - 1, 0))
+  // No sphere, nothing to set a goal in or log to: those steps are passed over
+  // in both directions rather than shown empty.
+  const hasSphere = !!sphereName.trim()
+  const usable = n => !(NEEDS_SPHERE.includes(steps[n]) && !hasSphere)
+  const next = () => setI(n => {
+    let m = Math.min(n + 1, steps.length - 1)
+    while (m < steps.length - 1 && !usable(m)) m += 1
+    return m
+  })
+  const back = () => setI(n => {
+    let m = Math.max(n - 1, 0)
+    while (m > 0 && !usable(m)) m -= 1
+    return m
+  })
+
+  const goal = checkGoal({ title: goalTitle, end_date: goalEnd })
+  const goalWanted = !!goalTitle.trim() || !!goalEnd
+  function goalNext() {
+    setGoalTried(true)
+    if (goalWanted && !goal.ok) return
+    next()
+  }
 
   async function finish() {
     if (mode === 'replay') return onClose?.()
@@ -103,8 +128,10 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
     try {
       await onFinish({
         seedKey: pick,
-        projectName: projectName.trim(),
-        firstTask: firstTask.trim(),
+        areaName: areaName.trim() || (hasSphere ? 'Personal' : ''),
+        sphereName: sphereName.trim(),
+        goal: hasSphere && goalWanted && goal.ok ? { title: goalTitle.trim(), end_date: goalEnd } : null,
+        firstLog: hasSphere ? firstLog.trim() : '',
         isPublic,
       })
     } catch (e) {
@@ -124,7 +151,7 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
       // hand out a fixed seed, so a bailed-out setup is not a worse account.
       await onFinish({
         seedKey: pick || rollPacket(STARTER_PACKET.key),
-        projectName: '', firstTask: '', isPublic,
+        areaName: '', sphereName: '', goal: null, firstLog: '', isPublic,
       })
     } catch (e) {
       setError(e?.message || String(e))
@@ -187,11 +214,9 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
               <div className="onb-pull" style={{ '--rarity': RARITY_COLORS[opened.rarity] }}>
                 <span className="onb-pull-emoji">{opened.emoji}</span>
                 <p className="onb-pull-name">{opened.name}</p>
-                <p className="onb-pull-meta">
-                  {RARITY_NAMES[opened.rarity]} · {formatDuration(opened.growSeconds)} to grow
-                </p>
+                <p className="onb-pull-meta">{RARITY_NAMES[opened.rarity]}</p>
                 <p className="onb-body">
-                  That is yours. I&rsquo;ll put it in the ground and start the clock.
+                  That is yours. It goes in your seed bag, ready for your first log.
                 </p>
               </div>
             )}
@@ -199,60 +224,61 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
         )}
 
         {step === 'planted' && (
-          <Scene mood="happy" title="Planted." hero={chosen?.emoji}>
+          <Scene mood="happy" title={firstLog.trim() && hasSphere ? 'Planted.' : 'In the bag.'} hero={chosen?.emoji}>
+            {firstLog.trim() && hasSphere ? (
+              <p className="onb-body">
+                Your first log goes in when you press Start, and your {chosen?.name.toLowerCase()} is
+                {' '}what it plants — the first thing growing in <b>{sphereName.trim()}</b>.
+              </p>
+            ) : (
+              <p className="onb-body">
+                Your {chosen?.name.toLowerCase()} is pinned in your seed bag. The first thing you
+                log plants it.
+              </p>
+            )}
             <p className="onb-body">
-              Your {chosen?.name.toLowerCase()} is in the ground. It grows on a real clock —
-              about {formatDuration(chosen?.growSeconds || 0)} if you leave it be.
+              Come on — I&rsquo;ll show you where everything is.
             </p>
-            {/* Last screen of setup now that the packet closes it, so this
-                hands off to the walk instead of leading into another rule. */}
+          </Scene>
+        )}
+
+        {step === 'spheres' && (
+          <Scene mood="think" title="Areas, spheres, goals">
+            <ol className="onb-flow">
+              <li><b>Area</b><span>broad — Academics, Personal, Recruiting</span></li>
+              <li><b>Sphere</b><span>one thing inside it — a class, a project, a habit</span></li>
+              <li><b>Goal</b><span>optional, and always with an end date</span></li>
+            </ol>
             <p className="onb-body">
-              But you don&rsquo;t have to leave it be. Finish something and the clouds
-              do the rest — come on, I&rsquo;ll show you where everything is.
+              You don&rsquo;t tick goals off a list. You log progress toward them, one sentence
+              at a time, and the logs add up.
             </p>
           </Scene>
         )}
 
         {step === 'grow' && (
-          <Scene mood="point" title="Finishing work is the weather">
+          <Scene mood="point" title="Every log plants something">
             <p className="onb-body">
-              {GROWTH_STAGES.length} stages, sown to bloom. Finishing a task drops a
-              {' '}<strong>rain cloud</strong>, and tapping one cuts time off the wait.
+              Write one sentence about what you moved forward — &ldquo;finished the problem
+              set&rdquo;, &ldquo;two pages of the essay&rdquo; — and a plant goes into that
+              sphere&rsquo;s garden.
             </p>
-            <table className="onb-table">
-              <thead>
-                <tr><th>Cloud</th><th>Cuts</th></tr>
-              </thead>
-              <tbody>
-                {CLOUD_TIERS.map(t => (
-                  <tr key={t.tier}>
-                    <td><span className="onb-dot" style={{ background: RARITY_COLORS[t.tier] }} />{t.name}</td>
-                    <td>{formatDuration(t.shaveMinutes * 60)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="onb-body onb-fine">
-              Up to {CLOUD_MAX_TAPS} taps each, and a tap can promote a cloud a tier — so a
-              Common can climb. Nothing planted? The whole cut is banked for
-              whatever you sow next — a cloud is never wasted.
+            <p className="onb-body">
+              Gardens only grow. One you&rsquo;ve been neglecting just stays small next to the
+              others, so you can see where your week went without anyone telling you.
             </p>
           </Scene>
         )}
 
         {step === 'economy' && (
-          <Scene mood="think" title="Seeds, coins, packets">
-            <p className="onb-body">
-              Three currencies, and all three come from the board:
-            </p>
+          <Scene mood="think" title="Coins, sprouts, packets">
             <ul className="onb-list">
-              <li><strong>Seeds</strong> — {ADD_TASK_REWARD.seeds} for every task you add. Seeds are what you plant.</li>
-              <li><strong>Coins</strong> — {ADD_TASK_REWARD.coins} for every task you add, and more from quests and streaks.</li>
-              <li><strong>Clouds</strong> — one for every task you finish.</li>
+              <li><strong>Coins</strong> — {LOG_REWARD.coins} for every log, and more from quests and streaks.</li>
+              <li><strong>Sprouts</strong> — {LOG_REWARD.seeds} for every log.</li>
+              <li><strong>Packets</strong> — bought with coins and sprouts in the shop. Each one holds a seed.</li>
             </ul>
             <p className="onb-body onb-fine">
-              Coins buy <strong>packets</strong> in the shop — {PACKETS.length} of them. I&rsquo;ll
-              show you the shop shortly.
+              The seeds in your bag are what your logs plant. Rarer packets, stranger gardens.
             </p>
           </Scene>
         )}
@@ -260,17 +286,16 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
         {step === 'limits' && (
           <Scene mood="idle" title="What a day is worth">
             <p className="onb-body">
-              There&rsquo;s a ceiling on each day, so a burst of busywork can&rsquo;t buy the
-              whole garden:
+              There&rsquo;s a ceiling on each day, so a burst of one-word logs can&rsquo;t buy
+              the whole shop:
             </p>
             <div className="onb-caps">
-              <span className="onb-cap"><b>{DAILY_CAPS.seeds}</b> seeds</span>
-              <span className="onb-cap"><b>{DAILY_CAPS.coins}</b> coins</span>
-              <span className="onb-cap"><b>{DAILY_CAPS.clouds}</b> clouds</span>
+              <span className="onb-cap"><b>{DAILY_LOG_CAP.coins}</b> coins</span>
+              <span className="onb-cap"><b>{DAILY_LOG_CAP.seeds}</b> sprouts</span>
             </div>
             <p className="onb-body">
-              They reset at your midnight. Finishing past a cap still counts toward your
-              {' '}<strong>streak</strong>.
+              It resets at your midnight. Logging past it still plants, and still counts
+              toward your <strong>streak</strong>.
             </p>
           </Scene>
         )}
@@ -315,66 +340,75 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
           </Scene>
         )}
 
-        {step === 'board' && (
-          <Scene mood="point" title="How the board moves">
+        {step === 'sphere' && (
+          <Scene mood="think" title="Your first sphere">
             <p className="onb-body">
-              Work runs in one direction, and the bands are deliberately small:
+              Pick one part of your life you want to move forward. An <b>area</b> is the broad
+              bucket; the <b>sphere</b> is the thing inside it.
             </p>
-            <ol className="onb-flow">
-              <li><b>Braindump</b><span>anything you thought of — no limit</span></li>
-              <li><b>Up next</b><span>at most {MAX_UP_NEXT}</span></li>
-              <li><b>Doing</b><span>at most {MAX_DOING}</span></li>
-              <li><b>Done today</b><span>a count, cleared each day</span></li>
-            </ol>
-            <p className="onb-body">
-              The <b>›</b> on a task sends it forward, <b>‹</b> sends it back — and back from
-              Up next means back to the braindump. If a band is full, it says so rather than
-              taking the task; that&rsquo;s the point of it.
-            </p>
-            <p className="onb-body onb-fine">
-              Each task carries its notes and its latest update on the face of the card, so you
-              can see where something stands without opening it.
-            </p>
+            <input
+              className="onb-input"
+              value={areaName}
+              onChange={e => setAreaName(e.target.value)}
+              placeholder="Area — e.g. Academics"
+              maxLength={60}
+            />
+            <input
+              className="onb-input"
+              autoFocus
+              value={sphereName}
+              onChange={e => setSphereName(e.target.value)}
+              placeholder="Sphere — e.g. BUS 2257"
+              maxLength={60}
+              onKeyDown={e => e.key === 'Enter' && sphereName.trim() && next()}
+            />
+            <p className="onb-body onb-fine">You can add as many as you like later, and rename them.</p>
           </Scene>
         )}
 
-        {step === 'projects' && (
-          <Scene mood="think" title="Projects">
+        {step === 'goal' && (
+          <Scene mood="point" title="A goal, if you have one">
             <p className="onb-body">
-              A <strong>project</strong> is a bucket of tasks — a week, a release, a house move.
-              Each gets a colour, and its tasks wear it.
+              Something you&rsquo;re moving toward in <b>{sphereName.trim()}</b>, with a date on it.
+              Optional — logs grow the garden either way.
             </p>
-            {mode === 'setup' && (
-              <>
-                <input
-                  className="onb-input"
-                  value={projectName}
-                  onChange={e => setProjectName(e.target.value)}
-                  placeholder="Name your first project (optional)"
-                  onKeyDown={e => e.key === 'Enter' && next()}
-                />
-                <p className="onb-body onb-fine">
-                  You can add and rename projects any time from <b>Projects</b> on the board.
-                </p>
-              </>
+            <input
+              className="onb-input"
+              value={goalTitle}
+              onChange={e => setGoalTitle(e.target.value)}
+              placeholder="e.g. Finish all 6 problem sets"
+              maxLength={140}
+            />
+            <input
+              className="onb-input"
+              type="date"
+              value={goalEnd}
+              onChange={e => setGoalEnd(e.target.value)}
+              aria-label="Ends on"
+            />
+            {goalTried && goalWanted && goal.errors.map(e => (
+              <p key={e.field} className="onb-error">{e.text}</p>
+            ))}
+            {goalTitle.trim() && goal.hints.length > 0 && (
+              <p className="onb-body onb-fine">{goal.hints.map(h => h.text).join(' ')}</p>
             )}
           </Scene>
         )}
 
-        {step === 'task' && (
-          <Scene mood="happy" title="One task to start you off">
+        {step === 'log' && (
+          <Scene mood="happy" title="Log something real">
             <p className="onb-body">
-              Give me something real and I&rsquo;ll put it in Up next
-              {projectName.trim() ? <> under <b>{projectName.trim()}</b></> : null}. Finishing it is
-              what makes the first cloud.
+              One sentence: something you did recently for <b>{sphereName.trim()}</b>. It&rsquo;s
+              your first plant.
             </p>
             <input
               className="onb-input"
               autoFocus
-              value={firstTask}
-              onChange={e => setFirstTask(e.target.value)}
-              placeholder="Your first task"
-              onKeyDown={e => e.key === 'Enter' && firstTask.trim() && finish()}
+              value={firstLog}
+              onChange={e => setFirstLog(e.target.value)}
+              placeholder="e.g. Read chapter 3 and took notes"
+              maxLength={280}
+              onKeyDown={e => e.key === 'Enter' && firstLog.trim() && next()}
             />
           </Scene>
         )}
@@ -384,13 +418,22 @@ export default function Onboarding({ displayName, mode = 'setup', onFinish, onCl
         <div className="onb-actions">
           {i > 0 && <button className="btn-ghost" disabled={busy} onClick={back}>Back</button>}
 
-          {/* `task` is no longer the end — the packet is — so writing a first
-              task is now a step you can pass through rather than the finish
-              line. Skip advances instead of committing. */}
-          {step === 'task' ? (
+          {/* The fill-in steps can each be passed over; the packet at the end
+              is the finish line, so Skip here advances rather than commits. */}
+          {step === 'sphere' ? (
             <>
-              <button className="btn-ghost" disabled={busy} onClick={() => { setFirstTask(''); next() }}>Skip</button>
-              <button className="btn-primary" disabled={busy || !firstTask.trim()} onClick={next}>Next</button>
+              <button className="btn-ghost" disabled={busy} onClick={() => { setSphereName(''); setAreaName(''); setI(steps.indexOf('packet')) }}>Skip</button>
+              <button className="btn-primary" disabled={busy || !sphereName.trim()} onClick={next}>Next</button>
+            </>
+          ) : step === 'goal' ? (
+            <>
+              <button className="btn-ghost" disabled={busy} onClick={() => { setGoalTitle(''); setGoalEnd(''); setGoalTried(false); next() }}>Skip</button>
+              <button className="btn-primary" disabled={busy || !goalWanted} onClick={goalNext}>Next</button>
+            </>
+          ) : step === 'log' ? (
+            <>
+              <button className="btn-ghost" disabled={busy} onClick={() => { setFirstLog(''); next() }}>Skip</button>
+              <button className="btn-primary" disabled={busy || !firstLog.trim()} onClick={next}>Next</button>
             </>
           ) : i === steps.length - 1 ? (
             <button className="btn-primary" disabled={busy} onClick={finish}>

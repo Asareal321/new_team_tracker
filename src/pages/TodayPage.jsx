@@ -6,6 +6,14 @@ import LogBox from '../components/LogBox'
 import SphereGarden from '../components/SphereGarden'
 import QuestStrip from '../components/QuestStrip'
 import FocusStrip from '../components/FocusStrip'
+import SphereTree from '../components/SphereTree'
+import Onboarding from '../components/Onboarding'
+import { useAuth } from '../auth/AuthContext'
+import { useTeam } from '../context/TeamContext'
+import { useGarden } from '../context/GardenContext'
+import { setVisibility } from '../lib/community'
+import { PUBLIC_PROFILE_PACKET } from '../lib/rewards'
+import { requestTour } from '../lib/tourState'
 import { projectColorIndex } from '../lib/projectColors'
 import './Spheres.css'
 
@@ -17,6 +25,51 @@ import './Spheres.css'
 // something you see rather than something you are told.
 
 const GARDEN_PREVIEW = 30
+
+// First run, personal workspace only — a community's space isn't yours to set
+// up. Everything it writes is real: the area, the sphere, the goal and the log
+// are the same rows you'd make by hand, so Today is already yours when it
+// closes. Each write is allowed to fail on its own; a setup that half-worked
+// still has to end with an onboarded account, or it would come back forever.
+function FirstRun() {
+  const { user } = useAuth()
+  const { currentTeamId } = useTeam() || {}
+  const { state: garden, ready, completeOnboarding } = useGarden() || {}
+  const { addArea, addSphere, addGoal, addLog } = useSpheres()
+
+  if (!ready || !garden || garden.onboarded || currentTeamId) return null
+
+  return (
+    <Onboarding
+      displayName={user?.user_metadata?.display_name}
+      onFinish={async ({ seedKey, areaName, sphereName, goal, firstLog, isPublic }) => {
+        let sphere = null
+        if (sphereName) {
+          try {
+            const area = await addArea(areaName || 'Personal')
+            sphere = await addSphere({ areaId: area.id, name: sphereName })
+          } catch { sphere = null }
+        }
+        let goalRow = null
+        if (sphere && goal) {
+          try { goalRow = await addGoal({ sphereId: sphere.id, ...goal }) } catch { goalRow = null }
+        }
+        // Visibility needs the community migration; private is the default.
+        try { await setVisibility(user.id, !!isPublic) } catch { /* not migrated yet */ }
+        // Before the log, so the seed is in the bag and pinned when it plants.
+        await completeOnboarding(seedKey, {
+          perkPackets: isPublic ? [PUBLIC_PROFILE_PACKET] : [],
+        })
+        if (sphere && firstLog) {
+          try {
+            await addLog({ sphereId: sphere.id, goalId: goalRow?.id || null, note: firstLog, quiet: true })
+          } catch { /* the log box is right there to try again */ }
+        }
+        requestTour()
+      }}
+    />
+  )
+}
 
 export default function TodayPage() {
   const { spheres, areas, goals, logs, myLogs, counts, loading, error } = useSpheres()
@@ -116,11 +169,16 @@ export default function TodayPage() {
           <p>
             An <strong>area</strong> is broad — Academics, Personal, Clubs, Recruiting.
             A <strong>sphere</strong> sits inside one, as broad or as narrow as you like — a
-            single class, or the whole of your job search. Add an area in the sidebar, then a
-            sphere inside it, and every bit of progress you log there grows its garden.
+            single class, or the whole of your job search. Add an area in your sphere list, then
+            a sphere inside it, and every bit of progress you log there grows its garden.
           </p>
         </section>
       )}
+
+      {/* Phones only: the rail is a bar there, so the tree lives here. */}
+      <SphereTree onPage />
+
+      <FirstRun />
     </div>
   )
 }

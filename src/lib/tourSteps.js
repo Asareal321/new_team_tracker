@@ -16,9 +16,10 @@
 //             is no per-step skip: if you don't want to do it, you skip the
 //             whole tour. The button only comes back if the control genuinely
 //             cannot be found, which is the one case that would trap you.
-//   only    — 'phone' or 'desktop'. The two are not the same app: a phone has
-//             no chevrons and no number keys, a desktop has no swipe. A step
-//             that taught the wrong gesture would be worse than no step.
+//   only    — 'phone' or 'desktop'. The two are laid out differently: on a
+//             phone the rail is a bar along the top and your spheres live at
+//             the bottom of Today; on a desktop they are down the left. A step
+//             that sent you to the wrong place would be worse than no step.
 //   mood    — which Trak.
 //
 // Three rules, all checked by scripts/check-tour.mjs:
@@ -26,20 +27,19 @@
 //     one says one thing; a long body here is the old tour growing back.
 //   • every route is one the app actually serves.
 //   • a step that changes route is reached by a click, not by a redirect.
-//   • every gesture that differs between phone and desktop is taught on both,
+//   • everything laid out differently on phone and desktop is taught on both,
 //     which means `only` steps come in pairs.
 
 // In the order the walk visits them, which is the order of the tabs in the
-// rail and along the bottom bar of the phone. Following the app's own layout
-// is the whole point: you should be able to redo the walk from memory.
-export const TOUR_ROUTES = ['/', '/deadlines', '/community', '/garden', '/account']
+// rail and along the bar at the top of a phone. Following the app's own
+// layout is the whole point: you should be able to redo the walk from memory.
+export const TOUR_ROUTES = ['/', '/deadlines', '/history', '/community', '/garden', '/account']
 
 // The most a step may say. Roughly a spoken sentence.
 export const MAX_BODY = 130
 
-// The breakpoint the board itself switches on — see components/useSwipeReveal.
-// Below it the chevrons and the braindump tray are gone and swiping replaces
-// them, so the tour has to switch on exactly the same line.
+// The breakpoint the layout itself switches on — see App.css and Spheres.css.
+// Below it the rail becomes a bar and the sphere list moves onto Today.
 export const PHONE_QUERY = '(max-width: 820px)'
 
 // The walk for one kind of screen. Nothing is dropped without a replacement:
@@ -50,15 +50,15 @@ export function stepsFor({ phone = false } = {}) {
 }
 
 const NAV = {
-  taskboard: '[data-tour="nav-today"]',
   deadlines: '[data-tour="nav-deadlines"]',
+  history: '[data-tour="nav-history"]',
   community: '[data-tour="nav-community"]',
   garden: '[data-tour="nav-garden"]',
   account: '[data-tour="nav-account"]',
 }
 
 export const TOUR_STEPS = [
-  // — the board ————————————————————————————————————————————————
+  // — today ————————————————————————————————————————————————————
   {
     key: 'rail', route: '/', mood: 'point', only: 'desktop',
     anchor: ['.sidebar-nav'],
@@ -69,125 +69,43 @@ export const TOUR_STEPS = [
     key: 'rail-phone', route: '/', mood: 'point', only: 'phone',
     anchor: ['.sidebar-nav'],
     title: 'These are your tabs',
-    body: 'Along the bottom, icons only. You will tap through them yourself — I only point.',
+    body: 'Along the top. You will tap through them yourself — I only point.',
   },
   {
-    key: 'strip', route: '/', mood: 'happy',
-    anchor: ['.greenhouse-strip'],
-    title: 'I live up here',
-    body: 'Whatever is most worth doing right now, I say it on this strip.',
+    key: 'log', route: '/', mood: 'happy', act: 'click',
+    anchor: ['.lb-note', '.lb'],
+    title: 'This is the whole app',
+    body: 'Click the box. One sentence about what you moved forward, and it plants something.',
   },
   {
-    key: 'done', route: '/', mood: 'happy',
-    anchor: ['.band-done'],
-    title: 'Done today',
-    body: 'A count, not a list. It empties at your midnight.',
+    key: 'log-sphere', route: '/', mood: 'think',
+    anchor: ['.lb-select', '.lb'],
+    title: 'Which sphere, which goal',
+    body: 'Pick where the progress goes. A goal is optional — the garden grows either way.',
   },
   {
-    key: 'doing', route: '/', mood: 'think',
-    anchor: ['.band-in_progress'],
-    title: 'Doing',
-    body: 'Two at a time, deliberately. A full band refuses the task instead of taking it.',
+    key: 'tree', route: '/', mood: 'point', only: 'desktop',
+    anchor: ['.app-sidebar .st', '.st'],
+    title: 'Your spheres',
+    body: 'Down the left, under the tabs, with this week’s count beside each. + Area and + Sphere add more.',
   },
   {
-    key: 'upnext', route: '/', mood: 'point',
-    anchor: ['.band-todo'],
-    title: 'Up next',
-    body: 'Four at most. Everything else waits in the braindump.',
+    key: 'tree-phone', route: '/', mood: 'point', only: 'phone',
+    anchor: ['.st-page'],
+    title: 'Your spheres',
+    body: 'At the bottom of Today, with this week’s count beside each. + Area and + Sphere add more.',
   },
   {
-    key: 'chevrons', route: '/', mood: 'point', only: 'desktop',
-    anchor: ['.row-advance', '.paper-row'],
-    title: 'Moving work',
-    body: 'The chevrons send a task forward or back. Click the task itself to edit it.',
+    key: 'gardens', route: '/', mood: 'idle',
+    anchor: ['.sph-gardens', '.sph-start'],
+    title: 'A garden for every sphere',
+    body: 'Same scale, side by side. The small one is the one you have been neglecting.',
   },
   {
-    key: 'swipe', route: '/', mood: 'point', only: 'phone',
-    anchor: ['.paper-row'],
-    title: 'Swipe a task left',
-    body: 'Nothing on the row moves it. Drag one sideways and two buttons appear behind it.',
-  },
-  {
-    key: 'swipe-what', route: '/', mood: 'think', only: 'phone',
-    anchor: ['.paper-row'],
-    title: 'Forward, or back',
-    body: 'The top one moves it on, the bottom one sends it back. Tap the row itself to open it.',
-  },
-  {
-    key: 'drag', route: '/', mood: 'idle', only: 'desktop',
-    anchor: ['.row-stripe', '.paper-row'],
-    title: 'Or drag it',
-    body: 'The coloured stripe is the handle. Drag a task into any band, or onto the braindump.',
-  },
-
-  // — the braindump, and a project ————————————————————————————
-  {
-    key: 'dump-open', route: '/', mood: 'point', act: 'click',
-    anchor: ['.tab-dump'],
-    title: 'Open the braindump',
-    body: 'Click Braindump. It is the tab where nothing is limited.',
-  },
-  {
-    key: 'dump', route: '/', mood: 'think',
-    anchor: ['.dump-capture', '.dump-pile'],
-    title: 'Everything you thought of',
-    body: 'Type it here. No dates, no order — just get it out of your head.',
-  },
-  {
-    key: 'pills', route: '/', mood: 'point',
-    anchor: ['.dump-pills'],
-    title: 'The pills are the button',
-    body: 'You do not press Add. You press the project it belongs to, and that files it.',
-  },
-  {
-    key: 'tray', route: '/', mood: 'think', only: 'desktop',
-    anchor: ['.dump-tray', '.dump-list'],
-    title: 'Getting things out again',
-    body: 'Click an item, then hit a tray slot — or just press its number. 4 deletes.',
-  },
-  {
-    key: 'dump-swipe', route: '/', mood: 'think', only: 'phone',
-    anchor: ['.dump-hint', '.dump-list'],
-    title: 'Getting things out again',
-    body: 'Same sideways flick as the board: swipe an item to send it to Up next, or to bin it.',
-  },
-  {
-    key: 'newproject', route: '/', mood: 'happy', act: 'click',
-    anchor: ['.dump-pj-new'],
-    title: 'Make yourself a project',
-    body: 'Click + New project and name something you are actually working on.',
-  },
-  {
-    key: 'calendar', route: '/', mood: 'think',
-    anchor: ['.cal-strip', '.dump-pills'],
-    title: 'Projects meet your calendar',
-    body: 'Put a project name in a Google Calendar event and its tasks move onto the board at that hour.',
-  },
-
-  // — the archive ————————————————————————————————————————————
-  {
-    key: 'archive-open', route: '/', mood: 'point', act: 'click',
-    anchor: ['.tab-archived'],
-    title: 'Now open Archived',
-    body: 'Click Archived. Nothing you finish is thrown away.',
-  },
-  {
-    key: 'archive', route: '/', mood: 'idle',
-    anchor: ['.archive-cal', '.archive-cal-grid'],
-    title: 'Everything you finished',
-    body: 'Laid out by the day you finished it, month by month.',
-  },
-  {
-    key: 'archive-search', route: '/', mood: 'think',
-    anchor: ['.arc-search'],
-    title: 'And it is searchable',
-    body: 'Title, notes, project, updates. Old projects stay here for good.',
-  },
-  {
-    key: 'board-back', route: '/', mood: 'point', act: 'click',
-    anchor: ['.tab-board'],
-    title: 'Back to the board',
-    body: 'Click Board. That is the whole taskboard.',
+    key: 'quests', route: '/', mood: 'happy',
+    anchor: ['.quest-strip'],
+    title: 'Quests',
+    body: 'A few each day and week, all about logging. Claim them here for coins.',
   },
 
   // — deadlines ————————————————————————————————————————————————
@@ -195,27 +113,35 @@ export const TOUR_STEPS = [
     key: 'deadlines-go', route: '/', mood: 'point', act: 'click',
     anchor: [NAV.deadlines],
     title: 'Click Deadlines',
-    body: 'Second tab down. Anything you gave a date to is waiting there.',
+    body: 'Every goal you set, by its end date.',
   },
   {
     key: 'upcoming', route: '/deadlines', mood: 'idle',
-    anchor: ['.dl-upcoming'],
+    anchor: ['.sph-section', '.sph-start'],
     title: 'What is coming',
-    body: 'Sorted by date, nearest first. That is most of what this tab is for.',
+    body: 'Overdue, this week, this month, later. A goal gone quiet is flagged before it is late.',
+  },
+
+  // — history ——————————————————————————————————————————————————
+  {
+    key: 'history-go', route: '/deadlines', mood: 'point', act: 'click',
+    anchor: [NAV.history],
+    title: 'Click History',
+    body: 'Everything you have ever logged.',
   },
   {
-    key: 'views', route: '/deadlines', mood: 'point',
-    anchor: ['.dl-views'],
-    title: 'Today, week, month',
-    body: 'Three zoom levels on the same dates. Pick whichever you think in.',
+    key: 'history-search', route: '/history', mood: 'think', act: 'click',
+    anchor: ['.sph-search'],
+    title: 'Search it',
+    body: 'Click the search. Words, a sphere, a goal — useful when someone asks what you did all term.',
   },
 
   // — community ————————————————————————————————————————————————
   {
-    key: 'community-go', route: '/deadlines', mood: 'point', act: 'click',
+    key: 'community-go', route: '/history', mood: 'point', act: 'click',
     anchor: [NAV.community],
     title: 'Click Community',
-    body: 'Friends, a market, and the reason to bring people with you.',
+    body: 'Friends, shared spheres, a market, and the reason to bring people with you.',
   },
   {
     key: 'referrals', route: '/community', mood: 'happy',
@@ -233,7 +159,7 @@ export const TOUR_STEPS = [
     key: 'market', route: '/community', mood: 'happy',
     anchor: ['.mk-card'],
     title: 'The marketplace',
-    body: 'Pick something you hold, name your price, put it up. Take it back any time.',
+    body: 'Packets you have not opened, at whatever price you name. Take one back any time.',
   },
 
   // — the garden, room by room ————————————————————————————————
@@ -241,7 +167,7 @@ export const TOUR_STEPS = [
     key: 'garden-go', route: '/community', mood: 'happy', act: 'click',
     anchor: [NAV.garden],
     title: 'Click Garden',
-    body: 'This is the part that pays you for finishing things.',
+    body: 'Where your coins and sprouts go.',
   },
   {
     key: 'bag', route: '/garden', mood: 'happy',
@@ -279,19 +205,19 @@ export const TOUR_STEPS = [
     key: 'identity', route: '/account', mood: 'idle',
     anchor: ['[data-tour="acct-identity"]'],
     title: 'Your name',
-    body: 'This is the name friends see. Change it whenever you like.',
+    body: 'This is the name friends and shared spheres see. Change it whenever you like.',
   },
   {
     key: 'workspace', route: '/account', mood: 'think',
     anchor: ['[data-tour="acct-workspace"]'],
     title: 'Workspace and theme',
-    body: 'Switch between your personal board and a community board, and go dark.',
+    body: 'Switch between your own space and a community’s, and go dark.',
   },
   {
     key: 'quiet', route: '/account', mood: 'idle',
     anchor: ['[data-tour="acct-quiet"]'],
     title: 'Quiet mode',
-    body: 'Turns the game down. Finished tasks pay coins instead of taking the screen.',
+    body: 'Turns the game down. Streaks become a line in the corner instead of taking the screen.',
   },
   {
     key: 'replay', route: '/account', mood: 'happy',
@@ -303,6 +229,6 @@ export const TOUR_STEPS = [
     key: 'done-tour', route: '/account', mood: 'happy',
     anchor: null,
     title: 'That is the place',
-    body: 'Finish a task, pop the cloud, grow the thing. I will be on the strip.',
+    body: 'Do something, log it, watch it grow. I will be around.',
   },
 ]

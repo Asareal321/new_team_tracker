@@ -26,10 +26,10 @@ import './Tour.css'
 // one part that is not a paragraph. The button comes back only if the control
 // cannot be found at all, which is the single case that would trap you.
 //
-// And the walk itself differs by screen. A phone has no chevrons on a row and
-// no braindump tray; a desktop has no swipe. Steps carry `only: 'phone' |
-// 'desktop'` and the list is filtered on the same breakpoint the board uses,
-// so the tour can never teach a gesture this screen does not have.
+// And the walk itself differs by screen. On a phone the rail is a bar and the
+// sphere list sits at the bottom of Today; on a desktop it is down the left.
+// Steps carry `only: 'phone' | 'desktop'` and the list is filtered on the same
+// breakpoint the layout uses, so the tour never points at a hidden list.
 
 const FIND_TIMEOUT = 1600
 const PAD = 8
@@ -43,8 +43,8 @@ function firstMatch(selectors) {
 }
 
 export default function Tour({ onDone }) {
-  // Same hook the rows use, so the tour and the board can't disagree about
-  // which app you are looking at. Rotating a tablet mid-walk re-filters the
+  // Same breakpoint the layout uses, so the tour and the page can't disagree
+  // about which app you are looking at. Rotating a tablet mid-walk re-filters the
   // list; the index is clamped below rather than reset, because throwing you
   // back to step one for turning your phone would be its own bug.
   const phone = useIsNarrow(PHONE_QUERY)

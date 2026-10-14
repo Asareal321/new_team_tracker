@@ -49,15 +49,16 @@ ok('each tab is visited once, in one run', order.length === new Set(order).size,
 // survivable but silent. This catches the typo at build time instead.
 
 const SOURCES = [
-  'src/components/TaskBoard.jsx', 'src/components/Layout.jsx',
+  'src/components/Layout.jsx', 'src/components/LogBox.jsx', 'src/components/SphereTree.jsx',
+  'src/components/QuestStrip.jsx', 'src/pages/TodayPage.jsx', 'src/pages/HistoryPage.jsx',
   'src/components/CommunityPeople.jsx', 'src/components/Marketplace.jsx',
-  'src/components/CalendarStrip.jsx', 'src/components/ReferralCard.jsx',
+  'src/components/ReferralCard.jsx', 'src/App.css',
   'src/pages/GardenPage.jsx', 'src/pages/TeamsPage.jsx',
-  'src/pages/DeadlinesPage.jsx', 'src/pages/AccountPage.jsx',
+  'src/pages/GoalDeadlinesPage.jsx', 'src/pages/AccountPage.jsx',
 ]
 const src = SOURCES.map(f => { try { return readFileSync(f, 'utf8') } catch { return '' } }).join('\n')
-// `band-${status}` is built at runtime from the board's own keys.
-const RUNTIME = ['band-todo', 'band-in_progress', 'band-done']
+// Classes put together at runtime rather than written out whole.
+const RUNTIME = ['st-page']
 
 // The nav links and the garden rooms are named by a data-tour attribute built
 // from a value in a list, so what the source contains is the value, not the
@@ -72,7 +73,8 @@ function needle(sel) {
 
 for (const s of TOUR_STEPS) {
   for (const sel of s.anchor || []) {
-    const cls = needle(sel)
+    // A descendant selector is checked by its last part.
+    const cls = needle(sel.split(' ').pop())
     const found = RUNTIME.includes(cls)
       || new RegExp(`[\`"'\\s>]${cls}[\`"'\\s<$]`, 'i').test(src)
     ok(`"${s.key}" points at a real element (${sel})`, found)
@@ -202,15 +204,14 @@ for (const s of onlySteps) {
   ok(`"${s.key}" has an opposite number for the other screen`, !!partner, neighbours(s))
 }
 
-// The gestures that only exist on one screen have to be named on that screen.
+// Each screen is sent to where its spheres actually are.
 const phoneBodies = stepsFor({ phone: true }).map(s => `${s.title} ${s.body}`).join(' ').toLowerCase()
 const deskBodies = stepsFor({ phone: false }).map(s => `${s.title} ${s.body}`).join(' ').toLowerCase()
 
-ok('the phone walk teaches the swipe', /swipe|flick/.test(phoneBodies))
-ok('and does not tell you to use chevrons that are not there', !/chevron/.test(phoneBodies))
-ok('the desktop walk teaches the chevrons', /chevron/.test(deskBodies))
-ok('and does not tell you to swipe', !/\bswipe\b/.test(deskBodies))
-ok('the desktop walk mentions dragging, which a phone row cannot do', /drag/.test(deskBodies))
+ok('the phone walk finds the spheres on Today', /bottom of today/.test(phoneBodies))
+ok('and never says they are down the left', !/down the left/.test(phoneBodies))
+ok('the desktop walk finds them in the rail', /down the left/.test(deskBodies))
+ok('and never sends you to the bottom of Today for them', !/bottom of today/.test(deskBodies))
 
 console.log(`\n${pass}/${pass + fail} passed`)
 process.exit(fail ? 1 : 0)

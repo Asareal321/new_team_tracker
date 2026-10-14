@@ -1,23 +1,22 @@
 import { useState } from 'react'
-import { CLOUD_TIERS, SEEDS, seedByKey, remainingSeconds, formatDuration } from '../lib/garden'
+import { SEEDS } from '../lib/garden'
 import { STREAK_MILESTONES, streakCoins } from '../lib/streak'
 import { PHASES } from '../lib/daylight'
 import Onboarding from './Onboarding'
 import './DevPanel.css'
 
-// Developer tools, gated to the accounts in VITE_DEV_EMAIL. Cloud controls are
-// preview-only — they never write to Supabase — so animations can be inspected
-// without inflating a real garden. The garden shortcuts below DO write, because
-// there's no way to reach those states otherwise; they're marked as such.
+// Developer tools, gated to the accounts in VITE_DEV_EMAIL. Previews never
+// write to Supabase. The garden shortcuts DO write, because there's no way to
+// reach those states otherwise; they're marked as such.
 // Both ends of the curve, every milestone, and the day after the last one —
 // the payout flattens there, and a preview that never shows the flat part
 // hides the only surprising thing about the numbers.
 const STREAK_PREVIEWS = [1, 2, 3, 7, 12, 30, 100, 200]
 
 export default function DevPanel({
-  state, cloud, log,
-  onClose, onSpawn, onReplay,
-  onAddCoins, onUnlockAll, onFinishGrowth, onReset, onClearLog,
+  state,
+  onClose,
+  onAddCoins, onUnlockAll, onReset,
   onResetOnboarding, onResetQuests, onCompleteQuests, onShowStreak,
 }) {
   const [error, setError] = useState('')
@@ -39,9 +38,6 @@ export default function DevPanel({
     }
   }
 
-  const growing = seedByKey(state?.growing_seed)
-  const remaining = remainingSeconds(state)
-
   return (
     <div className="devpanel">
       <header className="dev-head">
@@ -52,65 +48,13 @@ export default function DevPanel({
       {error && <p className="dev-error">{error}</p>}
 
       <section className="dev-section">
-        <h4>Spawn cloud <span className="dev-note">preview · never saves</span></h4>
-        <div className="dev-grid">
-          {CLOUD_TIERS.map(t => (
-            <button
-              key={t.tier}
-              className="dev-btn tier"
-              style={{ '--tier-color': t.color }}
-              onClick={() => onSpawn(t.tier)}
-              title={`Spawn at ${t.name} — ${t.shaveMinutes} min, ${(t.growChance * 100).toFixed(0)}% to grow`}
-            >
-              {t.name}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="dev-section">
-        <h4>Replay animation</h4>
-        {!cloud && <p className="dev-hint">Spawn a cloud first.</p>}
-        <div className="dev-row">
-          {['grow', 'leap', 'wobble', 'burst'].map(type => (
-            <button key={type} className="dev-btn" disabled={!cloud} onClick={() => onReplay(type)}>
-              {type}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="dev-section">
-        <h4>Roll log</h4>
-        {!log.length && <p className="dev-hint">Tap a cloud to see what each tap rolled.</p>}
-        {log.length > 0 && (
-          <>
-            <ul className="dev-log">
-              {log.map((entry, i) => (
-                <li key={`${entry.at}-${i}`} className={entry.gain ? 'hit' : 'miss'}>
-                  <span className="dev-log-tap">tap {entry.tap}</span>
-                  <span>
-                    {CLOUD_TIERS[entry.from - 1].name} → {CLOUD_TIERS[entry.to - 1].name}
-                  </span>
-                  <span className="dev-log-gain">{entry.gain ? `+${entry.gain}` : 'no change'}</span>
-                </li>
-              ))}
-            </ul>
-            <button className="dev-btn subtle" onClick={onClearLog}>Clear log</button>
-          </>
-        )}
-      </section>
-
-      <section className="dev-section">
         <h4>Garden <span className="dev-note warn">writes to your real garden</span></h4>
         <p className="dev-state">
-          {state ? `${state.coins} coins · ${state.plot_count} beds · rarity ${state.unlocked_rarity}/${SEEDS.length}` : 'no state'}
-          {growing && ` · growing ${growing.name} (${formatDuration(remaining)})`}
+          {state ? `${state.coins} coins · ${Object.values(state.seed_inventory || {}).reduce((a, b) => a + b, 0)} seeds in the bag of ${SEEDS.length} kinds` : 'no state'}
         </p>
         <div className="dev-row">
           <button className="dev-btn" disabled={busy} onClick={() => run(() => onAddCoins(500))}>+500 coins</button>
           <button className="dev-btn" disabled={busy} onClick={() => run(() => onUnlockAll())}>Unlock seeds</button>
-          <button className="dev-btn" disabled={busy || !growing} onClick={() => run(() => onFinishGrowth())}>Finish growth</button>
         </div>
         <button
           className="dev-btn danger"

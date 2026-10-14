@@ -222,7 +222,7 @@ export function SpheresProvider({ children }) {
   // so a failed write can never have paid out or spent a seed. The id is
   // minted here so the plant can be drawn from it before the round trip —
   // packets decide what it is; see pickPlant in lib/spheres.
-  const addLog = useCallback(async ({ sphereId, goalId = null, note }) => {
+  const addLog = useCallback(async ({ sphereId, goalId = null, note, quiet = false }) => {
     const { window } = boostInfo(sphereId)
     const id = crypto.randomUUID()
     const plant = choosePlant(id)
@@ -233,7 +233,7 @@ export function SpheresProvider({ children }) {
     const { error: e } = await supabase.from('progress_logs').insert(row)
     if (e) throw e
     setLogs(prev => [row, ...prev])
-    await rewardLog({ window, sphereId, goalId, seedKey: plant.seedKey, consume: plant.consume })
+    await rewardLog({ window, sphereId, goalId, seedKey: plant.seedKey, consume: plant.consume, quiet })
     return row
   }, [user, rewardLog, choosePlant, boostInfo])
 

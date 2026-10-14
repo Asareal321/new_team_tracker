@@ -2,9 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { supabase } from '../supabase'
 import { useAuth } from '../auth/AuthContext'
 import {
-  SEEDS, seedByKey, cloudShaveSeconds, remainingSeconds,
-  nextExpansion, STARTING_PLOTS, packetByKey, rollPacket,
-  ADD_TASK_REWARD, DAILY_CAPS, CLOUD_EXPECTED_COINS, FOCUS_BONUS_COINS,
+  SEEDS, seedByKey, STARTING_PLOTS, packetByKey, rollPacket,
   localDay, todayBucket, advanceStreak,
 } from '../lib/garden'
 import { logReward, pickPlant, takeSeed, logDaily } from '../lib/spheres'
@@ -12,9 +10,6 @@ import { newlyUnlocked } from '../lib/achievements'
 import { questView } from '../lib/quests'
 import { streakReward } from '../lib/streak'
 import { isDevUser } from '../lib/devMode'
-import CloudLayer from '../components/CloudLayer'
-import { cloudOutcome, cloudStatsPatch, cloudNotice, pendingClouds, pendingTiers, cloudPayout } from '../lib/clouds'
-import { activeWindow, addTaskReward, spendBonus } from '../lib/planningHours'
 import DevPanel from '../components/DevPanel'
 import RewardToasts from '../components/RewardToasts'
 import StreakPanel from '../components/StreakPanel'
@@ -102,18 +97,6 @@ const DEFAULT_STATE = {
   quests: { day: null, claimed: [] },
 }
 
-// A burst cloud's mark on the lifetime record. `bestCloudTier` is the highest
-// tier ever reached, which is what the storm-chaser achievements read — a
-// running count would let a hundred Commons stand in for one Legendary.
-function cloudStats(state, tier) {
-  const cur = state?.stats || {}
-  return {
-    ...cur,
-    cloudsPopped: (cur.cloudsPopped || 0) + 1,
-    bestCloudTier: Math.max(cur.bestCloudTier || 0, tier),
-  }
-}
-
 // Where a flower waits mid-swap. Off-grid and negative, so no plot renders it
 // and it can't collide with a real index.
 const PARKED_PLOT = -1
@@ -165,7 +148,6 @@ export function GardenProvider({ children }) {
   const { user } = useAuth()
   const [state, setState] = useState(null)
   const [flowers, setFlowers] = useState([])
-  const [clouds, setClouds] = useState([])
   const [ready, setReady] = useState(false)
   // Columns this database turned out not to have, learned from failed writes.
   // Lets the rest of the garden keep working against a schema that's behind,
@@ -175,8 +157,6 @@ export function GardenProvider({ children }) {
   const [devOpen, setDevOpen] = useState(false)
   // Signals the on-screen cloud to replay an animation, and records what each
   // tap rolled so the dev panel can show the randomness instead of hiding it.
-  const [devSignal, setDevSignal] = useState({ n: 0, type: null })
-  const [devLog, setDevLog] = useState([])
   // Every cloud a user pops posts a reward. Keeping the latest state in a ref
   // lets those writes read fresh values without re-creating the callbacks.
   //
@@ -378,95 +358,8 @@ export function GardenProvider({ children }) {
     return quest.reward
   }, [commit, bumpStats, notify])
 
-  // --- clouds -------------------------------------------------------------
-
-  // Called once the task-completion modal is dismissed. The cloud holds the
-  // centre of the screen until it's tapped out or collected — no timer.
-  // `startTier` and `preview` are for the dev panel: a preview cloud looks and
-  // behaves identically but banks nothing, so testing can't inflate the garden.
-  // Quiet mode is handled by rewardTaskDone, which pays the cloud's cash value
-  // instead of showing one — so by the time anything gets here, a cloud is
-  // wanted. Dev previews always show, or the panel looks broken to whoever set it.
-  const spawnCloud = useCallback(({ startTier = 1, preview = false } = {}) => {
-    if (!user) return
-    setClouds(prev => [...prev, { id: crypto.randomUUID(), startTier, preview }])
-  }, [user])
-
-  const dismissCloud = useCallback(id => {
-    setClouds(prev => prev.filter(c => c.id !== id))
-  }, [])
-
-  // Put clouds aside without pretending you earned them just now.
-  //
-  // The first-run seed finishes a couple of tasks on your behalf so the board
-  // isn't empty, and those are worth their clouds — but they are not worth a
-  // streak. Running them through rewardTaskDone advanced the streak to day one
-  // and threw the full-screen streak panel over the top of setup, which is
-  // both a lie about what you did and a wall in front of the tour.
-  const bankClouds = useCallback(async n => {
-    const count = Math.max(0, Math.floor(n))
-    if (!count) return 0
-    const cur = stateRef.current
-    await commit({
-      stats: { ...(cur?.stats || {}), pendingClouds: pendingClouds(cur) + count },
-    })
-    return count
-  }, [commit])
-
-  // Let the banked ones in. The count is zeroed as they are released rather
-  // than as they are popped: they are on screen now, and a reload that lost
-  // both the bank and the clouds would be worse than one that lost neither.
-  const releaseBankedClouds = useCallback(async () => {
-    const waiting = pendingClouds(stateRef.current)
-    if (waiting < 1) return 0
-    // Each comes back at the tier it was earned at, so a cloud banked during a
-    // focus hour is still the better cloud when you get round to popping it.
-    const tiers = pendingTiers(stateRef.current)
-    setClouds(prev => [
-      ...prev,
-      ...tiers.map(startTier => ({ id: crypto.randomUUID(), startTier, preview: false })),
-    ])
-    await commit({
-      stats: { ...(stateRef.current?.stats || {}), pendingClouds: 0, pendingTiers: [] },
-    })
-    return waiting
-  }, [commit])
-
-  // A popped cloud shaves time off whatever is growing, scaled by the rarity
-  // tier it reached. Whatever it can't spend — because the flower finished
-  // first, or because there is no flower at all — is banked for the next seed.
-  // Nothing a cloud is worth is ever thrown away. See lib/clouds.js: an empty
-  // greenhouse used to pay coins and discard the time, which cost an Epic's
-  // five hours for twenty coins.
-  const popCloud = useCallback(async (id, tier) => {
-    const cloud = clouds.find(c => c.id === id)
-    dismissCloud(id)
-    const current = stateRef.current
-    if (!current) return null
-    const growing = !!current.growing_seed
-    const { applied, banked } = cloudPayout({
-      shave: cloudShaveSeconds(tier),
-      growing,
-      left: growing ? (remainingSeconds(current) ?? 0) : 0,
-    })
-    // Preview clouds report what they *would* have paid, but write nothing.
-    if (cloud?.preview) return { type: 'shave', amount: applied, overflow: banked, preview: true }
-    await commit({
-      shaved_seconds: (current.shaved_seconds || 0) + applied,
-      overflow_seconds: (current.overflow_seconds || 0) + banked,
-      stats: cloudStats(current, tier),
-      daily: bumpDaily({ popped: 1 }),
-    })
-    return { type: 'shave', amount: applied, overflow: banked }
-  }, [commit, dismissCloud, clouds, bumpDaily])
 
   // --- developer tools ----------------------------------------------------
-
-  const devReplay = useCallback(type => setDevSignal(sig => ({ n: sig.n + 1, type })), [])
-
-  const pushDevLog = useCallback(entry => {
-    setDevLog(prev => [{ ...entry, at: Date.now() }, ...prev].slice(0, 12))
-  }, [])
 
   const devAddCoins = useCallback(
     amount => save({ coins: Math.max(0, (stateRef.current?.coins || 0) + amount) }),
@@ -509,9 +402,10 @@ export function GardenProvider({ children }) {
     })
   }, [save])
 
-  // Onboarding plants the chosen seed directly — it deliberately bypasses the
-  // seed-tray cost, because the whole point is that you own a plant before you
-  // have finished (or even written) a single task.
+  // Onboarding's first packet gives up one seed. It goes into the bag and is
+  // pinned, so the first log you write — in setup or straight after — plants
+  // that exact flower in that sphere's garden. Nothing grows on a clock any
+  // more; a plant is a record of a log.
   // `perkPackets` is what onboarding promised in exchange for something — at
   // present, going public. Granted in the same write that marks onboarding
   // done, so there is no window where the account is set up and the packet is
@@ -521,7 +415,11 @@ export function GardenProvider({ children }) {
     if (stateRef.current?.onboarded) return
     const seed = seedByKey(seedKey)
     const discovered = { ...(stateRef.current?.discovered || {}) }
-    if (seed) discovered[seed.key] = (discovered[seed.key] || 0) + 1
+    const bag = { ...(stateRef.current?.seed_inventory || {}) }
+    if (seed) {
+      discovered[seed.key] = (discovered[seed.key] || 0) + 1
+      bag[seed.key] = (bag[seed.key] || 0) + 1
+    }
 
     const packets = { ...(stateRef.current?.packet_inventory || {}) }
     for (const key of perkPackets) packets[key] = (packets[key] || 0) + 1
@@ -531,10 +429,8 @@ export function GardenProvider({ children }) {
       discovered,
       ...(perkPackets.length ? { packet_inventory: packets } : {}),
       ...(seed ? {
-        growing_seed: seed.key,
-        growing_started_at: new Date().toISOString(),
-        growing_grow_seconds: seed.growSeconds,
-        shaved_seconds: 0,
+        seed_inventory: bag,
+        prefs: { ...(stateRef.current?.prefs || {}), plantNext: seed.key },
       } : {}),
     })
   }, [save])
@@ -545,14 +441,6 @@ export function GardenProvider({ children }) {
     seed_inventory: Object.fromEntries(SEEDS.map(s => [s.key, 3])),
     discovered: Object.fromEntries(SEEDS.map(s => [s.key, 3])),
   }), [save])
-
-  // Shave the whole remaining grow time so the harvest UI can be reached at
-  // once, instead of waiting out a 24-hour Legendary.
-  const devFinishGrowth = useCallback(() => {
-    const current = stateRef.current
-    if (!current?.growing_seed) throw new Error('Nothing is growing')
-    return save({ shaved_seconds: current.growing_grow_seconds ?? 0 })
-  }, [save])
 
   // Puts the account back to first-run so the real onboarding — the one that
   // plants a seed, creates a project and writes a task — can be walked through
@@ -642,6 +530,9 @@ export function GardenProvider({ children }) {
   // write can never have paid out or used a seed.
   const rewardLog = useCallback(async ({
     window = null, sphereId = null, goalId = null, seedKey = null, consume = false,
+    // Setup's first log: the tour is about to start, and the streak panel
+    // would land on top of it. Paid in full, announced with a line instead.
+    quiet = false,
   } = {}) => {
     const cur = stateRef.current
     if (!cur) return null
@@ -679,7 +570,7 @@ export function GardenProvider({ children }) {
 
     // Quiet mode keeps the reward and the streak, and skips the panel that
     // takes over the screen to announce them — a line in the corner instead.
-    if (streakPay && cur.quiet_mode) {
+    if (streakPay && (cur.quiet_mode || quiet)) {
       notify(`🔥 ${nextStreak.current}-day streak${streakPay.coins ? ` · +${streakPay.coins} 🪙` : ''}`)
       say()
     } else if (streakPay) {
@@ -701,158 +592,6 @@ export function GardenProvider({ children }) {
     () => commit({ daily: bumpDaily({ goals: 1 }) }),
     [commit, bumpDaily],
   )
-
-  const rewardTaskAdded = useCallback(async () => {
-    const cur = stateRef.current
-    if (!cur) return null
-    const daily = todayBucket(cur.daily)
-    // Two currencies, two caps, metered independently — they run out at
-    // different rates, and hitting the seed cap shouldn't quietly stop the
-    // coins as well. Inside a planning hour each is paid twice, and the second
-    // half ignores the daily cap: a day you were productive enough to cap out
-    // on is exactly the day the evening plan is worth most. See
-    // lib/planningHours.js.
-    const window = activeWindow(cur.prefs)
-    const r = addTaskReward({ base: ADD_TASK_REWARD, daily, caps: DAILY_CAPS, window })
-    const seedGain = r.seeds + r.bonusSeeds
-    const coinGain = r.coins + r.bonusCoins
-    await commit({
-      ...(seedGain > 0 ? { seeds: (cur.seeds || 0) + seedGain } : {}),
-      ...(coinGain > 0 ? { coins: (cur.coins || 0) + coinGain } : {}),
-      daily: {
-        ...daily,
-        // Only the base half is recorded against the cap. Recording the bonus
-        // here would cap it by the back door.
-        seeds: daily.seeds + r.seeds,
-        coins: daily.coins + r.coins,
-        bonus: spendBonus(daily, r),
-        added: (daily.added || 0) + 1,
-      },
-      stats: bumpStats({ tasksAdded: 1 }),
-    })
-    // One line for all of it, so writing a task down doesn't stack three
-    // toasts. The doubling says so out loud — a bonus you don't notice is a
-    // bonus that changes nobody's habits.
-    const parts = [seedGain > 0 && `+${seedGain} 🌱`, coinGain > 0 && `+${coinGain} 🪙`].filter(Boolean)
-    if (parts.length) notify(`${parts.join(' ')}${r.bonusSeeds || r.bonusCoins ? ' · planning hour, doubled' : ''}`)
-    return { gain: seedGain, coins: coinGain, capped: seedGain === 0 && coinGain === 0 }
-  }, [commit, bumpStats, notify])
-
-  // Emptying the Doing column is recorded but no longer paid.
-  //
-  // It used to bank 60 coins. That rewarded a *position* rather than work: the
-  // same finished task was worth wildly different amounts depending on what
-  // happened to be sitting beside it, which is a strange thing to teach. Money
-  // now comes from the two ends of a task's life — writing it down, finishing
-  // it — and both are the same every time.
-  //
-  // Nothing rewards it any more either — the two quests and three awards that
-  // did are gone. The reason is the same one that took away the coins: the
-  // quickest way to empty Doing is to put less in it, so paying for the empty
-  // band turns a WIP limit into a target and rewards the opposite of what the
-  // limit is for.
-  //
-  // The count itself stays. It costs nothing, the board reads it, and a
-  // counter is much easier to keep writing than to reinstate later.
-  const recordDoingCleared = useCallback(async () => {
-    const cur = stateRef.current
-    if (!cur) return null
-    const daily = todayBucket(cur.daily)
-    await commit({
-      daily: { ...daily, clears: (daily.clears || 0) + 1 },
-      stats: bumpStats({ doingClears: 1 }),
-    })
-    return { clears: (cur.stats?.doingClears || 0) + 1 }
-  }, [commit, bumpStats])
-
-  // Finishing a task earns a cloud rather than a flat payout, so what it's
-  // worth is the cloud's own roll. Past the daily cap the work still counts
-  // toward the streak and the stats — only the cloud stops.
-  //
-  // The cloud is banked, not shown. A cloud takes the middle of the screen
-  // until it is tapped out, which is right for one and wrong for a run of
-  // six — clearing a backlog turned into six interruptions. So finishing puts
-  // one aside, the greenhouse says how many are waiting, and you let them in
-  // when you are ready for them.
-  // `boosted` is set when the task belonged to the calendar block that owns
-  // the board. Finishing inside your own focus hour is the behaviour the whole
-  // feature is trying to buy, so it pays more — see FOCUS_BONUS_COINS and the
-  // tier bump below.
-  const rewardTaskDone = useCallback(async ({ boosted = false } = {}) => {
-    const cur = stateRef.current
-    if (!cur) return null
-    const daily = todayBucket(cur.daily)
-    const day = localDay()
-    // The streak advances on the day's FIRST finished task, and only then, so
-    // this is the one completion in the day that has something extra to say.
-    const streakAdvanced = cur.streak?.lastDay !== day
-    const underCap = daily.clouds < DAILY_CAPS.clouds
-    // Quiet mode trades the interruption for its cash value — it used to just
-    // drop the cloud, which now would mean finishing a task paid nothing.
-    const quiet = !!cur.quiet_mode
-    // Quiet mode's payout doubles too — otherwise turning the animation off
-    // would quietly opt you out of the focus bonus as well.
-    const paidQuiet = underCap && quiet ? CLOUD_EXPECTED_COINS * (boosted ? 2 : 1) : 0
-    // Finishing outside a block pays no coins at all: a cloud pays in time.
-    // This is the focus hour's own reward, and it is flat rather than a
-    // multiplier of nothing.
-    const focusCoins = boosted && !quiet ? FOCUS_BONUS_COINS : 0
-
-    const nextStreak = advanceStreak(cur.streak, day)
-    // Paid outside the daily cap, like a quest: once a day, amount fixed by the
-    // run's own length. See lib/streak.js.
-    const reward = streakAdvanced ? streakReward(nextStreak.current) : null
-    const packets = { ...(cur.packet_inventory || {}) }
-    if (reward?.packetKey) packets[reward.packetKey] = (packets[reward.packetKey] || 0) + 1
-
-    // Banked, capped, or paid out — decided in lib/clouds.js so it can be
-    // tested. Nothing about this appears on screen, so a wrong answer here is
-    // silent until you notice the nav never lights.
-    const outcome = cloudOutcome({ daily, quiet })
-    const banks = outcome.banks > 0
-    // The cloud starts a tier up rather than arriving twice. Doubling the
-    // COUNT would burn the daily cloud cap twice as fast, so a focus hour
-    // would leave you worse off by evening — the exact opposite of a bonus.
-    // A better tier costs nothing against the cap and is worth more.
-    const startTier = boosted ? 2 : 1
-
-    // pendingClouds is not a statistic. It lives in the stats bag because that
-    // bag is jsonb and already saved — a column of its own would mean another
-    // migration standing between this and working.
-    const nextStats = bumpStats({ tasksDone: 1, ...cloudStatsPatch(outcome, { startTier }) })
-
-    await commit({
-      coins: (cur.coins || 0) + paidQuiet + focusCoins + (reward?.coins || 0),
-      ...(reward?.packetKey ? { packet_inventory: packets } : {}),
-      daily: { ...daily, clouds: daily.clouds + (underCap ? 1 : 0), done: (daily.done || 0) + 1 },
-      streak: nextStreak,
-      stats: nextStats,
-    })
-
-    // Nothing takes the screen now — the cloud is already put by. All that is
-    // left is to say so.
-    const releaseCloud = () => {
-      // Read the count we just wrote, not the ref — a ref updated on render
-      // is still one completion behind at this point.
-      const notice = cloudNotice(outcome, nextStats.pendingClouds || 0)
-      notify(notice.text, notice.tone)
-    }
-
-    if (reward) {
-      setStreakCue({
-        ...reward,
-        prevStreak: Math.max(0, nextStreak.current - 1),
-        totalCoins: (cur.coins || 0) + paidQuiet + reward.coins,
-        release: releaseCloud,
-      })
-      return { cloud: banks, streak: nextStreak.current }
-    }
-
-    releaseCloud()
-    if (!underCap) return { cloud: false, capped: true }
-    if (quiet) return { cloud: false, quiet: true }
-    return { cloud: true }
-  }, [commit, bumpStats, notify])
 
   // Buy a packet and roll it. The roll happens client-side, which is fine for
   // a single-player cosmetic economy — nothing here is competitive and the row
@@ -905,160 +644,6 @@ export function GardenProvider({ children }) {
     return { ...seedByKey(wonKey), isNew }
   }, [save])
 
-  const plantSeed = useCallback(async seedKey => {
-    const seed = seedByKey(seedKey)
-    if (!seed) throw new Error('Unknown seed')
-    if (stateRef.current?.growing_seed) throw new Error('Something is already growing')
-    const inv = { ...(stateRef.current?.seed_inventory || {}) }
-    if (!inv[seed.key]) throw new Error(`No ${seed.name} seeds — open a packet to find one`)
-    inv[seed.key] -= 1
-    if (inv[seed.key] <= 0) delete inv[seed.key]
-    // Planting is the choice of which flower gets the banked overflow. It's
-    // capped at this seed's own grow time, so a huge bank isn't burned on a
-    // three-hour Daisy — whatever it can't absorb stays banked for the next one.
-    const banked = stateRef.current?.overflow_seconds || 0
-    const applied = Math.min(banked, seed.growSeconds)
-    await commit({
-      seed_inventory: inv,
-      daily: bumpDaily({ planted: 1 }),
-      growing_seed: seed.key,
-      growing_started_at: new Date().toISOString(),
-      growing_grow_seconds: seed.growSeconds,
-      shaved_seconds: applied,
-      overflow_seconds: banked - applied,
-    })
-    return { seed, applied, remainingOverflow: banked - applied }
-  }, [commit, bumpDaily])
-
-  const clearGrowing = useCallback(
-    extra => commit({
-      growing_seed: null,
-      growing_started_at: null,
-      growing_grow_seconds: null,
-      shaved_seconds: 0,
-      ...extra,
-    }),
-    [commit],
-  )
-
-  // Move a finished flower into a plot. Optimistic so the flower lands the
-  // instant you pick a plot, then rolls back if the insert is rejected.
-  const placeFlower = useCallback(async plotIndex => {
-    const seedKey = stateRef.current?.growing_seed
-    if (!seedKey) throw new Error('Nothing is ready to plant')
-    if (flowers.some(f => f.plot_index === plotIndex)) throw new Error('That plot is taken')
-    const row = { id: crypto.randomUUID(), user_id: user.id, seed_key: seedKey, plot_index: plotIndex, created_at: new Date().toISOString() }
-    setFlowers(prev => [...prev, row])
-    const { error } = await supabase.from('garden_flowers').insert(row)
-    if (error) {
-      setFlowers(prev => prev.filter(f => f.id !== row.id))
-      throw error
-    }
-    await clearGrowing({ stats: bumpStats({ flowersGrown: 1 }), daily: bumpDaily({ grown: 1 }) })
-  }, [flowers, user, clearGrowing])
-
-  // Rearranging the garden. Dropping onto an empty plot moves; dropping onto a
-  // planted one swaps the two.
-  //
-  // The table has `unique (user_id, plot_index)`, and the constraint is not
-  // deferrable, so a swap can't be two plain updates — the first would collide
-  // with the row it's about to displace. The occupant is parked at PARKED_PLOT
-  // (off-grid, so nothing renders it) for the duration. If a later step fails
-  // the earlier ones are undone, and `load()` reconciles anything still parked.
-  const moveFlower = useCallback(async (flowerId, toPlotIndex) => {
-    const moving = flowers.find(f => f.id === flowerId)
-    if (!moving || moving.plot_index === toPlotIndex) return
-    const occupant = flowers.find(f => f.plot_index === toPlotIndex)
-    const from = moving.plot_index
-    const snapshot = flowers
-
-    setFlowers(prev => prev.map(f => {
-      if (f.id === moving.id) return { ...f, plot_index: toPlotIndex }
-      if (occupant && f.id === occupant.id) return { ...f, plot_index: from }
-      return f
-    }))
-
-    const set = (id, plot_index) =>
-      supabase.from('garden_flowers').update({ plot_index }).eq('id', id)
-
-    try {
-      if (!occupant) {
-        const { error } = await set(moving.id, toPlotIndex)
-        if (error) throw error
-      } else {
-        let { error } = await set(occupant.id, PARKED_PLOT)
-        if (error) throw error
-        ;({ error } = await set(moving.id, toPlotIndex))
-        if (error) {
-          await set(occupant.id, toPlotIndex)
-          throw error
-        }
-        ;({ error } = await set(occupant.id, from))
-        if (error) {
-          await set(moving.id, from)
-          await set(occupant.id, toPlotIndex)
-          throw error
-        }
-      }
-    } catch (e) {
-      setFlowers(snapshot)
-      throw e
-    }
-  }, [flowers])
-
-  // Composting, not selling.
-  //
-  // A flower used to convert to coins at a fixed rate, which made the shop the
-  // only thing flowers were for and set a floor under every price — nobody
-  // would ever accept less from a person than the game paid automatically.
-  // With a marketplace, what a flower is worth is what someone will give you
-  // for it, and that only means anything if the automatic buyer is gone.
-  //
-  // So the disposal route stays and the payout doesn't: composting clears the
-  // pot or the bed and returns nothing. It is for flowers you don't want,
-  // which is a real thing to need with a bounded garden.
-  const compostGrown = useCallback(async () => {
-    const seed = seedByKey(stateRef.current?.growing_seed)
-    if (!seed) throw new Error('Nothing is ready')
-    await clearGrowing({
-      stats: bumpStats({ flowersGrown: 1, composted: 1 }),
-      daily: bumpDaily({ grown: 1 }),
-    })
-    return seed.name
-  }, [clearGrowing])
-
-  const compostPlanted = useCallback(async flowerId => {
-    const flower = flowers.find(f => f.id === flowerId)
-    const seed = seedByKey(flower?.seed_key)
-    if (!flower || !seed) return null
-    setFlowers(prev => prev.filter(f => f.id !== flowerId))
-    const { error } = await supabase.from('garden_flowers').delete().eq('id', flowerId)
-    if (error) {
-      setFlowers(prev => [...prev, flower])
-      throw error
-    }
-    await save({ stats: bumpStats({ composted: 1 }) })
-    return seed.name
-  }, [flowers, save, bumpStats])
-
-  const unlockSeed = useCallback(async seedKey => {
-    const seed = seedByKey(seedKey)
-    const current = stateRef.current
-    if (!seed || !current) return
-    if (seed.rarity <= current.unlocked_rarity) return
-    if (seed.rarity !== current.unlocked_rarity + 1) throw new Error('Unlock the previous rarity first')
-    if ((current.coins || 0) < seed.unlockCost) throw new Error('Not enough coins')
-    await save({ coins: current.coins - seed.unlockCost, unlocked_rarity: seed.rarity })
-  }, [save])
-
-  const expandGarden = useCallback(async () => {
-    const current = stateRef.current
-    const next = nextExpansion(current?.plot_count ?? STARTING_PLOTS)
-    if (!next) throw new Error('Garden is already at max size')
-    if ((current?.coins || 0) < next.cost) throw new Error('Not enough coins')
-    await save({ coins: current.coins - next.cost, plot_count: next.plotCount })
-  }, [save])
-
   const value = {
     state, flowers, ready, seeds: SEEDS,
     quests: questView(state, todayBucket(state?.daily)),
@@ -1068,7 +653,7 @@ export function GardenProvider({ children }) {
     // deletes the bed server-side, and nothing here would otherwise know.
     reload: load,
     devResetOnboarding, devResetQuests, devCompleteQuests, devShowStreak,
-    spawnCloud, bankClouds, releaseBankedClouds, rewardLog, choosePlant, setPlantNext, recordGoalSet, rewardTaskAdded, rewardTaskDone, recordDoingCleared, notify, setQuietMode, setPlanningHours, beginFocus, endFocus, completeOnboarding, buyPacket, openPacket, plantSeed, placeFlower, moveFlower, compostGrown, compostPlanted, unlockSeed, expandGarden,
+    rewardLog, choosePlant, setPlantNext, recordGoalSet, notify, setQuietMode, setPlanningHours, beginFocus, endFocus, completeOnboarding, buyPacket, openPacket,
     isDev, devOpen, openDevPanel: () => setDevOpen(true),
   }
 
@@ -1089,29 +674,17 @@ export function GardenProvider({ children }) {
           onDismiss={() => { setStreakCue(null); streakCue.release?.() }}
         />
       )}
-      <CloudLayer
-        clouds={clouds}
-        onPop={popCloud}
-        devSignal={isDev ? devSignal : null}
-        onRoll={isDev ? pushDevLog : null}
-      />
       {isDev && devOpen && (
         <DevPanel
           state={state}
-          cloud={clouds[0]}
-          log={devLog}
           onClose={() => setDevOpen(false)}
-          onSpawn={startTier => spawnCloud({ startTier, preview: true })}
-          onReplay={devReplay}
           onAddCoins={devAddCoins}
           onUnlockAll={devUnlockAll}
-          onFinishGrowth={devFinishGrowth}
           onReset={devResetGarden}
           onResetOnboarding={devResetOnboarding}
           onResetQuests={devResetQuests}
           onCompleteQuests={devCompleteQuests}
           onShowStreak={devShowStreak}
-          onClearLog={() => setDevLog([])}
         />
       )}
     </GardenContext.Provider>

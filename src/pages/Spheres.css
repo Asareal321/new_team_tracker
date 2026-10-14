@@ -393,11 +393,31 @@ html[data-theme="dark"] {
 }
 
 /* ── phone ──────────────────────────────────────────────────────────────── */
-/* The rail becomes the bottom bar on a phone, which has no room for a tree.
-   Spheres are reached from the gardens grid on Today until phase 6 gives the
-   phone its own way in. */
+/* The rail becomes a bar on a phone, which has no room for a tree. So the
+   same tree is drawn a second time on Today — hidden on a wide screen, where
+   the rail already has it — repainted from rail ink to page ink. */
+.st-page { display: none; }
 @media (max-width: 820px) {
-  .st { display: none; }
+  .app-sidebar .st { display: none; }
+  .st-page {
+    display: flex;
+    margin-top: 0;
+    padding: 14px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--bg-surface);
+    --rail-nav: var(--text-1);
+    --rail-nav-hover-bg: var(--bg-muted);
+    --rail-active-bg: var(--accent-bg);
+    --rail-active-text: var(--accent-text);
+    --rail-track: var(--text-3);
+    --rail-ctrl-border: var(--border);
+    --rail-ctrl-bg: var(--bg-page);
+    --rail-ctrl-text: var(--text-1);
+  }
+  .st-page .st-sphere { padding: 10px 0.6rem; }
+  .st-page .st-add { padding: 10px 0.6rem; }
+  .st-page .st-error { color: var(--red-text); }
   .sph-page { padding: 18px 16px 96px; gap: 18px; }
   .sph-head h1 { font-size: 1.6rem; }
   .sph-log { grid-template-columns: auto minmax(0, 1fr); }
