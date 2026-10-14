@@ -431,28 +431,30 @@ html[data-theme="dark"] {
 .mo-out { animation: mo-zoom-out 260ms ease-out; }
 @keyframes mo-zoom-in { from { transform: scale(0.35); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes mo-zoom-out { from { transform: scale(1.08); opacity: 0; } to { transform: none; opacity: 1; } }
-.mo-tile {
-  position: absolute;
-  box-sizing: border-box;
-  border: 1.5px solid var(--bg-surface);
-  border-radius: 0;
-  padding: 8px 10px;
-  display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start;
-  overflow: hidden;
-  text-align: left;
-  font: inherit;
+.mo-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.mo-poly {
+  stroke: var(--bg-surface);
+  stroke-width: 1.5px;
+  stroke-linejoin: miter;
   cursor: pointer;
   transition: filter 120ms ease;
+  outline: none;
 }
-.mo-tile:hover { filter: brightness(1.08); }
-.mo-tile:focus-visible { outline: 3px solid var(--accent); outline-offset: -5px; }
-.mo-tile.picked { box-shadow: inset 0 0 0 3px currentColor; }
-.mo-name { font-weight: 600; font-size: var(--fs-sm); line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.mo-poly:hover { filter: brightness(1.08); }
+.mo-poly:focus-visible { stroke: var(--accent); stroke-width: 3px; }
+.mo-poly.picked { stroke: var(--ink); stroke-width: 3px; }
+.mo-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  text-align: center;
+  pointer-events: none;
+  min-width: 48px;
+}
+.mo-name { font-weight: 700; font-size: var(--fs-sm); line-height: 1.2; overflow-wrap: anywhere; hyphens: auto; }
 .mo-meta { font-size: var(--fs-xs); opacity: 0.85; white-space: nowrap; }
-.mo-name { overflow-wrap: anywhere; hyphens: auto; }
-.mo-tile.small { padding: 6px 7px; }
-.mo-tile.small .mo-meta { display: none; }
-.mo-tile.small .mo-name { font-size: var(--fs-xs); }
+.mo-label.small .mo-meta { display: none; }
+.mo-label.small .mo-name { font-size: var(--fs-xs); }
 .mo-shared { display: flex; gap: 8px; align-items: center; font-size: var(--fs-sm); color: var(--text-3); }
 @media (max-width: 820px) { .mo-box { height: 340px; } }
 @media (prefers-reduced-motion: reduce) { .mo-in, .mo-out { animation: none; } }

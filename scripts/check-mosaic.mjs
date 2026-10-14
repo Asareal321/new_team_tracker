@@ -1,5 +1,5 @@
 // The mosaic on Today: sizes, floors and layout.
-import { recentCounts, floored, splitLayout, mosaicTiles, goalTiles, shade, MIN_SHARE } from '../src/lib/mosaic.js'
+import { recentCounts, floored, splitLayout, mosaicTiles, goalTiles, shade, MIN_SHARE, polyLayout, polyArea } from '../src/lib/mosaic.js'
 
 let pass = 0, fail = 0
 function ok(name, cond, detail = '') {
@@ -37,12 +37,21 @@ const logs = [...Array(8)].map(() => log('econ', 2)).concat([log('bus', 3), log(
 const tiles = mosaicTiles({ areas, spheres, logs, now: NOW })
 ok('one tile per live personal sphere', tiles.map(t => t.id).sort().join() === 'bus,econ,gym')
 ok('shared and archived spheres are left out', !tiles.some(t => t.id === 'team' || t.id === 'old'))
-const size = id => { const t = tiles.find(x => x.id === id); return t.w * t.h }
+const size = id => tiles.find(x => x.id === id).size
 ok('more logs, bigger tile', size('econ') > size('bus') && size('bus') > size('gym'))
 ok('a sphere is the colour of its area', tiles.find(t => t.id === 'econ').hue === tiles.find(t => t.id === 'bus').hue)
 ok('different areas, different colours', tiles.find(t => t.id === 'econ').hue !== tiles.find(t => t.id === 'gym').hue)
 ok('spheres in one area are different shades', tiles.find(t => t.id === 'econ').bg !== tiles.find(t => t.id === 'bus').bg)
-ok('the mosaic covers the whole box', Math.abs(tiles.reduce((a, t) => a + t.w * t.h, 0) - 10000) < 0.01)
+ok('the mosaic covers the whole box', Math.abs(tiles.reduce((a, t) => a + t.size, 0) - 10000) < 0.01)
+
+// — the angular cut —
+const sq = [[0, 0], [200, 0], [200, 100], [0, 100]]
+const pl = polyLayout([{ weight: 5 }, { weight: 2 }, { weight: 2 }, { weight: 1 }], sq)
+ok('angular pieces keep area proportional to weight', pl.every(t => Math.abs(polyArea(t.points) / 20000 - t.weight / 10) < 1e-6))
+ok('and cover the box exactly', Math.abs(pl.reduce((a, t) => a + polyArea(t.points), 0) - 20000) < 1e-6)
+ok('and at least one is a triangle', pl.some(t => t.points.length === 3))
+ok('every point stays inside the box', pl.every(t => t.points.every(([x, y]) => x > -1e-6 && x < 200 + 1e-6 && y > -1e-6 && y < 100 + 1e-6)))
+ok('tiles carry a label position inside the box', tiles.every(t => t.cx >= 0 && t.cx <= 100 && t.cy >= 0 && t.cy <= 100))
 ok('no spheres, no tiles', mosaicTiles({ areas, spheres: [] }).length === 0)
 
 const goals = [{ id: 'g1', sphere_id: 'econ', status: 'active' }, { id: 'g2', sphere_id: 'econ', status: 'done' }]

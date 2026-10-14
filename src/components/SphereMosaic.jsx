@@ -40,6 +40,19 @@ export default function SphereMosaic({ sphereId, goalId, onPick }) {
 
   if (!tiles.length) return null
 
+  const view = (zoomed ? inner : tiles).map(t => {
+    const name = zoomed ? (t.goal ? t.goal.title : 'No goal') : t.sphere.name
+    const plural = t.count === 1 ? '' : 's'
+    return {
+      ...t,
+      key: t.id || 'none',
+      name,
+      meta: zoomed && !t.goal ? 'general progress' : `${t.count} log${plural}`,
+      picked: zoomed ? (t.id || '') === (goalId || '') : false,
+      pick: () => (zoomed ? onPick({ sphereId, goalId: t.id || '' }) : onPick({ sphereId: t.id, goalId: '' })),
+    }
+  })
+
   return (
     <div className="mo">
       <div className="mo-trail">
@@ -58,30 +71,34 @@ export default function SphereMosaic({ sphereId, goalId, onPick }) {
         {/* Keyed by view, so switching replays the zoom animation. */}
         <div className={`mo-layer ${zoomed ? 'mo-in' : 'mo-out'}`} key={zoomed ? zoomed.id : 'all'}
           style={zoomed ? { transformOrigin: `${zoomed.x + zoomed.w / 2}% ${zoomed.y + zoomed.h / 2}%` } : undefined}>
-          {(zoomed ? inner : tiles).map(t => {
-            const picked = zoomed ? (t.id || '') === (goalId || '') : false
-            const name = zoomed ? (t.goal ? t.goal.title : 'No goal') : t.sphere.name
-            const meta = zoomed
-              ? (t.goal ? `${t.count} log${t.count === 1 ? '' : 's'}` : 'general progress')
-              : `${t.count} log${t.count === 1 ? '' : 's'}`
-            return (
-              <button
-                type="button"
-                key={t.id || 'none'}
-                // A tile too small to say two things says one: the name.
-                className={`mo-tile${picked ? ' picked' : ''}${t.w * t.h < 500 ? ' small' : ''}`}
-                style={{ left: `${t.x}%`, top: `${t.y}%`, width: `${t.w}%`, height: `${t.h}%`, background: t.bg, color: t.ink }}
-                aria-pressed={zoomed ? picked : undefined}
-                title={`${name} — ${meta}`}
-                onClick={() => (zoomed
-                  ? onPick({ sphereId, goalId: t.id || '' })
-                  : onPick({ sphereId: t.id, goalId: '' }))}
+          {/* Shapes in SVG so the seams can run on the diagonal; labels in
+              HTML on top, so they wrap and stay crisp. */}
+          <svg className="mo-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="false">
+            {view.map(t => (
+              <polygon
+                key={t.key}
+                points={t.points.map(p => p.join(',')).join(' ')}
+                className={`mo-poly${t.picked ? ' picked' : ''}`}
+                style={{ fill: t.bg, '--ink': t.ink }}
+                vectorEffect="non-scaling-stroke"
+                role="button"
+                tabIndex={0}
+                aria-label={`${t.name} — ${t.meta}`}
+                aria-pressed={zoomed ? t.picked : undefined}
+                onClick={t.pick}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t.pick() } }}
               >
-                <span className="mo-name">{name}</span>
-                <span className="mo-meta">{meta}</span>
-              </button>
-            )
-          })}
+                <title>{`${t.name} — ${t.meta}`}</title>
+              </polygon>
+            ))}
+          </svg>
+          {view.map(t => t.room >= 11 && (
+            <span key={`l-${t.key}`} className={`mo-label${t.room < 22 ? ' small' : ''}`}
+              style={{ left: `${t.cx}%`, top: `${t.cy}%`, color: t.ink, maxWidth: `${(t.room / (aspect * 100)) * 100 * 1.1}%` }}>
+              <span className="mo-name">{t.name}</span>
+              <span className="mo-meta">{t.meta}</span>
+            </span>
+          ))}
         </div>
       </div>
     </div>

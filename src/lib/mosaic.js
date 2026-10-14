@@ -87,6 +87,129 @@ export function shade(hue, index, count) {
   }
 }
 
+// ── angular layout ──────────────────────────────────────────────────────────
+//
+// The rectangles above are cut again into triangles and wedges: a convex shape
+// is split by a straight line from one of its corners to the opposite side, at
+// exactly the point that gives each half its share of the weight. So area is
+// still honest — a tile twice the size had twice the logs — but the seams run
+// on the diagonal. Of the corners it could cut from, it takes the one that
+// leaves both halves least sliver-like.
+
+export function polyArea(pts) {
+  let a = 0
+  for (let i = 0; i < pts.length; i++) {
+    const [x1, y1] = pts[i]
+    const [x2, y2] = pts[(i + 1) % pts.length]
+    a += x1 * y2 - x2 * y1
+  }
+  return Math.abs(a) / 2
+}
+
+function perimeter(pts) {
+  let p = 0
+  for (let i = 0; i < pts.length; i++) {
+    const [x1, y1] = pts[i]
+    const [x2, y2] = pts[(i + 1) % pts.length]
+    p += Math.hypot(x2 - x1, y2 - y1)
+  }
+  return p
+}
+
+// 1 for the most compact shape, falling toward 0 for a sliver.
+const compactness = pts => (4 * Math.PI * polyArea(pts)) / (perimeter(pts) ** 2 || 1)
+
+// Cut a convex polygon from vertex `k` so the first piece has `share` of it.
+function cutFrom(pts, k, share) {
+  const n = pts.length
+  const v = i => pts[(k + i) % n]
+  const total = polyArea(pts)
+  const want = total * share
+  let acc = 0
+  for (let i = 1; i < n - 1; i++) {
+    const tri = polyArea([v(0), v(i), v(i + 1)])
+    if (acc + tri >= want - 1e-9) {
+      const t = tri ? (want - acc) / tri : 0
+      const [x1, y1] = v(i)
+      const [x2, y2] = v(i + 1)
+      const p = [x1 + (x2 - x1) * t, y1 + (y2 - y1) * t]
+      const first = [v(0)]
+      for (let j = 1; j <= i; j++) first.push(v(j))
+      first.push(p)
+      const second = [v(0), p]
+      for (let j = i + 1; j < n; j++) second.push(v(j))
+      const clean = poly => poly.filter((q, j, arr) => {
+        const r = arr[(j + 1) % arr.length]
+        return Math.hypot(q[0] - r[0], q[1] - r[1]) > 1e-6
+      })
+      return [clean(first), clean(second)]
+    }
+    acc += tri
+  }
+  return [pts, []]
+}
+
+export function polyLayout(items, pts) {
+  if (!items.length) return []
+  if (items.length === 1) return [{ ...items[0], points: pts }]
+  const total = items.reduce((a, i) => a + i.weight, 0)
+  let acc = 0
+  let cut = 1
+  for (let k = 0; k < items.length - 1; k++) {
+    acc += items[k].weight
+    cut = k + 1
+    if (acc >= total / 2) break
+  }
+  const a = items.slice(0, cut)
+  const b = items.slice(cut)
+  const share = a.reduce((s, i) => s + i.weight, 0) / total
+  let best = null
+  for (let k = 0; k < pts.length; k++) {
+    const [p1, p2] = cutFrom(pts, k, share)
+    if (p1.length < 3 || p2.length < 3) continue
+    const score = Math.min(compactness(p1), compactness(p2))
+    if (!best || score > best.score) best = { score, p1, p2 }
+  }
+  if (!best) return [{ ...items[0], points: pts }]
+  return [...polyLayout(a, best.p1), ...polyLayout(b, best.p2)]
+}
+
+export function centroid(pts) {
+  let cx = 0
+  let cy = 0
+  let a = 0
+  for (let i = 0; i < pts.length; i++) {
+    const [x1, y1] = pts[i]
+    const [x2, y2] = pts[(i + 1) % pts.length]
+    const f = x1 * y2 - x2 * y1
+    cx += (x1 + x2) * f
+    cy += (y1 + y2) * f
+    a += f
+  }
+  if (!a) return pts[0] || [0, 0]
+  return [cx / (3 * a), cy / (3 * a)]
+}
+
+// Lay out in real proportions (width = aspect × height), then hand back
+// points in percent of the box, plus what a label needs.
+function finish(tile, W) {
+  const pts = tile.points.map(([x, y]) => [(x / W) * 100, y])
+  const [cx, cy] = centroid(pts)
+  const xs = pts.map(p => p[0])
+  const ys = pts.map(p => p[1])
+  const x = Math.min(...xs)
+  const y = Math.min(...ys)
+  return {
+    ...tile, points: pts, cx, cy,
+    x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y,
+    size: polyArea(pts),
+    // Room for a label: the side of a square with the same area, in real units.
+    room: Math.sqrt(polyArea(tile.points)),
+  }
+}
+
+const box = W => [[0, 0], [W, 0], [W, 100], [0, 100]]
+
 // The whole overview: areas (personal only — shared spheres are picked from a
 // list) laid out by their total weight, spheres laid out inside each area.
 export function mosaicTiles({ areas = [], spheres = [], logs = [], now = new Date(), aspect = 2 } = {}) {
@@ -110,17 +233,18 @@ export function mosaicTiles({ areas = [], spheres = [], logs = [], now = new Dat
     .map(g => ({ ...g, weight: g.spheres.reduce((t, s) => t + s.weight, 0) }))
     .sort((x, y) => y.weight - x.weight)
 
-  return splitLayout(areaItems, undefined, aspect).flatMap(g => {
-    const inner = splitLayout(g.spheres, { x: g.x, y: g.y, w: g.w, h: g.h }, aspect)
-    return inner.map((t, i) => ({
+  const W = aspect * 100
+  return polyLayout(areaItems, box(W)).flatMap(g => {
+    const inner = polyLayout(g.spheres, g.points)
+    return inner.map((t, i) => finish({
       id: t.sphere.id,
       sphere: t.sphere,
       area: g.area,
       hue: g.hue,
       count: t.count,
-      x: t.x, y: t.y, w: t.w, h: t.h,
+      points: t.points,
       ...shade(g.hue, i, inner.length),
-    }))
+    }, W))
   })
 }
 
@@ -137,7 +261,8 @@ export function goalTiles({ sphere, goals = [], logs = [], hue = AREA_HUES[0], n
   ]
   const weights = floored(items.map(i => i.count), 0.12)
   items.forEach((it, i) => { it.weight = weights[i] })
-  return splitLayout(items, undefined, aspect).map((t, i, arr) => ({
+  const W = aspect * 100
+  return polyLayout(items, box(W)).map((t, i, arr) => finish({
     ...t, ...shade(hue, t.goal ? i : arr.length - 1, arr.length),
-  }))
+  }, W))
 }

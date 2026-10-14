@@ -37,6 +37,14 @@ ok('the migration carries a real bank', rows.length >= 30, String(rows.length))
 ok('every answer points at a choice', rows.every(([, c, a]) => Number(a) < JSON.parse(c).length))
 ok('every question has at least four choices', rows.every(([, c]) => JSON.parse(c).length >= 4))
 ok('the owner is built in', /'asanichols07@gmail\.com'/.test(sql))
+ok('re-running the first migration keeps the generated bank', /id not like 'g-%'/.test(sql))
+
+const bank = readFileSync('migration-study-bank.sql', 'utf8')
+const brows = [...bank.matchAll(/\$q\$(\[.*?\])\$q\$::jsonb, (\d+),/gs)]
+ok('the generated bank is large', brows.length >= 300, String(brows.length))
+ok('every generated question has five distinct choices', brows.every(([, c]) => { const a = JSON.parse(c); return a.length === 5 && new Set(a).size === 5 }))
+const ids = [...bank.matchAll(/\(\$q\$(g-[a-z]+-\d+)\$q\$/g)].map(x => x[1])
+ok('generated ids are unique', new Set(ids).size === ids.length && ids.length === brows.length)
 
 console.log(`\n${pass}/${pass + fail} passed`)
 process.exit(fail ? 1 : 0)

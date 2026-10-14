@@ -63,7 +63,7 @@ create policy study_attempts_own on study_attempts
   with check (user_id = auth.uid() and study_can_view());
 
 -- The bank. Replaced wholesale; answer is the index into choices.
-delete from study_questions where id not in (
+delete from study_questions where id not like 'g-%' and id not in (
   $q$t-rent$q$,
   $q$t-giftcards$q$,
   $q$t-invoices$q$,
