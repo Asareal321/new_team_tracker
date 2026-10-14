@@ -1,5 +1,5 @@
 // The mosaic on Today: sizes, floors and layout.
-import { recentCounts, floored, splitLayout, mosaicTiles, goalTiles, shade, MIN_SHARE, polyLayout, polyArea } from '../src/lib/mosaic.js'
+import { recentCounts, floored, splitLayout, mosaicTiles, goalTiles, shade, MIN_SHARE, polyLayout, polyArea, labelSpot } from '../src/lib/mosaic.js'
 
 let pass = 0, fail = 0
 function ok(name, cond, detail = '') {
@@ -62,6 +62,13 @@ ok('a sphere with no goals still offers "no goal"', goalTiles({ sphere: spheres[
 
 ok('dark shades get white text', shade(170, 0, 3).ink === '#fff')
 ok('light shades get dark text', shade(170, 2, 3).ink !== '#fff')
+
+const wedge = [[0, 0], [100, 0], [0, 10]]
+const ls = labelSpot(wedge)
+ok('a wedge’s label sits where it is widest, not at its tip', ls.x < 40 && ls.r > 2, JSON.stringify(ls))
+const sqs = labelSpot([[0, 0], [10, 0], [10, 10], [0, 10]])
+ok('a square’s label sits in its middle', Math.abs(sqs.x - 5) < 0.3 && Math.abs(sqs.y - 5) < 0.3 && Math.abs(sqs.r - 5) < 0.3)
+ok('either winding works', Math.abs(labelSpot([[0, 10], [10, 10], [10, 0], [0, 0]]).r - 5) < 0.3)
 
 console.log(`\n${pass}/${pass + fail} passed`)
 process.exit(fail ? 1 : 0)

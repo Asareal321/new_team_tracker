@@ -190,11 +190,60 @@ export function centroid(pts) {
   return [cx / (3 * a), cy / (3 * a)]
 }
 
+// Where a label fits: the centre and radius of (roughly) the largest circle
+// inside the shape. A thin wedge's centroid sits near its narrow end, where
+// no text fits; this point sits where the shape is widest. Coarse grid, then
+// refine around the best — plenty for a handful of convex tiles.
+export function labelSpot(pts) {
+  const edges = pts.map((p, i) => [p, pts[(i + 1) % pts.length]])
+  // Signed distance to the nearest edge. Works for either winding: the
+  // sign is fixed so the centroid (always inside a convex shape) is positive.
+  const raw = (x, y) => {
+    let min = Infinity
+    for (const [[x1, y1], [x2, y2]] of edges) {
+      const len = Math.hypot(x2 - x1, y2 - y1) || 1
+      min = Math.min(min, ((x2 - x1) * (y - y1) - (y2 - y1) * (x - x1)) / len)
+    }
+    return min
+  }
+  const [cx0, cy0] = centroid(pts)
+  const sign = raw(cx0, cy0) < 0 ? -1 : 1
+  const dist = (x, y) => {
+    let min = Infinity
+    for (const [[x1, y1], [x2, y2]] of edges) {
+      const len = Math.hypot(x2 - x1, y2 - y1) || 1
+      min = Math.min(min, sign * ((x2 - x1) * (y - y1) - (y2 - y1) * (x - x1)) / len)
+    }
+    return min
+  }
+  const xs = pts.map(p => p[0])
+  const ys = pts.map(p => p[1])
+  let best = [cx0, cy0, dist(cx0, cy0)]
+  let x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys)
+  for (let round = 0; round < 4; round++) {
+    const n = 14
+    for (let i = 0; i <= n; i++) {
+      for (let j = 0; j <= n; j++) {
+        const x = x0 + ((x1 - x0) * i) / n
+        const y = y0 + ((y1 - y0) * j) / n
+        const d = dist(x, y)
+        if (d > best[2]) best = [x, y, d]
+      }
+    }
+    const wx = (x1 - x0) / 4
+    const wy = (y1 - y0) / 4
+    x0 = best[0] - wx; x1 = best[0] + wx; y0 = best[1] - wy; y1 = best[1] + wy
+  }
+  return { x: best[0], y: best[1], r: Math.max(best[2], 0) }
+}
+
 // Lay out in real proportions (width = aspect × height), then hand back
 // points in percent of the box, plus what a label needs.
 function finish(tile, W) {
   const pts = tile.points.map(([x, y]) => [(x / W) * 100, y])
-  const [cx, cy] = centroid(pts)
+  const spot = labelSpot(tile.points)
+  const cx = (spot.x / W) * 100
+  const cy = spot.y
   const xs = pts.map(p => p[0])
   const ys = pts.map(p => p[1])
   const x = Math.min(...xs)
@@ -203,8 +252,9 @@ function finish(tile, W) {
     ...tile, points: pts, cx, cy,
     x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y,
     size: polyArea(pts),
-    // Room for a label: the side of a square with the same area, in real units.
-    room: Math.sqrt(polyArea(tile.points)),
+    // Room for a label: radius of the largest circle inside, as a fraction
+    // of the box's height (multiply by the height in pixels to get pixels).
+    r: spot.r / 100,
   }
 }
 

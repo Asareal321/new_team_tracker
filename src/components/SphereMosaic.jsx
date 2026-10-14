@@ -14,6 +14,7 @@ export default function SphereMosaic({ sphereId, goalId, onPick }) {
   const { areas, spheres, goals, myLogs } = useSpheres()
   const box = useRef(null)
   const [aspect, setAspect] = useState(2)
+  const [boxH, setBoxH] = useState(320)
 
   // Tiles split along the longer side as it is on screen, so the layout has
   // to know the box's real shape — a phone's is nearly square.
@@ -22,7 +23,7 @@ export default function SphereMosaic({ sphereId, goalId, onPick }) {
     if (!el || typeof ResizeObserver === 'undefined') return undefined
     const ro = new ResizeObserver(([e]) => {
       const { width, height } = e.contentRect
-      if (width && height) setAspect(width / height)
+      if (width && height) { setAspect(width / height); setBoxH(height) }
     })
     ro.observe(el)
     return () => ro.disconnect()
@@ -67,7 +68,7 @@ export default function SphereMosaic({ sphereId, goalId, onPick }) {
           <span>Pick a sphere · bigger tiles are where you’ve logged most in the last {MOSAIC_DAYS} days</span>
         )}
       </div>
-      <div className="mo-box" ref={box} role="group" aria-label={zoomed ? `Goals in ${zoomed.sphere.name}` : 'Spheres'}>
+      <div className="mo-box" ref={box} style={{ '--mo-n': tiles.length }} role="group" aria-label={zoomed ? `Goals in ${zoomed.sphere.name}` : 'Spheres'}>
         {/* Keyed by view, so switching replays the zoom animation. */}
         <div className={`mo-layer ${zoomed ? 'mo-in' : 'mo-out'}`} key={zoomed ? zoomed.id : 'all'}
           style={zoomed ? { transformOrigin: `${zoomed.x + zoomed.w / 2}% ${zoomed.y + zoomed.h / 2}%` } : undefined}>
@@ -92,13 +93,24 @@ export default function SphereMosaic({ sphereId, goalId, onPick }) {
               </polygon>
             ))}
           </svg>
-          {view.map(t => t.room >= 11 && (
-            <span key={`l-${t.key}`} className={`mo-label${t.room < 22 ? ' small' : ''}`}
-              style={{ left: `${t.cx}%`, top: `${t.cy}%`, color: t.ink, maxWidth: `${(t.room / (aspect * 100)) * 100 * 1.1}%` }}>
-              <span className="mo-name">{t.name}</span>
-              <span className="mo-meta">{t.meta}</span>
-            </span>
-          ))}
+          {view.map(t => {
+            // Everything in real pixels: the circle that fits inside the
+            // shape decides how big the text is and how wide it may run.
+            const r = t.r * boxH
+            if (r < 14) return null
+            // …and the longest word has to fit on one line, so a narrow
+            // tile gets smaller type rather than a word broken in half.
+            const width = r * 1.8
+            const longest = Math.max(...t.name.split(/\s+/).map(w => w.length), 1)
+            const font = Math.max(9, Math.min(17, r * 0.3, width / (longest * 0.62)))
+            return (
+              <span key={`l-${t.key}`} className={`mo-label${r < 34 ? ' small' : ''}`}
+                style={{ left: `${t.cx}%`, top: `${t.cy}%`, color: t.ink, width: `${Math.round(width)}px`, fontSize: `${font}px` }}>
+                <span className="mo-name">{t.name}</span>
+                <span className="mo-meta">{t.meta}</span>
+              </span>
+            )
+          })}
         </div>
       </div>
     </div>
