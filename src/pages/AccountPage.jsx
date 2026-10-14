@@ -147,9 +147,9 @@ export default function AccountPage() {
         <div>
           <strong>Quiet mode</strong>
           <p className="dev-card-hint">
-            Turns the game layer down. Finished tasks pay the cloud&rsquo;s average value
-            in coins instead of taking over the screen — you keep the reward and
-            your streak, you just don&rsquo;t have to tap for it.
+            Turns the game layer down: no nudges through the day, and your streak is
+            announced with a line in the corner instead of taking over the screen. You
+            keep every reward.
           </p>
         </div>
         <label className="switch">
@@ -169,7 +169,7 @@ export default function AccountPage() {
         <div>
           <strong>Planning hours</strong>
           <p className="dev-card-hint">
-            Writing tasks down pays double for the hour after you get up and the
+            Logging progress pays double for the hour after you get up and the
             hour before bed. The doubled half ignores your daily cap, so
             planning tomorrow night is worth something even on a day you
             already maxed out.
@@ -265,11 +265,10 @@ function NotificationSettings() {
 
   const on = key => settings?.[key] !== false
   const rows = [
-    ['nudge', 'Nudges through the day', 'Every couple of hours: write things down in the morning, and how it is going in the afternoon. Names something from Doing, never from Up next.'],
-    ['flower', 'Your flower is ready', 'Once, when the greenhouse timer finishes.'],
+    ['nudge', 'Nudges through the day', 'Every couple of hours: what you will move forward in the morning, whether you logged it in the afternoon. Names the sphere you have been neglecting.'],
     ['planning', 'Planning hours', 'When your double-rewards hour starts, morning and evening. Needs your wake and bed times set.'],
     ['streak', 'Streak about to lapse', 'Late evening, only when you have a streak going.'],
-    ['focus', 'A focus block starting', 'Five minutes before a calendar event clears the board down to its project.'],
+    ['focus', 'A focus hour starting', 'Five minutes before a calendar event that names a sphere — logs there pay double while it runs.'],
   ]
 
   return (

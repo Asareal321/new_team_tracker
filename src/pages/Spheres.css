@@ -61,6 +61,7 @@ html[data-theme="dark"] {
   letter-spacing: -0.01em;
 }
 .sph-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sph-more { font-size: var(--fs-sm); color: var(--on-page-2); }
 .sph-empty { margin: 0; color: var(--on-page-2); font-size: var(--fs-sm); }
 .sph-start p { color: var(--text-2); line-height: 1.6; margin: 8px 0 0; max-width: 62ch; }
 
@@ -108,6 +109,38 @@ html[data-theme="dark"] {
   line-height: 1.5;
 }
 .sph-nudge a { color: inherit; font-weight: 600; }
+
+/* ── focus strip ────────────────────────────────────────────────────────── */
+
+.sph-focus {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--r-lg);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+.sph-focus.off { background: transparent; border-style: dashed; border-color: var(--on-page-border); color: var(--on-page-2); }
+.sph-focus.live { background: var(--accent-bg); border-color: var(--accent-dim); color: var(--accent-text); }
+.sph-focus-icon { font-size: 1.1rem; }
+.sph-focus-say { flex: 1 1 240px; line-height: 1.5; }
+.sph-focus-say a { color: inherit; }
+.sph-focus-note { color: var(--text-3); }
+.sph-focus-err { color: var(--red-text); }
+.lb-boost {
+  margin: 0;
+  align-self: flex-start;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  background: var(--accent-bg);
+  color: var(--accent-text);
+}
 
 /* ── gardens ────────────────────────────────────────────────────────────── */
 
@@ -214,6 +247,25 @@ html[data-theme="dark"] {
 }
 .sph-log-del:hover, .sph-log-del:focus-visible { color: var(--red-text); background: var(--red-bg); }
 
+/* ── history ────────────────────────────────────────────────────────────── */
+
+.sph-search { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; }
+.sph-search input {
+  flex: 1 1 260px;
+  min-width: 0;
+  font: inherit;
+  font-size: var(--fs-md);
+  padding: 9px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  color: var(--text-1);
+}
+.sph-search .lb-select { flex: 0 1 200px; }
+.sph-day { display: flex; align-items: baseline; gap: 8px; }
+.sph-day small { font-size: var(--fs-sm); font-weight: 500; color: var(--on-page-3); font-variant-numeric: tabular-nums; }
+.sph-hit { background: var(--yellow-bg); color: inherit; border-radius: 3px; padding: 0 1px; }
+
 /* ── goals ──────────────────────────────────────────────────────────────── */
 
 .sph-goals { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -233,6 +285,7 @@ html[data-theme="dark"] {
 .sph-goal-title { font-weight: 600; color: var(--text-1); overflow-wrap: anywhere; }
 .sph-goal-meta { font-size: var(--fs-sm); color: var(--text-3); font-variant-numeric: tabular-nums; }
 .sph-goal-actions { display: flex; gap: 6px; flex: none; }
+.sph-goal-quiet { font-size: var(--fs-xs); font-weight: 600; color: var(--yellow-text); }
 .sph-quiet { color: var(--text-4); }
 .sph-goals-closed .sph-goal { opacity: 0.75; border-left-color: var(--border); }
 .sph-toggle {
@@ -327,6 +380,7 @@ html[data-theme="dark"] {
 .st-add:hover, .st-add:focus-visible { opacity: 1; background: var(--rail-nav-hover-bg); }
 .st-add-sphere { font-size: var(--fs-xs); }
 .st-form { padding: 2px 0.4rem; }
+.st-error { margin: 6px 0 0; font-size: var(--fs-xs); line-height: 1.4; color: #ffd9d2; }
 .st-form input {
   width: 100%;
   font: inherit;

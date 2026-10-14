@@ -3,9 +3,9 @@
 // These are local notifications, not push: no server, no device tokens, no
 // APNs. Everything here is worked out on the device and handed to iOS as a
 // list of alarms. That is possible because almost everything worth being told
-// about happens at a time the app already knows — a flower finishes at a
-// computable instant, a planning hour starts at a time you set yourself, a
-// calendar block starts when the calendar says.
+// about happens at a time the app already knows — a planning hour starts at a
+// time you set yourself, a focus block starts when the calendar says, and the
+// nudges run on your own waking hours.
 //
 // The whole plan is a pure function of state, which matters for two reasons.
 // It can be tested without a device — see scripts/check-notification-plan.mjs
@@ -22,7 +22,8 @@
 // the worst case is a fair question rather than a wrong statement.
 
 import { parseTime, planningWindows, MORNING } from './planningHours.js'
-import { remainingSeconds, localDay } from './garden.js'
+import { localDay } from './garden.js'
+import { tally, daysSince } from './spheres.js'
 
 // iOS keeps at most 64 pending local notifications per app and silently drops
 // the rest, so the plan is bounded well under that and covers two days. Two
@@ -34,15 +35,15 @@ export const HORIZON_DAYS = 2
 // How often the intermittent nudges repeat.
 export const NUDGE_INTERVAL_MINUTES = 120
 
-// Where the morning turns into the afternoon. Before it the nudge is about
-// writing tasks down, after it about finishing them — a morning spent being
-// told to finish things you have not planned yet is the wrong order.
+// Where the morning turns into the afternoon. Before it the nudge asks what
+// you mean to move forward today; after it, whether you have — and to log it
+// if so. Asking "did you?" before you have had the chance is the wrong order.
 export const AFTERNOON_FROM = 12 * 60
 
 const DAY = 24 * 60
 const MIN = 60 * 1000
 
-export const CATEGORIES = ['flower', 'planning', 'streak', 'focus', 'nudge']
+export const CATEGORIES = ['planning', 'streak', 'focus', 'nudge']
 
 // Sensible bounds for someone who has not set their hours. The nudges are
 // worth having without the planning-hours feature turned on, but nobody wants
@@ -60,35 +61,52 @@ function enabled(settings, category) {
   return settings?.[category] !== false
 }
 
-// The task a nudge should name. Doing, never Up next: Up next is a queue you
-// have deliberately not started, and being chased about it is being chased
-// about a decision you already made. Doing is the promise you made this
-// morning, so it is the fair thing to ask after.
-export function nudgeSubject(tasks, pick = 0) {
-  const doing = (tasks || []).filter(t => t?.status === 'in_progress' && t?.title)
-  if (!doing.length) return null
-  const n = Math.floor(pick * doing.length)
-  return doing[Math.min(Math.max(n, 0), doing.length - 1)] || null
+// The sphere a nudge should name: the one you have been neglecting. Fewest
+// logs this week, and among those the one untouched longest — a sphere never
+// logged in at all beats one merely skipped. That is the whole point of the
+// redesign said out loud, so the nudge is about balance, not about volume.
+export function nudgeSubject(spheres = [], logs = [], now = new Date()) {
+  const live = (spheres || []).filter(s => s && !s.archived_at)
+  if (!live.length) return null
+  const { bySphere } = tally(logs, { now })
+  return live
+    .map(s => {
+      const t = bySphere[s.id] || { week: 0, last: null }
+      return { sphere: s, week: t.week, since: daysSince(t.last, now) }
+    })
+    .sort((a, b) =>
+      a.week - b.week
+      || (b.since ?? Infinity) - (a.since ?? Infinity)
+      || String(a.sphere.name).localeCompare(String(b.sphere.name)))[0]
 }
 
-// The morning line asks you to write something down; the afternoon line asks
-// after something you already started. Both name the flower, because that is
-// what makes it a consequence rather than a scolding.
-export function nudgeCopy({ afternoon, subject, growing }) {
-  if (!afternoon) {
-    return subject
-      ? { title: 'What else is today?', body: `“${subject.title}” is on the go. Anything else worth writing down while you think of it?` }
-      : { title: 'What is today for?', body: 'Nothing on the board yet. Write down two or three things and the rest of the day has a shape.' }
+function sinceText(since) {
+  if (since == null) return 'hasn’t had anything logged yet'
+  if (since === 0) return 'had something today'
+  if (since === 1) return 'last had something yesterday'
+  return `hasn’t had anything in ${since} days`
+}
+
+// Questions, not claims. A scheduled alarm cannot re-check itself when it
+// fires, so "you haven't logged anything" could be false by the time it lands;
+// "moved anything forward?" is fair either way.
+export function nudgeCopy({ afternoon, subject }) {
+  if (!subject) {
+    return afternoon
+      ? { title: 'Moved anything forward?', body: 'Log it — every bit of progress plants something in its garden.' }
+      : { title: 'What is today for?', body: 'Make a sphere for something you want to get better at, and log the first step.' }
   }
-  if (subject) {
+  const name = subject.sphere.name
+  if (!afternoon) {
     return {
-      title: 'How is it going?',
-      body: growing
-        ? `Made any progress on “${subject.title}”? Finishing it drops a cloud, and your flower is still growing.`
-        : `Made any progress on “${subject.title}”? Mark it done and it pays out.`,
+      title: 'What will you move forward today?',
+      body: `${name} ${sinceText(subject.since)}. Maybe start there?`,
     }
   }
-  return { title: 'Nothing in Doing', body: 'Pull something across from Up next and give the afternoon a job.' }
+  return {
+    title: 'Moved anything forward?',
+    body: `Log it and it plants in that sphere’s garden. ${name} ${sinceText(subject.since)}.`,
+  }
 }
 
 // How long before bed the nudges stop, so the last one does not land on top
@@ -107,38 +125,22 @@ export function nudgeTimes(wake, bed) {
 export function planNotifications({
   now = new Date(),
   garden = null,
-  tasks = [],
+  spheres = [],
+  logs = [],
   focusBlocks = [],
   settings = {},
-  rand = Math.random,
 } = {}) {
   const out = []
   const prefs = garden?.prefs || {}
   const wake = parseTime(prefs.wake) ?? DEFAULT_WAKE
   const bed = parseTime(prefs.bed) ?? DEFAULT_BED
   const quiet = !!garden?.quiet_mode
-  const growing = !!garden?.growing_seed
 
   const add = (id, category, when, title, body) => {
     if (!(when instanceof Date) || Number.isNaN(when.getTime())) return
     if (when.getTime() <= now.getTime()) return
     if (when.getTime() > now.getTime() + HORIZON_DAYS * DAY * MIN) return
     out.push({ id, category, at: when.toISOString(), title, body })
-  }
-
-  // — the flower ————————————————————————————————————————————
-  //
-  // The one notification nobody could call nagging: you asked for a thing to
-  // finish, and it has.
-  if (enabled(settings, 'flower') && growing) {
-    // Measured from the `now` this plan is for, not from the wall clock —
-    // otherwise the one function here that is supposed to be pure quietly
-    // isn't, and it cannot be tested at a fixed instant.
-    const left = remainingSeconds(garden, now.getTime())
-    if (left != null && left > 0) {
-      add('flower-ready', 'flower', new Date(now.getTime() + left * 1000),
-        'Your flower is ready', 'It has finished growing. Come and put it in the ground.')
-    }
   }
 
   // — planning hours ————————————————————————————————————————
@@ -172,15 +174,16 @@ export function planNotifications({
 
   // — a focus block about to start ——————————————————————————
   //
-  // Worth a warning specifically because the board is about to change under
-  // you: everything not from that project is about to be parked.
+  // Worth a warning because it is money on the table: for the length of the
+  // event, logs in that sphere pay double.
   if (enabled(settings, 'focus')) {
     for (const b of focusBlocks) {
       const start = b?.start ? new Date(b.start) : null
-      if (!start || !b?.projectName) continue
+      const name = b?.sphereName || b?.projectName
+      if (!start || !name) continue
       add(`focus-${b.id}`, 'focus', new Date(start.getTime() - 5 * MIN),
-        `${b.projectName} in 5 minutes`,
-        'The board is about to clear down to that project. Anything else gets parked, not lost.')
+        `${name} in 5 minutes`,
+        `A focus hour — logs on ${name} pay double until it ends.`)
     }
   }
 
@@ -192,22 +195,20 @@ export function planNotifications({
     // "…if they have not done so yet" — as far as it can be known. A future
     // day's nudges cannot be conditional on anything, but today's can be
     // dropped outright, and the plan is rebuilt every time the app opens, so
-    // in practice writing a task down in the morning does silence the morning.
+    // in practice logging something does silence the rest of today. Setting a
+    // goal answers the morning's question too, so it silences the morning.
     const today = localDay(now)
     const daily = garden?.daily?.day === today ? garden.daily : null
-    const wroteToday = (daily?.added || 0) > 0
-    // The streak advances on the day's first finished task and only then, so
-    // this is exactly "have they completed something today".
-    const finishedToday = garden?.streak?.lastDay === today
+    const loggedToday = (daily?.logs || 0) > 0
+    const plannedToday = loggedToday || (daily?.goals || 0) > 0
+    const subject = nudgeSubject(spheres, logs, now)
 
     const times = nudgeTimes(wake, bed)
     for (let day = 0; day <= HORIZON_DAYS; day++) {
       for (const t of times) {
         const afternoon = t >= AFTERNOON_FROM
-        if (day === 0 && (afternoon ? finishedToday : wroteToday)) continue
-        const { title, body } = nudgeCopy({
-          afternoon, growing, subject: nudgeSubject(tasks, rand()),
-        })
+        if (day === 0 && (afternoon ? loggedToday : plannedToday)) continue
+        const { title, body } = nudgeCopy({ afternoon, subject })
         add(`nudge-${day}-${t}`, 'nudge', at(now, day, t), title, body)
       }
     }

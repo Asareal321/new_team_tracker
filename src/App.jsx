@@ -9,7 +9,8 @@ import Layout from './components/Layout'
 import BoardPage from './pages/BoardPage'
 import TodayPage from './pages/TodayPage'
 import SpherePage from './pages/SpherePage'
-import DeadlinesPage from './pages/DeadlinesPage'
+import GoalDeadlinesPage from './pages/GoalDeadlinesPage'
+import HistoryPage from './pages/HistoryPage'
 import TeamsPage from './pages/TeamsPage'
 import DashboardPage from './pages/DashboardPage'
 import AccountPage from './pages/AccountPage'
@@ -50,7 +51,8 @@ export default function App() {
                   {/* The old board, until phase 6 removes it. Still where first-run
                       setup mounts, so it stays reachable rather than vanishing. */}
                   <Route path="board" element={<BoardPage />} />
-                  <Route path="deadlines" element={<DeadlinesPage />} />
+                  <Route path="deadlines" element={<GoalDeadlinesPage />} />
+                  <Route path="history" element={<HistoryPage />} />
                   <Route path="community" element={<TeamsPage />} />
                   {/* The section was called Teams until it was renamed; old links still land. */}
                   <Route path="teams" element={<Navigate to="/community" replace />} />

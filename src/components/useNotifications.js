@@ -17,12 +17,12 @@ import {
 //
 // A no-op everywhere except the iOS shell.
 
-export default function useNotifications(tasks, focusBlocks) {
+export default function useNotifications({ spheres = [], logs = [], focusBlocks = [] } = {}) {
   const { state } = useGarden()
   const [status, setStatus] = useState('unavailable')
   const [settings, setSettings] = useState(notificationSettings)
-  const latest = useRef({ state, tasks, focusBlocks, settings })
-  latest.current = { state, tasks, focusBlocks, settings }
+  const latest = useRef({ state, spheres, logs, focusBlocks, settings })
+  latest.current = { state, spheres, logs, focusBlocks, settings }
 
   useEffect(() => {
     if (!notificationsAvailable()) return
@@ -31,10 +31,10 @@ export default function useNotifications(tasks, focusBlocks) {
 
   const rebuild = useCallback(() => {
     if (!notificationsAvailable()) return
-    const { state: g, tasks: t, focusBlocks: f, settings: s } = latest.current
+    const { state: g, spheres: sp, logs: l, focusBlocks: f, settings: s } = latest.current
     if (!g) return
     scheduleNotifications(planNotifications({
-      garden: g, tasks: t || [], focusBlocks: f || [], settings: s,
+      garden: g, spheres: sp || [], logs: l || [], focusBlocks: f || [], settings: s,
     }))
   }, [])
 
@@ -42,7 +42,7 @@ export default function useNotifications(tasks, focusBlocks) {
   useEffect(() => {
     if (status !== 'authorized') return
     rebuild()
-  }, [status, rebuild, state, tasks, focusBlocks, settings])
+  }, [status, rebuild, state, spheres, logs, focusBlocks, settings])
 
   // Back from the background, where the day may well have moved on.
   useEffect(() => {

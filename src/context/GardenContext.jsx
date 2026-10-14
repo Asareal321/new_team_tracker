@@ -641,13 +641,17 @@ export function GardenProvider({ children }) {
   // to raise. Called after the log row is written, never before, so a failed
   // write can never have paid out or used a seed.
   const rewardLog = useCallback(async ({
-    boost = false, sphereId = null, goalId = null, seedKey = null, consume = false,
+    window = null, sphereId = null, goalId = null, seedKey = null, consume = false,
   } = {}) => {
     const cur = stateRef.current
     if (!cur) return null
     const daily = todayBucket(cur.daily)
     const day = localDay()
-    const { coins, seeds } = logReward({ daily, boost })
+    // The base half against the daily cap, the bonus half (inside a planning
+    // hour or a focus block) against that window's own — see logReward.
+    const pay = logReward({ daily, window })
+    const coins = pay.coins + pay.bonusCoins
+    const seeds = pay.seeds + pay.bonusSeeds
 
     const streakAdvanced = cur.streak?.lastDay !== day
     const nextStreak = advanceStreak(cur.streak, day)
@@ -661,15 +665,24 @@ export function GardenProvider({ children }) {
       ...(seeds > 0 ? { seeds: (cur.seeds || 0) + seeds } : {}),
       ...(consume && seedKey ? { seed_inventory: takeSeed(cur.seed_inventory, seedKey) } : {}),
       ...(streakPay?.packetKey ? { packet_inventory: packets } : {}),
-      daily: logDaily(daily, { sphereId, goalId, coins, seeds }),
+      daily: logDaily(daily, {
+        sphereId, goalId, coins: pay.coins, seeds: pay.seeds,
+        window, bonusCoins: pay.bonusCoins, bonusSeeds: pay.bonusSeeds,
+      }),
       streak: nextStreak,
       stats: bumpStats({ progressLogs: 1 }),
     })
 
     const parts = [seeds > 0 && `+${seeds} 🌱`, coins > 0 && `+${coins} 🪙`].filter(Boolean)
-    const say = () => { if (parts.length) notify(`${parts.join(' ')}${boost ? ' · doubled' : ''}`) }
+    const doubled = pay.bonusCoins > 0 || pay.bonusSeeds > 0
+    const say = () => { if (parts.length) notify(`${parts.join(' ')}${doubled ? ' · doubled' : ''}`) }
 
-    if (streakPay) {
+    // Quiet mode keeps the reward and the streak, and skips the panel that
+    // takes over the screen to announce them — a line in the corner instead.
+    if (streakPay && cur.quiet_mode) {
+      notify(`🔥 ${nextStreak.current}-day streak${streakPay.coins ? ` · +${streakPay.coins} 🪙` : ''}`)
+      say()
+    } else if (streakPay) {
       setStreakCue({
         ...streakPay,
         prevStreak: Math.max(0, nextStreak.current - 1),

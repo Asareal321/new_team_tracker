@@ -128,3 +128,17 @@ export function IconDashboard() {
     </Icon>
   )
 }
+
+// A page with its corner turned back, and lines of entries down it: a log you
+// have kept, rather than a clock — Deadlines already has the clock.
+export function IconHistory() {
+  return (
+    <Icon label="History">
+      <path d="M6 3.5 H14.5 L19 8 V20.5 H6 Z" />
+      <path d="M14.5 3.5 V8 H19" />
+      <path d="M9 12 H16" />
+      <path d="M9 15.5 H16" />
+      <path d="M9 19 H13" />
+    </Icon>
+  )
+}

@@ -12,6 +12,8 @@
 // Pure. Checked by scripts/check-spheres.mjs.
 
 import { localDay, DAILY_CAPS, SEEDS } from './garden.js'
+import { chooseBlock, matchProject } from './calendarFill.js'
+import { BONUS_CAP, spendBonus } from './planningHours.js'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -129,18 +131,31 @@ export function balanceNudge({ spheres = [], logs = [], now = new Date() } = {})
 
 // ── rewards ─────────────────────────────────────────────────────────────────
 
-// What a log pays given what today has already paid. `boost` doubles it — a
-// planning hour, or a focus block naming this sphere — and the boosted half is
-// metered against the same daily cap rather than escaping it: there is no
-// clock to game here, so a second, separate allowance would just be a bigger
-// cap with extra steps.
-export function logReward({ daily, boost = false, base = LOG_REWARD, cap = DAILY_LOG_CAP } = {}) {
-  const mult = boost ? 2 : 1
-  const wantCoins = base.coins * mult
-  const wantSeeds = base.seeds * mult
-  const coins = Math.max(0, Math.min(wantCoins, cap.coins - Math.max(0, daily?.logCoins || 0)))
-  const seeds = Math.max(0, Math.min(wantSeeds, cap.seeds - Math.max(0, daily?.seeds || 0)))
-  return { coins, seeds, capped: coins < wantCoins || seeds < wantSeeds }
+// What a log pays given what today has already paid.
+//
+// Two halves, metered separately — the same rule planning hours always had,
+// and the one you asked for. The base half counts against the ordinary daily
+// cap. The bonus half, paid only inside a window (a planning hour, or a focus
+// block), ignores the daily cap and counts only against that window's own
+// allowance, BONUS_CAP. So planning tomorrow at 11pm still pays on a day you
+// already maxed out, but no single window is a bottomless faucet.
+//
+// `window` is the key to meter the bonus under: 'morning' / 'evening' for a
+// planning hour, `focus:<event id>` for a focus block. Null means no bonus.
+export function logReward({ daily, window = null, base = LOG_REWARD, cap = DAILY_LOG_CAP } = {}) {
+  const coins = Math.max(0, Math.min(base.coins, cap.coins - Math.max(0, daily?.logCoins || 0)))
+  const seeds = Math.max(0, Math.min(base.seeds, cap.seeds - Math.max(0, daily?.seeds || 0)))
+  let bonusCoins = 0
+  let bonusSeeds = 0
+  if (window) {
+    const spent = daily?.bonus?.[window] || {}
+    bonusCoins = Math.max(0, Math.min(base.coins, BONUS_CAP.coins - (spent.coins || 0)))
+    bonusSeeds = Math.max(0, Math.min(base.seeds, BONUS_CAP.seeds - (spent.seeds || 0)))
+  }
+  return {
+    coins, seeds, bonusCoins, bonusSeeds, window,
+    capped: coins < base.coins || seeds < base.seeds,
+  }
 }
 
 // ── what a log plants ─────────────────────────────────────────────────────
@@ -192,8 +207,14 @@ export function takeSeed(inventory = {}, key) {
 // What a log adds to today's bucket. Quests read these, so they are kept as
 // plain counts; the list of sphere ids is kept alongside so "spheres touched
 // today" is a true distinct count rather than a running total of logs.
-export function logDaily(daily, { sphereId, goalId = null, coins = 0, seeds = 0 } = {}) {
+export function logDaily(daily, {
+  sphereId, goalId = null, coins = 0, seeds = 0, window = null, bonusCoins = 0, bonusSeeds = 0,
+} = {}) {
   const d = { ...(daily || {}) }
+  // The bonus is recorded against its window, never against the daily cap.
+  if (window && (bonusCoins || bonusSeeds)) {
+    d.bonus = spendBonus(d, { window, bonusCoins, bonusSeeds })
+  }
   const ids = new Set(d.sphereIds || [])
   if (sphereId) ids.add(sphereId)
   d.logs = (d.logs || 0) + 1
@@ -254,4 +275,97 @@ export function daysLeft(goal, now = new Date()) {
 export function loggedToday(logs, now = new Date()) {
   const today = localDay(now)
   return (logs || []).some(l => localDay(ts(l)) === today)
+}
+
+// ── focus blocks ──────────────────────────────────────────────────────────
+
+// A calendar event that names one of your spheres, happening now. There is no
+// board to clear any more, so a focus block does one thing: logs in that
+// sphere pay double until it ends. The choosing rules are calendarFill's —
+// the TRK marker first, then the more specific event, then the longer name —
+// so a title that matched a project before matches a sphere the same way.
+export function focusFor({ events = [], spheres = [], now = new Date() } = {}) {
+  const live = (spheres || []).filter(s => s && !s.archived_at)
+  const choice = chooseBlock({ events, projects: live, now: now.getTime() })
+  const at = now.getTime()
+  const upcoming = (events || [])
+    .filter(e => !e.allDay && new Date(e.start).getTime() > at)
+    .map(e => ({ e, sphere: matchProject(e.title, live) }))
+    .filter(x => x.sphere)
+    .map(({ e, sphere }) => ({ id: e.id, sphereId: sphere.id, sphereName: sphere.name, start: e.start, end: e.end }))
+  return {
+    block: choice.project ? choice.block : null,
+    sphere: choice.project || null,
+    overlapping: choice.overlapping,
+    upcoming,
+  }
+}
+
+// Whether a log in this sphere, right now, pays double — and why. Either a
+// focus block on this sphere or an open planning hour; never both at once,
+// because a doubled reward doubled again is a number nobody can reason about.
+// Focus wins the label when both apply, since it is the more specific reason.
+export function boostFor({ sphereId, focus = null, planning = null } = {}) {
+  if (sphereId && focus?.sphere?.id === sphereId) {
+    return {
+      boost: true, why: 'focus', window: `focus:${focus.block?.id || focus.sphere.id}`,
+      label: `Focus hour on ${focus.sphere.name} — this log pays double`,
+    }
+  }
+  if (planning) {
+    return {
+      boost: true, why: 'planning', window: planning,
+      label: planning === 'morning' ? 'Morning planning hour — logs pay double' : 'Evening planning hour — logs pay double',
+    }
+  }
+  return { boost: false, why: null, window: null, label: null }
+}
+
+// ── search ────────────────────────────────────────────────────────────────
+
+// Every log whose note, sphere or goal contains every term — "econ midterm"
+// finds the midterm logs in ECON rather than every log that mentions either.
+// Newest first, as the logs already are.
+export function searchLogs(logs = [], terms = [], { sphereName = () => '', goalTitle = () => '' } = {}) {
+  const want = (terms || []).map(t => String(t).toLowerCase()).filter(Boolean)
+  if (!want.length) return logs || []
+  return (logs || []).filter(l => {
+    const hay = `${l?.note || ''} ${sphereName(l?.sphere_id) || ''} ${goalTitle(l?.goal_id) || ''}`.toLowerCase()
+    return want.every(t => hay.includes(t))
+  })
+}
+
+// Logs grouped by the local day they were written, in the order given.
+export function byDay(logs = []) {
+  const out = []
+  for (const l of logs || []) {
+    const day = localDay(ts(l))
+    const last = out[out.length - 1]
+    if (last && last.day === day) last.logs.push(l)
+    else out.push({ day, logs: [l] })
+  }
+  return out
+}
+
+// ── goals by deadline ─────────────────────────────────────────────────────
+
+// Open goals sorted into the four places a deadline can be. "Quiet" is the
+// one that matters: a goal ending within a fortnight that has had nothing
+// logged against it this week is the goal most likely to arrive unmet.
+export const QUIET_WINDOW_DAYS = 14
+
+export function deadlineGroups(goals = [], { counts = { byGoal: {} }, now = new Date() } = {}) {
+  const groups = { overdue: [], week: [], month: [], later: [] }
+  for (const g of goals || []) {
+    if (!g || g.status !== 'active') continue
+    const left = daysLeft(g, now)
+    const t = counts.byGoal?.[g.id] || { week: 0, total: 0 }
+    const row = { goal: g, left, week: t.week, total: t.total, quiet: left >= 0 && left <= QUIET_WINDOW_DAYS && t.week === 0 }
+    if (left < 0) groups.overdue.push(row)
+    else if (left <= 7) groups.week.push(row)
+    else if (left <= 31) groups.month.push(row)
+    else groups.later.push(row)
+  }
+  for (const k of Object.keys(groups)) groups[k].sort((a, b) => a.left - b.left)
+  return groups
 }

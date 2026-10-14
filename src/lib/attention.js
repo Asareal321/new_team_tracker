@@ -101,8 +101,8 @@ function raw({ state, flowers, quests, community, now = new Date() }) {
   if (planning) {
     add(ROUTE_BOARD, 'ready', `planning:${planning}:${localDay(now)}`,
       planning === 'morning'
-        ? 'Planning hour — tasks pay double until an hour after you got up'
-        : 'Planning hour — tasks pay double until bedtime')
+        ? 'Planning hour — logs pay double until an hour after you got up'
+        : 'Planning hour — logs pay double until bedtime')
   }
 
   // — the board: a calendar block owns it —
@@ -111,6 +111,12 @@ function raw({ state, flowers, quests, community, now = new Date() }) {
   // in the app: the board has been rearranged on your behalf, and finding that
   // out by wandering back to it is the version of this feature people would
   // reasonably call creepy.
+  // A calendar block naming a sphere: logs there pay double until it ends.
+  // Signed by the block, so each one lights once.
+  if (state?.focus?.sphereId) {
+    add(ROUTE_BOARD, 'ready', `focus:${state.focus.blockId || state.focus.sphereId}`,
+      `Focus hour — logs on ${state.focus.sphereName || 'this sphere'} pay double`)
+  }
   if (state?.focus?.projectId) {
     add(ROUTE_BOARD, 'ready', `focus:${state.focus.blockId || state.focus.projectId}`,
       `Focus hour — the board is ${state.focus.projectName || 'this block'} and nothing else`)

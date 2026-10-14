@@ -13,7 +13,6 @@ import { PUBLIC_PROFILE_PACKET } from '../lib/rewards'
 import { sampleTasks, seededClouds } from '../lib/sampleTasks'
 import { requestTour } from '../lib/tourState'
 import useCalendarFill from '../components/useCalendarFill'
-import useNotifications from '../components/useNotifications'
 import { planRestore } from '../lib/calendarFill'
 import FocusCleared from '../components/FocusCleared'
 import CalendarStrip from '../components/CalendarStrip'
@@ -353,9 +352,6 @@ export default function BoardPage() {
   }, [fetchTasks])
 
   const calendar = useCalendarFill({ tasks, projects, onApply: applyCalendarPlan })
-  // The board is where the alarms are kept in step, because it is the page
-  // that knows the tasks. A no-op outside the iOS shell.
-  useNotifications(tasks, calendar.upcomingBlocks)
 
   // — the focus hour ————————————————————————————————————————————————
   //

@@ -4,12 +4,14 @@ import { useAuth } from '../auth/AuthContext'
 import { useTeam } from '../context/TeamContext'
 import Tour from './Tour'
 import SphereTree from './SphereTree'
+import useNotifications from './useNotifications'
+import { useSpheres } from '../context/SpheresContext'
 import { tourDone, markTourDone, tourRequested, clearTourRequest, TOUR_EVENT } from '../lib/tourState'
 import useAttention from './useAttention'
 import { attentionTitle } from '../lib/attention'
 import { isIsolatedSession, isolatedSessionLabel } from '../supabase'
 import {
-  IconBoard, IconDeadlines, IconCommunity, IconDashboard, IconGarden, IconAccount,
+  IconBoard, IconDeadlines, IconHistory, IconCommunity, IconDashboard, IconGarden, IconAccount,
 } from './NavIcons'
 import '../App.css'
 
@@ -19,6 +21,7 @@ const navClass = ({ isActive }) => (isActive ? 'nav-btn active' : 'nav-btn')
 const NAV = [
   { to: '/',          label: 'Today',     Icon: IconBoard,     end: true },
   { to: '/deadlines', label: 'Deadlines', Icon: IconDeadlines },
+  { to: '/history',   label: 'History',   Icon: IconHistory },
   { to: '/community', label: 'Community', Icon: IconCommunity },
   { to: '/dashboard', label: 'Dashboard', Icon: IconDashboard, admin: true },
   // Personal-only: the garden belongs to you, not to a team.
@@ -34,6 +37,10 @@ export default function Layout() {
   const { teams, currentTeam, currentTeamId, setCurrentTeam } = useTeam()
   const { user } = useAuth()
   const { signals } = useAttention()
+  // The phone's alarms are kept in step from here, the one component that is
+  // mounted whatever page is open. A no-op outside the iOS shell.
+  const { spheres, logs, focus } = useSpheres()
+  useNotifications({ spheres, logs, focusBlocks: focus?.upcoming || [] })
   const [theme, setTheme] = useState(getInitialTheme)
 
   // The walk lives here because it changes route as it goes — a page that

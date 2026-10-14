@@ -5,6 +5,7 @@ import { localDay, seedByKey } from '../lib/garden'
 import LogBox from '../components/LogBox'
 import SphereGarden from '../components/SphereGarden'
 import QuestStrip from '../components/QuestStrip'
+import FocusStrip from '../components/FocusStrip'
 import { projectColorIndex } from '../lib/projectColors'
 import './Spheres.css'
 
@@ -47,6 +48,8 @@ export default function TodayPage() {
 
       {error && <p className="sph-error">{error}</p>}
 
+      {live.length > 0 && <FocusStrip />}
+
       <section className="sph-card">
         <LogBox autoFocus />
         {nudge && (
@@ -59,7 +62,10 @@ export default function TodayPage() {
 
       {todays.length > 0 && (
         <section className="sph-section">
-          <h2>Logged today</h2>
+          <div className="sph-section-head">
+            <h2>Logged today</h2>
+            <Link to="/history" className="sph-more">All history</Link>
+          </div>
           <ul className="sph-logs">
             {todays.map(l => (
               <li key={l.id} className={`sph-log pc-${projectColorIndex(l.sphere_id)}`}>
