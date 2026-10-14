@@ -79,9 +79,9 @@ export const TOUR_STEPS = [
   },
   {
     key: 'log-sphere', route: '/', mood: 'think',
-    anchor: ['.lb-select', '.lb'],
+    anchor: ['.mo-box', '.lb'],
     title: 'Which sphere, which goal',
-    body: 'Pick where the progress goes. A goal is optional — the garden grows either way.',
+    body: 'Click a tile to pick the sphere. It zooms in on its goals — pick one, or no goal.',
   },
   {
     key: 'tree', route: '/', mood: 'point', only: 'desktop',
@@ -97,9 +97,9 @@ export const TOUR_STEPS = [
   },
   {
     key: 'gardens', route: '/', mood: 'idle',
-    anchor: ['.sph-gardens', '.sph-start'],
-    title: 'A garden for every sphere',
-    body: 'Same scale, side by side. The small one is the one you have been neglecting.',
+    anchor: ['.mo-box', '.sph-start'],
+    title: 'Where your month went',
+    body: 'Each area is one colour, sized by your last 30 days. The small tile is the one you have been neglecting.',
   },
   {
     key: 'quests', route: '/', mood: 'happy',

@@ -93,6 +93,8 @@ html[data-theme="dark"] {
 }
 .lb-select:disabled { color: var(--text-4); }
 .lb-go { flex: none; }
+.lb-picked { flex: 1 1 200px; font-size: var(--fs-sm); color: var(--text-3); }
+.lb-picked strong { color: var(--text-1); }
 .lb-error { margin: 0; color: var(--red-text); font-size: var(--fs-sm); }
 .lb-plant { margin: 0; font-size: var(--fs-xs); color: var(--text-3); }
 .lb-plant strong { color: var(--text-2); }
@@ -412,3 +414,45 @@ html[data-theme="dark"] {
 /* Shared spheres: who logged what. */
 .sph-log-who { font-weight: 600; }
 .sph-people { margin-top: 10px; }
+
+/* ── the mosaic on Today ───────────────────────────────────────────────── */
+
+.mo { display: flex; flex-direction: column; gap: 8px; }
+.mo-trail { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 24px; font-size: var(--fs-sm); color: var(--text-3); }
+.mo-trail strong { color: var(--text-1); }
+.mo-open { margin-left: auto; color: var(--text-3); }
+.mo-back {
+  border: 0; background: none; padding: 2px 0; font: inherit; color: var(--accent-text);
+  text-decoration: underline; cursor: pointer;
+}
+.mo-box { position: relative; height: 320px; border-radius: var(--r-lg); overflow: hidden; background: var(--bg-surface); }
+.mo-layer { position: absolute; inset: 0; }
+.mo-in { animation: mo-zoom-in 320ms cubic-bezier(.2,.8,.2,1); }
+.mo-out { animation: mo-zoom-out 260ms ease-out; }
+@keyframes mo-zoom-in { from { transform: scale(0.35); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes mo-zoom-out { from { transform: scale(1.08); opacity: 0; } to { transform: none; opacity: 1; } }
+.mo-tile {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid var(--bg-surface);
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start;
+  overflow: hidden;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: filter 120ms ease;
+}
+.mo-tile:hover { filter: brightness(1.08); }
+.mo-tile:focus-visible { outline: 3px solid var(--accent); outline-offset: -5px; }
+.mo-tile.picked { box-shadow: inset 0 0 0 3px currentColor; }
+.mo-name { font-weight: 600; font-size: var(--fs-sm); line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.mo-meta { font-size: var(--fs-xs); opacity: 0.85; white-space: nowrap; }
+.mo-name { overflow-wrap: anywhere; hyphens: auto; }
+.mo-tile.small { padding: 6px 7px; }
+.mo-tile.small .mo-meta { display: none; }
+.mo-tile.small .mo-name { font-size: var(--fs-xs); }
+.mo-shared { display: flex; gap: 8px; align-items: center; font-size: var(--fs-sm); color: var(--text-3); }
+@media (max-width: 820px) { .mo-box { height: 340px; } }
+@media (prefers-reduced-motion: reduce) { .mo-in, .mo-out { animation: none; } }

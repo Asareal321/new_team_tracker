@@ -3,7 +3,6 @@ import { useSpheres } from '../context/SpheresContext'
 import { balanceNudge } from '../lib/spheres'
 import { localDay, seedByKey } from '../lib/garden'
 import LogBox from '../components/LogBox'
-import SphereGarden from '../components/SphereGarden'
 import QuestStrip from '../components/QuestStrip'
 import SphereTree from '../components/SphereTree'
 import Onboarding from '../components/Onboarding'
@@ -18,12 +17,10 @@ import './Spheres.css'
 
 // Today: what you moved, and where everything stands.
 //
-// Three things in order of how often they matter. The log box, because that is
-// the reason to open the app. Today's logs, so you can see the day add up. And
-// every sphere's garden side by side, at the same scale, so neglect is
-// something you see rather than something you are told.
-
-const GARDEN_PREVIEW = 30
+// The log box first, because that is the reason to open the app — and its
+// picker is the mosaic, every area and sphere sized by the last month's logs,
+// so neglect is something you see while you choose rather than something you
+// are told. Then today's logs, so you can see the day add up.
 
 // First run, personal workspace only — a community's space isn't yours to set
 // up. Everything it writes is real: the area, the sphere, the goal and the log
@@ -71,23 +68,17 @@ function FirstRun() {
 }
 
 export default function TodayPage() {
-  const { spheres, areas, goals, logs, myLogs, counts, loading, error } = useSpheres()
+  const { spheres, goals, myLogs, loading, error } = useSpheres()
   const now = new Date()
   const today = localDay(now)
   const todays = myLogs.filter(l => localDay(l.logged_at) === today)
   const nudge = balanceNudge({ spheres, logs: myLogs, now })
   const byId = Object.fromEntries(spheres.map(s => [s.id, s]))
   const goalById = Object.fromEntries(goals.map(g => [g.id, g]))
-  const areaName = id => areas.find(a => a.id === id)?.name
 
   if (loading) return <div className="loading">Loading…</div>
 
   const live = spheres.filter(s => !s.archived_at)
-  // Busiest garden first, so the eye travels from what is thriving to what is
-  // not — the bottom of the grid is the part worth noticing.
-  const ordered = [...live].sort((a, b) =>
-    (counts.bySphere[b.id]?.total || 0) - (counts.bySphere[a.id]?.total || 0))
-
   return (
     <div className="sph-page">
       <header className="sph-head">
@@ -102,7 +93,7 @@ export default function TodayPage() {
 
 
       <section className="sph-card">
-        <LogBox autoFocus />
+        <LogBox autoFocus mosaic />
         {nudge && (
           <p className="sph-nudge">
             {nudge.message}{' '}
@@ -137,29 +128,6 @@ export default function TodayPage() {
           none. Only once there is a sphere to log in, since every quest is
           about logging. */}
       {live.length > 0 && <QuestStrip />}
-
-      {ordered.length > 0 && (
-        <section className="sph-section">
-          <h2>Your gardens</h2>
-          <div className="sph-gardens">
-            {ordered.map(s => {
-              const c = counts.bySphere[s.id] || { week: 0, total: 0 }
-              return (
-                <Link key={s.id} to={`/spheres/${s.id}`} className={`sph-garden-card pc-${projectColorIndex(s.id)}`}>
-                  <span className="sph-garden-top">
-                    <span className="sph-garden-name">{s.name}</span>
-                    <span className="sph-garden-area">{areaName(s.area_id) || 'Shared'}</span>
-                  </span>
-                  <SphereGarden logs={logs.filter(l => l.sphere_id === s.id)} limit={GARDEN_PREVIEW} size="sm" />
-                  <span className="sph-garden-tally">
-                    <strong>{c.week}</strong> this week · {c.total} total
-                  </span>
-                </Link>
-              )
-            })}
-          </div>
-        </section>
-      )}
 
       {!live.length && (
         <section className="sph-card sph-start">

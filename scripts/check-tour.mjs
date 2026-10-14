@@ -49,7 +49,7 @@ ok('each tab is visited once, in one run', order.length === new Set(order).size,
 // survivable but silent. This catches the typo at build time instead.
 
 const SOURCES = [
-  'src/components/Layout.jsx', 'src/components/LogBox.jsx', 'src/components/SphereTree.jsx',
+  'src/components/Layout.jsx', 'src/components/LogBox.jsx', 'src/components/SphereMosaic.jsx', 'src/components/SphereTree.jsx',
   'src/components/QuestStrip.jsx', 'src/pages/TodayPage.jsx', 'src/pages/HistoryPage.jsx',
   'src/components/CommunityPeople.jsx', 'src/components/Marketplace.jsx',
   'src/components/ReferralCard.jsx', 'src/App.css',

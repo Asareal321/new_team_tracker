@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useSpheres } from '../context/SpheresContext'
 import { useGarden } from '../context/GardenContext'
 import { seedByKey } from '../lib/garden'
+import SphereMosaic from './SphereMosaic'
 
 // The one thing you do every day: say what you moved, and where.
 //
@@ -10,8 +11,10 @@ import { seedByKey } from '../lib/garden'
 // Recruiting" is still progress, and making people invent a goal to file a
 // sentence under would teach them to stop writing sentences. When the box
 // lives on a sphere's own page the sphere is fixed and the picker disappears.
+// On Today (`mosaic`) the picker is the mosaic of your areas; shared spheres,
+// which the mosaic leaves out, keep a plain list underneath.
 
-export default function LogBox({ sphereId: fixedSphere = null, autoFocus = false, onLogged }) {
+export default function LogBox({ sphereId: fixedSphere = null, autoFocus = false, onLogged, mosaic = false }) {
   const { areas, spheres, goals, addLog, boostInfo } = useSpheres()
   const { state } = useGarden() || {}
   const [sphereId, setSphereId] = useState(fixedSphere || '')
@@ -37,6 +40,9 @@ export default function LogBox({ sphereId: fixedSphere = null, autoFocus = false
     return out.filter(g => g.items.length)
   }, [areas, live])
 
+  const sharedList = live.filter(s => s.team_id)
+  const sharedPicked = sharedList.some(s => s.id === sphereId)
+
   async function submit(e) {
     e.preventDefault()
     if (!target || !note.trim() || busy) return
@@ -45,6 +51,8 @@ export default function LogBox({ sphereId: fixedSphere = null, autoFocus = false
     try {
       const row = await addLog({ sphereId: target, goalId: goalId || null, note })
       setNote('')
+      // Back out to the whole mosaic, so the tile you just fed is seen growing.
+      if (mosaic) { setSphereId(''); setGoalId('') }
       onLogged?.(row)
     } catch (err) {
       setError(err?.message || String(err))
@@ -73,8 +81,22 @@ export default function LogBox({ sphereId: fixedSphere = null, autoFocus = false
           autoFocus={autoFocus}
         />
       </label>
+      {mosaic && !fixedSphere && (
+        <SphereMosaic sphereId={sharedPicked ? '' : sphereId} goalId={goalId}
+          onPick={p => { setSphereId(p.sphereId); setGoalId(p.goalId) }} />
+      )}
+      {mosaic && !fixedSphere && sharedList.length > 0 && (
+        <label className="mo-shared">
+          <span>Or a shared sphere</span>
+          <select className="lb-select" value={sharedPicked ? sphereId : ''}
+            onChange={e => { setSphereId(e.target.value); setGoalId('') }}>
+            <option value="">Choose…</option>
+            {sharedList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </label>
+      )}
       <div className="lb-row">
-        {!fixedSphere && (
+        {!fixedSphere && !mosaic && (
           <select
             value={sphereId}
             onChange={e => { setSphereId(e.target.value); setGoalId('') }}
@@ -90,16 +112,25 @@ export default function LogBox({ sphereId: fixedSphere = null, autoFocus = false
             ))}
           </select>
         )}
-        <select
-          value={goalId}
-          onChange={e => setGoalId(e.target.value)}
-          aria-label="Goal (optional)"
-          className="lb-select"
-          disabled={!target || !openGoals.length}
-        >
-          <option value="">{openGoals.length ? 'Towards a goal? (optional)' : 'No open goals'}</option>
-          {openGoals.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
-        </select>
+        {(!mosaic || fixedSphere || sharedPicked) && (
+          <select
+            value={goalId}
+            onChange={e => setGoalId(e.target.value)}
+            aria-label="Goal (optional)"
+            className="lb-select"
+            disabled={!target || !openGoals.length}
+          >
+            <option value="">{openGoals.length ? 'Towards a goal? (optional)' : 'No open goals'}</option>
+            {openGoals.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
+          </select>
+        )}
+        {mosaic && !fixedSphere && (
+          <span className="lb-picked">
+            {target
+              ? <>Logging to <strong>{spheres.find(s => s.id === target)?.name}</strong>{goalId ? <> · {openGoals.find(g => g.id === goalId)?.title}</> : null}</>
+              : 'Pick a sphere above'}
+          </span>
+        )}
         <button className="btn-primary lb-go" disabled={!target || !note.trim() || busy}>
           {busy ? 'Logging…' : 'Log it'}
         </button>
