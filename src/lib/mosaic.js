@@ -12,10 +12,15 @@ const DAY_MS = 24 * 60 * 60 * 1000
 // your effort is going now.
 export const MOSAIC_DAYS = 30
 
-// The smallest share a tile may have, as a fraction of the whole. A sphere you
-// have not touched still has to be big enough to click — small enough that the
-// neglect shows, never so small that it vanishes.
-export const MIN_SHARE = 0.04
+// How big an untouched sphere's tile is, next to the smallest one you have
+// logged in: a third of it. Big enough to tap, small enough that 0 and 1 look
+// different. With only a few logs, a share of the total would make an empty
+// sphere bigger than one you actually worked on.
+export const EMPTY_RATIO = 0.3
+
+// And never smaller than this share of the whole, so a tile can always be
+// clicked even when one sphere has hundreds of logs.
+export const MIN_SHARE = 0.012
 
 // One hue per area, in the order areas were made. Chosen to sit apart from
 // each other and from the app's green accent.
@@ -32,12 +37,14 @@ export function recentCounts(logs = [], { now = new Date(), days = MOSAIC_DAYS }
   return out
 }
 
-// Weights with a floor, so nothing rounds to nothing. With no logs anywhere,
-// everything is the same size — there is nothing yet to say about balance.
-export function floored(values, minShare = MIN_SHARE) {
+// Weights with a floor for the spheres you haven't touched. Logged spheres
+// keep their true counts, so area stays proportional between them. With no
+// logs anywhere, everything is the same size — nothing to say about balance.
+export function floored(values, minShare = MIN_SHARE, emptyRatio = EMPTY_RATIO) {
   const total = values.reduce((a, b) => a + b, 0)
   if (total <= 0) return values.map(() => 1)
-  const floor = total * minShare / Math.max(1 - minShare * values.length, minShare)
+  const smallest = Math.min(...values.filter(v => v > 0))
+  const floor = Math.max(smallest * emptyRatio, total * minShare)
   return values.map(v => Math.max(v, floor))
 }
 

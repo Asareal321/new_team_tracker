@@ -19,6 +19,12 @@ const f = floored([10, 0, 0])
 const total = f.reduce((a, b) => a + b, 0)
 ok('an untouched sphere still gets a minimum share', f[1] / total >= MIN_SHARE * 0.99, String(f[1] / total))
 ok('and stays smaller than the busy one', f[1] < f[0])
+// The real case that looked wrong: 15 spheres, 14 logs, most at 0 or 1.
+const few = floored([4, 4, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0])
+ok('with few logs, an empty sphere is clearly smaller than a 1-log one', few[14] <= few[6] * 0.35, JSON.stringify(few))
+ok('logged spheres keep their true counts', few[0] === 4 && few[6] === 1)
+const huge = floored([300, 2, 0])
+ok("next to a huge sphere, an empty one is still tappable", huge[2] / huge.reduce((a, b) => a + b, 0) >= MIN_SHARE * 0.95)
 ok('with nothing logged, everything is equal', floored([0, 0, 0]).every(v => v === 1))
 
 const L = splitLayout([{ weight: 3 }, { weight: 1 }])
