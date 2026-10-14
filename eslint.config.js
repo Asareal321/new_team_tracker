@@ -40,6 +40,15 @@ export default [
       // A component used but never imported is the same bug wearing a hat.
       'react/jsx-no-undef': 'error',
 
+      // The other half of no-undef: a name that exists but is read before its
+      // own line has run. In a component body that is a crash on first render
+      // — "Cannot access 'Z' before initialization" took trakkitnow.ca down
+      // when a hook's dependency array named a callback defined further down.
+      // `variables: false` limits it to same-scope reads, the ones that run
+      // during render; a reference inside a function that runs later is safe
+      // and is left alone, which is why this adds no noise to existing code.
+      'no-use-before-define': ['error', { functions: false, classes: true, variables: false }],
+
       // Stale closures and missing deps are the other way this app breaks
       // silently, so hooks are checked — but deps stay a warning, since the
       // existing code has deliberate omissions with reasons written above them.
