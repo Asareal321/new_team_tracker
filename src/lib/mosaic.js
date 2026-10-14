@@ -37,15 +37,21 @@ export function recentCounts(logs = [], { now = new Date(), days = MOSAIC_DAYS }
   return out
 }
 
-// Weights with a floor for the spheres you haven't touched. Logged spheres
-// keep their true counts, so area stays proportional between them. With no
-// logs anywhere, everything is the same size — nothing to say about balance.
+// Weights with a floor. Two different floors:
+//  • A logged sphere is never smaller than MIN_SHARE of the whole, so it can
+//    always be tapped. Above that, its size is exactly its count.
+//  • An untouched sphere is EMPTY_RATIO of the smallest logged tile — and
+//    never more than half of it — so 0 always looks smaller than 1, even when
+//    one huge sphere has pushed the small ones up to the tappable minimum.
+// With no logs anywhere, everything is the same size.
 export function floored(values, minShare = MIN_SHARE, emptyRatio = EMPTY_RATIO) {
   const total = values.reduce((a, b) => a + b, 0)
   if (total <= 0) return values.map(() => 1)
-  const smallest = Math.min(...values.filter(v => v > 0))
-  const floor = Math.max(smallest * emptyRatio, total * minShare)
-  return values.map(v => Math.max(v, floor))
+  const tap = total * minShare
+  const logged = values.map(v => (v > 0 ? Math.max(v, tap) : 0))
+  const smallest = Math.min(...logged.filter(v => v > 0))
+  const empty = Math.min(Math.max(smallest * emptyRatio, tap * 0.5), smallest * 0.5)
+  return logged.map(v => (v > 0 ? v : empty))
 }
 
 // Lay weighted items into a rectangle. Splits the list into two runs of
