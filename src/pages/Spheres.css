@@ -425,7 +425,7 @@ html[data-theme="dark"] {
   border: 0; background: none; padding: 2px 0; font: inherit; color: var(--accent-text);
   text-decoration: underline; cursor: pointer;
 }
-.mo-box { position: relative; height: 320px; border-radius: var(--r-lg); overflow: hidden; background: var(--bg-surface); }
+.mo-box { position: relative; height: 320px; border-radius: 0; overflow: hidden; background: var(--bg-surface); }
 .mo-layer { position: absolute; inset: 0; }
 .mo-in { animation: mo-zoom-in 320ms cubic-bezier(.2,.8,.2,1); }
 .mo-out { animation: mo-zoom-out 260ms ease-out; }
@@ -434,8 +434,8 @@ html[data-theme="dark"] {
 .mo-tile {
   position: absolute;
   box-sizing: border-box;
-  border: 2px solid var(--bg-surface);
-  border-radius: 10px;
+  border: 1.5px solid var(--bg-surface);
+  border-radius: 0;
   padding: 8px 10px;
   display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start;
   overflow: hidden;
