@@ -268,7 +268,7 @@ ok('one with logs this week is not', dg.week[0].quiet === false)
 // errors when that happens; the page just looks wrong. So each prefix this
 // stylesheet uses must be defined nowhere else.
 
-const OWN = ['sph-', 'st-', 'sg-', 'lb-', 'gf-', 'mo-']
+const OWN = ['sph-', 'st-', 'sg-', 'lb-', 'gf-', 'mo-', 'td-']
 const sheets = []
 ;(function walk(dir) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {

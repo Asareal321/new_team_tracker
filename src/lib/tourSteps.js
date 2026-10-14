@@ -73,7 +73,7 @@ export const TOUR_STEPS = [
   },
   {
     key: 'log', route: '/', mood: 'happy', act: 'click',
-    anchor: ['.lb-note', '.lb'],
+    anchor: ['.lb-bar-note', '.lb-note', '.lb'],
     title: 'This is the whole app',
     body: 'Click the box. One sentence about what you moved forward, and it plants something.',
   },

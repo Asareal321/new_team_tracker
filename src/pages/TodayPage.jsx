@@ -79,55 +79,59 @@ export default function TodayPage() {
   if (loading) return <div className="loading">Loading…</div>
 
   const live = spheres.filter(s => !s.archived_at)
-  return (
-    <div className="sph-page">
-      <header className="sph-head">
-        <h1>Today</h1>
-        <p className="sph-sub">
-          {now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
-          {' · '}{todays.length ? `${todays.length} logged so far` : 'nothing logged yet'}
+  const time = iso => new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+
+  // The right-hand column of the dashboard: today as a timeline, then the
+  // nudge and the quests. On a phone it drops below the mosaic.
+  const side = (
+    <>
+      <section className="td-today">
+        <div className="td-head">
+          <h2>Today</h2>
+          <Link to="/history" className="sph-more">History</Link>
+        </div>
+        {todays.length ? (
+          <ol className="td-line">
+            {todays.map(l => (
+              <li key={l.id} className={`pc-${projectColorIndex(l.sphere_id)}`}>
+                <time dateTime={l.logged_at}>{time(l.logged_at)}</time>
+                <span className="td-plant" aria-hidden="true">{seedByKey(l.seed_key)?.emoji || '🌱'}</span>
+                <span className="td-body">
+                  <span className="td-note">{l.note}</span>
+                  <span className="td-where">
+                    <Link to={`/spheres/${l.sphere_id}`} className="sph-chip">{byId[l.sphere_id]?.name || 'Sphere'}</Link>
+                    {l.goal_id && goalById[l.goal_id] && <span className="td-goal">{goalById[l.goal_id].title}</span>}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        ) : <p className="td-empty">Nothing yet. Your first log today shows up here.</p>}
+      </section>
+      {nudge && (
+        <p className="sph-nudge">
+          {nudge.message}{' '}
+          <Link to={`/spheres/${nudge.quiet.id}`}>Open {nudge.quiet.name}</Link>
         </p>
+      )}
+      {/* The quest glow lights this tab, so the quests have to be here. */}
+      <QuestStrip />
+    </>
+  )
+
+  return (
+    <div className="sph-page td-page">
+      <header className="td-title">
+        <h1>Today</h1>
+        <span>
+          {now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+          {' · '}{todays.length ? `${todays.length} logged` : 'nothing logged yet'}
+        </span>
       </header>
 
       {error && <p className="sph-error">{error}</p>}
 
-
-      <section className="sph-card">
-        <LogBox autoFocus mosaic />
-        {nudge && (
-          <p className="sph-nudge">
-            {nudge.message}{' '}
-            <Link to={`/spheres/${nudge.quiet.id}`}>Open {nudge.quiet.name}</Link>
-          </p>
-        )}
-      </section>
-
-      {todays.length > 0 && (
-        <section className="sph-section">
-          <div className="sph-section-head">
-            <h2>Logged today</h2>
-            <Link to="/history" className="sph-more">All history</Link>
-          </div>
-          <ul className="sph-logs">
-            {todays.map(l => (
-              <li key={l.id} className={`sph-log pc-${projectColorIndex(l.sphere_id)}`}>
-                <span className="sph-log-plant" aria-hidden="true">{seedByKey(l.seed_key)?.emoji || '🌱'}</span>
-                <span className="sph-log-note">{l.note}</span>
-                <span className="sph-log-where">
-                  <Link to={`/spheres/${l.sphere_id}`} className="sph-chip">{byId[l.sphere_id]?.name || 'Sphere'}</Link>
-                  {l.goal_id && goalById[l.goal_id] && <span className="sph-log-goal">{goalById[l.goal_id].title}</span>}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {/* The quest glow lights this tab, so the quests have to be here — a
-          glow that sends you somewhere with nothing to act on is worse than
-          none. Only once there is a sphere to log in, since every quest is
-          about logging. */}
-      {live.length > 0 && <QuestStrip />}
+      {live.length > 0 ? <LogBox autoFocus mosaic aside={side} /> : <section className="sph-card"><LogBox /></section>}
 
       {!live.length && (
         <section className="sph-card sph-start">
